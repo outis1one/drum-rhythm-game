@@ -17,29 +17,43 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
    - **J** = Green (Tom)
    - **Space** = Kick (Bass drum)
    - **Escape** = Pause
+6. **Right-click** any genre tab or song to hide it
 
 ## Features
 
-- **14 Genres** across two modes: synth orchestra songs + drum beat patterns
-- **65 synth pieces** with full synthesized orchestra background (48 minutes)
+- **16 Genres** across two modes: synth orchestra songs + drum beat patterns
+- **91 synth pieces** with full synthesized orchestra background (68 minutes)
 - **120 drum patterns** across 8 genres
 - **Drums or Orchestra mode** — choose whether pad hits play drum sounds or the actual melody note
 - **Speed control** — slow down to 50% for practice or speed up to 150%
 - **Volume control** — adjustable master volume
 - **Pause/Resume** — press Escape or the pause button mid-song
 - **Gamepad Remap** — configure any USB drum kit with the Remap Pads button
+- **Hide genres/songs** — right-click to hide, "Show All" to restore, saved across sessions
 - **Multiplayer** — take turns, scores compared at the end
 - **Pad Toggles** — turn pads on/off to adjust difficulty
 - **Preview** — hear any song before playing
 - **Leaderboard** — scores saved locally
+- **Settings persistence** — speed, volume, gamepad mapping, hidden items all saved to localStorage
+- **Math-protected reset** — Reset All Data requires solving a math problem to prevent accidents
 
 ## Song List
 
-### Singalong (10 songs)
+### Singalong (20 songs)
 - Drunken Sailor (Sea Shanty)
+- Wellerman (NZ Sea Shanty, 1860s)
 - Molly Malone (Irish, 1880s)
 - Whiskey in the Jar (Irish Traditional)
 - The Parting Glass (Irish/Scots Traditional)
+- Leave Her Johnny (Sea Shanty)
+- Blow the Man Down (Sea Shanty)
+- Randy Dandy Oh (Sea Shanty)
+- South Australia (Sea Shanty)
+- Roll the Old Chariot Along (Sea Shanty)
+- Haul Away Joe (Sea Shanty)
+- Spanish Ladies (Royal Navy, 1790s)
+- The Skye Boat Song (Scottish, 1884 — Outlander)
+- Bella Ciao (Italian Partisan Folk — Money Heist)
 - Amazing Grace (1779)
 - Auld Lang Syne (1788)
 - When the Saints Go Marching In (Spiritual)
@@ -69,17 +83,37 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 - Turkey in the Straw (American, 1820s)
 - Danny Boy (Irish, 1910s)
 
+### Spirituals (8 songs)
+- Swing Low, Sweet Chariot (1862)
+- Go Down Moses (Traditional)
+- Wade in the Water (Traditional)
+- Kumbaya (Traditional)
+- Michael Row the Boat Ashore (1860s)
+- He's Got the Whole World (Traditional)
+- Nobody Knows the Trouble I've Seen (Traditional)
+- Battle Hymn of the Republic (1861)
+
+### World (8 songs)
+- Hava Nagila (Jewish/Israeli, 1918)
+- La Cucaracha (Mexican Traditional)
+- Frere Jacques (French, 1780s)
+- Cielito Lindo (Mexican, 1882)
+- Waltzing Matilda (Australian, 1895)
+- 'O Sole Mio (Italian, 1898)
+- Take Me Out to the Ball Game (American, 1908)
+- She'll Be Coming Round the Mountain (American, 1890s)
+
 ### Classical (26 pieces)
 - Beethoven's 5th (Opening)
 - Hall of the Mountain King (Grieg)
 - O Fortuna (Orff)
-- Ride of the Valkyries (Wagner)
+- Ride of the Valkyries (Wagner) — Apocalypse Now
 - Mars, Bringer of War (Holst)
 - Toccata & Fugue in D Minor (Bach)
-- William Tell Overture — Gallop (Rossini)
+- William Tell Overture — Gallop (Rossini) — The Lone Ranger
 - Bolero (Ravel)
 - Also Sprach Zarathustra (R. Strauss) — 2001: A Space Odyssey
-- Barber of Seville Overture (Rossini)
+- Barber of Seville Overture (Rossini) — Bugs Bunny
 - The Blue Danube (J. Strauss II) — 2001: A Space Odyssey
 - Sabre Dance (Khachaturian)
 - Night on Bald Mountain (Mussorgsky) — Fantasia
@@ -135,6 +169,20 @@ The Gamepad API works with any USB controller. Use the **Remap Pads** button to 
 | Roland/Alesis/Donner | USB-MIDI adapter |
 | Any USB gamepad | Remap to configure |
 
+## Data Storage
+
+All data is saved to **localStorage** in your browser — nothing is lost when you close the page.
+
+| Key | What's Stored | How to Clear |
+|-----|--------------|-------------|
+| `drgame5` | Leaderboard scores | Clear button on Leaderboard |
+| `drgameSettings` | Speed + volume | Reset button in Settings |
+| `drgameGpMap` | Gamepad button mapping | Reset All Data |
+| `drgameHidden` | Hidden genre tabs | Right-click → Show All |
+| `drgameHiddenSongs` | Hidden songs per genre | Show N hidden button |
+
+**Reset All Data** clears everything but requires solving a math problem first.
+
 ## Synthesizer
 
 All sounds are generated in real-time using the Web Audio API — no audio files needed:
@@ -156,11 +204,11 @@ All sounds are generated in real-time using the Web Audio API — no audio files
 ## Tech
 
 - Pure vanilla JavaScript — no libraries, no build step, no server
-- Single `index.html` file
+- Single `index.html` file (~3000 lines)
 - Web Audio API for all sound synthesis
 - Canvas 2D for the note highway
 - Gamepad API for drum kit input
-- localStorage for scores and gamepad mapping
+- localStorage for all persistent data
 - Works on Windows, Linux, and Mac
 
 ## License
