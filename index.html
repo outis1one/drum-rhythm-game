@@ -1782,6 +1782,74 @@ const CHIPTUNE_PIECES=(function(){
   return [platformer,spaceshooter,rpg,racing,dungeon,victory];
 })();
 
+// ── PRIME (easy beginner songs, verified from lead sheets) ──
+const PRIME_PIECES=(function(){
+  var C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5;
+  function primer(name,origin,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=0.25;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.2+rep*0.1;
+      var inst=rep<Math.floor(passes*0.4)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
+        if(rep>1)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.3});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.4;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.45});});
+    bg.push({t:t,f:r/2,d:1.5,i:'timpani',v:0.5});mel.push({t:t,l:4});
+    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  }
+
+  // ── Twinkle Twinkle Little Star (C major, from lead sheet) ──
+  var twinkle=primer("Twinkle Twinkle Little Star","Traditional (1760s)",100,
+    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
+    [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
+    [1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,3],
+    3,C4);
+
+  // ── Mary Had a Little Lamb (C major, from lead sheet) ──
+  var mary=primer("Mary Had a Little Lamb","S.J. Hale (1830)",110,
+    [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,E4,D4,D4,E4,D4,C4],
+    [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,2,1,1,2,1,0],
+    [1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    4,C4);
+
+  // ── Happy Birthday (C major, from lead sheet in D transposed) ──
+  var birthday=primer("Happy Birthday","P.S. Hill (1893)",100,
+    [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
+    [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
+    [1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    4,C4);
+
+  // ── Chopsticks (C major, from lead sheet — alternating dyad notes) ──
+  var chopsticks=primer("Chopsticks","Euphemia Allen (1877)",140,
+    [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,D4,F4,C4,E4,C4,E4,C4,E4,F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,D4,F4,C4,E4,C4,E4,C4,E4],
+    [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,1,1,0,2,0,2,0,2,1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,1,1,0,2,0,2,0,2],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    3,C4);
+
+  // ── Lavender's Blue (C major, from lead sheet in D transposed) ──
+  var lavender=primer("Lavender's Blue","English Traditional (1670s)",110,
+    [E4,E4,E4,D4,E4,F4,G4,G4,G4,G4,A4,G4,F4,F4,F4,E4,D4,E4,F4,E4,E4,E4,D4,E4,F4,G4,G4,G4,A4,G4,F4,E4],
+    [2,2,2,1,2,1,3,3,3,3,0,3,1,1,1,2,1,2,1,2,2,2,1,2,1,3,3,3,0,3,1,2],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    4,C4);
+
+  // ── Shortnin' Bread (C major, from lead sheet in A transposed) ──
+  var shortnin=primer("Shortnin' Bread","Traditional (1900s)",130,
+    [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
+    [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    4,C4);
+
+  return [twinkle,mary,birthday,chopsticks,lavender,shortnin];
+})();
+
 // ── FOLK (public domain traditional songs) ──
 const FOLK_PIECES=(function(){
   var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,B3=NT.B3,
@@ -2280,7 +2348,7 @@ const WORLD_PIECES=(function(){
   return [hava,cucaracha,frere,cielito,waltzing,osole,ballgame,mountain];
 })();
 
-var SYNTH_GENRES={"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Spirituals":SPIRITUAL_PIECES,"World":WORLD_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
+var SYNTH_GENRES={"Prime":PRIME_PIECES,"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Spirituals":SPIRITUAL_PIECES,"World":WORLD_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
 
 function buildClassicalNotes(piece){
   return piece.melody.filter(function(m){return activePads[m.l];})
