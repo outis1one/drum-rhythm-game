@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🥁 Drum Rhythm Game</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0a0a0f;color:#eee;font-family:sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.screen{display:none;flex-direction:column;align-items:center;width:100%;height:100%;overflow-y:auto;padding:16px;gap:10px;}
+.screen.active{display:flex;}
+.card{background:#13131f;border:1px solid #222;border-radius:10px;padding:14px;width:100%;max-width:700px;}
+.card h2{font-size:11px;opacity:.5;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.mode-row{display:flex;gap:8px;}
+.mode-card{flex:1;padding:10px;border-radius:8px;border:2px solid #222;background:#0d0d1a;cursor:pointer;text-align:center;}
+.mode-card.sel{border-color:#805ad5;}
+.mode-card h3{font-size:13px;margin-bottom:3px;}
+.mode-card p{font-size:11px;opacity:.5;}
+.genre-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.gtab{padding:5px 12px;border-radius:16px;border:1px solid #333;background:transparent;color:#aaa;cursor:pointer;font-size:12px;}
+.gtab.active{background:#805ad5;border-color:#805ad5;color:#fff;}
+.rgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;max-height:160px;overflow-y:auto;}
+.rbtn{padding:6px 8px;border-radius:5px;border:1px solid #2a2a3a;background:#0d0d1a;color:#ccc;cursor:pointer;font-size:11px;text-align:left;}
+.rbtn.sel{border-color:#38a169;color:#eee;}
+.rbtn small{opacity:.5;display:block;}
+.pad-toggle{display:flex;gap:8px;flex-wrap:wrap;}
+.ptog{padding:7px 14px;border-radius:20px;border:2px solid;cursor:pointer;font-size:12px;font-weight:bold;opacity:.4;transition:opacity .15s;}
+.ptog.on{opacity:1;}
+.prow{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+.prow input{background:#0d0d1a;border:1px solid #333;border-radius:5px;padding:5px 8px;color:#eee;font-size:12px;flex:1;}
+.smbtn{padding:5px 10px;border-radius:5px;border:1px solid #333;background:transparent;color:#eee;cursor:pointer;font-size:12px;}
+.smbtn.green{color:#68d391;border-color:#68d391;}
+.smbtn.red{color:#fc8181;border-color:#fc8181;}
+.smbtn.purple{color:#b794f4;border-color:#b794f4;}
+.bigbtn{padding:11px 32px;border-radius:9px;border:none;background:#805ad5;color:#fff;font-size:15px;cursor:pointer;font-weight:bold;}
+.bigbtn:hover{background:#9f7aea;}
+#hud{padding:7px 12px;background:#111;border-bottom:1px solid #1e1e2e;display:flex;align-items:center;gap:10px;flex-shrink:0;width:100%;}
+#hud-title{font-size:12px;font-weight:bold;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hstat{text-align:center;min-width:50px;}.hstat span{font-size:9px;opacity:.5;display:block;}.hstat b{font-size:16px;}
+#cwrap{flex:1;position:relative;width:100%;}
+canvas{display:block;}
+#msg{position:absolute;top:28%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:bold;pointer-events:none;opacity:0;text-shadow:0 0 20px currentColor;white-space:nowrap;}
+#cdown{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:80px;font-weight:bold;pointer-events:none;opacity:0;color:#fff;}
+#pbanner{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid #444;border-radius:7px;padding:7px 18px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .3s;}
+#ss{padding:16px;}
+.stbl{width:100%;max-width:600px;border-collapse:collapse;}
+.stbl th{text-align:left;padding:7px 9px;border-bottom:1px solid #222;font-size:11px;opacity:.5;}
+.stbl td{padding:7px 9px;border-bottom:1px solid #111;font-size:12px;}
+</style>
+</head>
+<body>
+
+<!-- MENU -->
+<div class="screen active" id="sm">
+  <div style="text-align:center;padding:6px 0"><h1 style="font-size:24px">🥁 Drum Rhythm Game</h1><p style="opacity:.4;font-size:12px">Hit pads when notes reach the line</p></div>
+
+  <div class="card">
+    <h2>Mode</h2>
+    <div class="mode-row">
+      <div class="mode-card sel" id="mc-b" onclick="setMode('builtin')"><h3>🥁 Rhythm</h3><p>Play along to drum charts</p></div>
+      <div class="mode-card" id="mc-m" onclick="setMode('mp3')"><h3>🎵 MP3 Jam</h3><p>Load music, drum freely</p></div>
+    </div>
+  </div>
+
+  <div class="card" id="rc">
+    <h2>Choose Rhythm</h2>
+    <div class="genre-tabs" id="gtabs"></div>
+    <div class="rgrid" id="rgrid"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+      <button class="smbtn purple" id="pvbtn" onclick="togglePreview()">▶ Preview</button>
+      <span id="pvlbl" style="font-size:11px;opacity:.5">Select a rhythm to preview</span>
+    </div>
+  </div>
+
+  <div class="card" id="mc-mp3" style="display:none">
+    <h2>Load MP3</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="smbtn" onclick="document.getElementById('fi').click()">📂 Browse</button>
+      <span id="mp3n" style="font-size:12px;opacity:.5">No file</span>
+      <input type="file" id="fi" accept="audio/*" style="display:none">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Active Pads</h2>
+    <div class="pad-toggle" id="pad-toggles"></div>
+    <p style="font-size:11px;opacity:.4;margin-top:8px">Toggle which pads show notes. Inactive pads still make sound when hit.</p>
+  </div>
+
+  <div class="card">
+    <h2>Players</h2>
+    <div id="plist"></div>
+    <button class="smbtn green" onclick="addPlayer()" style="margin-top:5px">+ Add Player</button>
+  </div>
+
+  <div class="card">
+    <h2>Leaderboard</h2>
+    <div id="mlb" style="font-size:12px;opacity:.5">No scores yet.</div>
+    <button class="smbtn" style="margin-top:8px" onclick="goScores()">View All</button>
+  </div>
+
+  <button class="bigbtn" onclick="startGame()">▶ Start</button>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="sg" style="padding:0;">
+  <div id="hud">
+    <button class="smbtn" onclick="goMenu()">← Menu</button>
+    <div id="hud-title">-</div>
+    <div class="hstat"><span>Score</span><b id="hs">0</b></div>
+    <div class="hstat"><span>Streak</span><b id="hst">0</b></div>
+    <div class="hstat"><span>Acc</span><b id="ha">-</b></div>
+    <div class="hstat"><span>Player</span><b id="hp">-</b></div>
+    <span id="gpd" style="font-size:10px;opacity:.4">No gamepad</span>
+  </div>
+  <div id="cwrap"><canvas id="c"></canvas><div id="msg"></div><div id="cdown"></div><div id="pbanner"></div></div>
+</div>
+
+<!-- SCORES -->
+<div class="screen" id="ss" style="padding:16px;">
+  <div style="width:100%;max-width:600px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2>🏆 Leaderboard</h2>
+      <div style="display:flex;gap:6px">
+        <button class="smbtn red" onclick="clearScores()">Clear</button>
+        <button class="smbtn" onclick="goMenu()">← Back</button>
+      </div>
+    </div>
+    <table class="stbl"><thead><tr><th></th><th>Player</th><th>Rhythm</th><th>Score</th><th>Acc</th><th>Streak</th><th>Date</th></tr></thead>
+    <tbody id="stbody"></tbody></table>
+  </div>
+</div>
+
+<script>
+// ── LANE DEFINITIONS ──────────────────────────────────
+const LANES=[
+  {label:"Red",   color:"#e53e3e",key:"f", type:"tom"},
+  {label:"Yellow",color:"#d69e2e",key:"g", type:"snare"},
+  {label:"Blue",  color:"#3182ce",key:"h", type:"hihat"},
+  {label:"Green", color:"#38a169",key:"j", type:"tom2"},
+  {label:"Kick",  color:"#805ad5",key:" ", type:"kick"},
+];
+
+// which pads are active (show notes) — all on by default
+let activePads=[true,true,true,true,true];
+
+// ── RHYTHMS ───────────────────────────────────────────
+// Every pattern now uses ALL 5 lanes (0=Red/tom, 1=Yellow/snare, 2=Blue/hihat, 3=Green/tom2, 4=Kick)
+// t = beat offset within a 4-beat bar
+const GENRES={
+ Rock:[
+  {n:"Basic Rock",bpm:90,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:1},{t:1,l:2},{t:1.5,l:2},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:2},{t:3,l:1},{t:3,l:2},{t:3.5,l:2}]},
+  {n:"Classic Rock",bpm:110,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:1},{t:1.5,l:2},
+    {t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3,l:0},{t:3.5,l:2}]},
+  {n:"Punk Rock",bpm:160,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:1},{t:1,l:2},{t:1.5,l:2},
+    {t:2,l:4},{t:2.5,l:4},{t:2.5,l:2},{t:3,l:1},{t:3.25,l:0},{t:3.5,l:2}]},
+  {n:"Arena Rock",bpm:120,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:1},{t:1,l:3},{t:1.5,l:2},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:2},{t:3,l:1},{t:3,l:0},{t:3.5,l:2}]},
+  {n:"Hard Rock",bpm:140,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:2},{t:3,l:0},{t:3.25,l:1},{t:3.5,l:3},{t:3.75,l:0}]},
+  {n:"Indie Rock",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.75,l:3},{t:1,l:1},{t:1.5,l:2},
+    {t:2,l:4},{t:2,l:2},{t:2.75,l:0},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"Rock Shuffle",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.67,l:2},{t:1,l:1},{t:1,l:3},{t:1.67,l:2},
+    {t:2,l:4},{t:2,l:2},{t:2.67,l:2},{t:3,l:1},{t:3,l:0},{t:3.67,l:2}]},
+  {n:"Power Ballad",bpm:72,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Half Time",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:2},{t:1.5,l:3},
+    {t:2,l:1},{t:2,l:2},{t:2.5,l:2},{t:3,l:2},{t:3.5,l:0}]},
+  {n:"Tom Heavy",bpm:105,bars:8,p:[
+    {t:0,l:4},{t:.5,l:3},{t:1,l:1},{t:1.5,l:0},
+    {t:2,l:4},{t:2.5,l:3},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Stadium Rock",bpm:118,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:1},{t:1,l:3},{t:1.5,l:2},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3,l:0},{t:3.5,l:2}]},
+  {n:"Garage Rock",bpm:145,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Post Rock",bpm:80,bars:8,p:[
+    {t:0,l:4},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:2},{t:3,l:1},{t:3,l:0},{t:3.5,l:2}]},
+  {n:"Glam Rock",bpm:130,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:.75,l:2},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"Rock Fill",bpm:110,bars:4,p:[
+    {t:0,l:4},{t:.5,l:3},{t:1,l:2},{t:1.5,l:1},
+    {t:2,l:0},{t:2.25,l:1},{t:2.5,l:2},{t:2.75,l:3},{t:3,l:4},{t:3.5,l:0}]},
+ ],
+ Metal:[
+  {n:"Basic Metal",bpm:160,bars:8,p:[
+    {t:0,l:4},{t:.25,l:4},{t:0,l:2},{t:.5,l:2},{t:1,l:1},{t:1,l:3},
+    {t:1.25,l:4},{t:1.5,l:2},{t:2,l:4},{t:2.25,l:4},{t:2,l:2},
+    {t:2.5,l:0},{t:3,l:1},{t:3,l:4},{t:3.5,l:2}]},
+  {n:"Double Bass",bpm:155,bars:8,p:[
+    {t:0,l:4},{t:.25,l:4},{t:.5,l:4},{t:.75,l:4},{t:1,l:1},{t:1,l:0},
+    {t:1.25,l:4},{t:1.5,l:4},{t:1.75,l:4},{t:2,l:4},{t:2.25,l:4},
+    {t:2.5,l:4},{t:2.75,l:4},{t:3,l:1},{t:3,l:3},{t:3.5,l:2}]},
+  {n:"Thrash",bpm:190,bars:8,p:[
+    {t:0,l:4},{t:.5,l:4},{t:1,l:1},{t:1,l:0},{t:1.5,l:4},
+    {t:2,l:4},{t:2.5,l:3},{t:3,l:1},{t:3.5,l:4}]},
+  {n:"Groove Metal",bpm:120,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:2},{t:2,l:4},{t:2,l:2},{t:2.75,l:0},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Doom Metal",bpm:55,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Nu Metal",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.25,l:4},{t:2.5,l:1},{t:3.25,l:0},{t:3.5,l:2}]},
+  {n:"Power Metal",bpm:175,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:.5,l:2},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:4},{t:1.5,l:2},{t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"Metalcore",bpm:150,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1,l:2},{t:1.5,l:3},
+    {t:2,l:4},{t:2.25,l:4},{t:2.5,l:1},{t:3,l:0},{t:3.5,l:2}]},
+  {n:"Prog Metal",bpm:130,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.25,l:3},
+    {t:1.5,l:2},{t:2,l:4},{t:2.75,l:0},{t:3,l:1},{t:3,l:2},{t:3.5,l:3},{t:3.75,l:0}]},
+  {n:"Industrial",bpm:140,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1,l:2},
+    {t:1.5,l:4},{t:1.5,l:2},{t:2,l:4},{t:2,l:2},{t:2.5,l:3},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"Sludge",bpm:65,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.75,l:0},{t:1.5,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.75,l:2},{t:3,l:0},{t:3.5,l:1}]},
+  {n:"Death Metal",bpm:185,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:1},{t:.75,l:3},{t:1,l:4},
+    {t:1.25,l:1},{t:1.5,l:0},{t:1.75,l:4},{t:2,l:1},{t:2.25,l:3},
+    {t:2.5,l:4},{t:2.75,l:0},{t:3,l:4},{t:3.5,l:1}]},
+  {n:"Blast Beat",bpm:200,bars:4,p:[
+    {t:0,l:4},{t:0,l:1},{t:.25,l:4},{t:.25,l:2},{t:.5,l:4},{t:.5,l:1},
+    {t:.75,l:4},{t:.75,l:3},{t:1,l:4},{t:1,l:0}]},
+  {n:"Breakdown",bpm:90,bars:4,p:[
+    {t:0,l:4},{t:.5,l:0},{t:.75,l:4},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:4},{t:2,l:4},{t:2.5,l:0},{t:2.75,l:1},{t:3,l:3},{t:3.5,l:4}]},
+  {n:"Black Metal",bpm:210,bars:4,p:[
+    {t:0,l:4},{t:0,l:2},{t:.25,l:0},{t:.25,l:2},{t:.5,l:1},{t:.5,l:4},
+    {t:.75,l:3},{t:.75,l:2},{t:1,l:4},{t:1,l:0}]},
+ ],
+ Jazz:[
+  {n:"Jazz Ride",bpm:120,bars:8,p:[
+    {t:0,l:3},{t:.67,l:3},{t:1,l:3},{t:1,l:1},{t:1.67,l:3},
+    {t:2,l:4},{t:2,l:3},{t:2.67,l:0},{t:3,l:3},{t:3,l:1},{t:3.67,l:3}]},
+  {n:"Slow Swing",bpm:75,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1,l:1},{t:1.5,l:0},{t:1.67,l:3},
+    {t:2,l:4},{t:2.67,l:3},{t:3,l:1},{t:3.67,l:3}]},
+  {n:"Bebop",bpm:200,bars:8,p:[
+    {t:0,l:3},{t:.67,l:3},{t:1,l:3},{t:1,l:1},{t:1.67,l:3},
+    {t:2,l:1},{t:2,l:3},{t:2.67,l:0},{t:3,l:3},{t:3.67,l:3}]},
+  {n:"Jazz Waltz",bpm:140,bars:8,p:[
+    {t:0,l:4},{t:0,l:3},{t:.67,l:3},{t:1,l:3},{t:1.67,l:3},
+    {t:2,l:1},{t:2,l:0},{t:2,l:3},{t:2.67,l:3}]},
+  {n:"Bossa Nova",bpm:110,bars:8,p:[
+    {t:0,l:4},{t:0,l:3},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},{t:1.75,l:3},
+    {t:2,l:4},{t:2,l:3},{t:2.75,l:3},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Cool Jazz",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:.5,l:3},{t:1,l:1},{t:1.5,l:0},{t:1.5,l:3},
+    {t:2,l:3},{t:2.5,l:4},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Fusion",bpm:135,bars:8,p:[
+    {t:0,l:4},{t:.25,l:2},{t:.5,l:3},{t:1,l:1},{t:1,l:0},
+    {t:1.25,l:4},{t:1.5,l:2},{t:2,l:3},{t:2.75,l:1},{t:3,l:0},{t:3.5,l:3}]},
+  {n:"Jazz Shuffle",bpm:105,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1,l:1},{t:1.33,l:0},{t:1.67,l:3},
+    {t:2,l:4},{t:2.67,l:3},{t:3,l:1},{t:3.67,l:3}]},
+  {n:"Afro-Cuban",bpm:115,bars:8,p:[
+    {t:0,l:4},{t:.5,l:3},{t:.75,l:0},{t:1,l:1},{t:1.5,l:4},
+    {t:1.75,l:3},{t:2,l:3},{t:2.5,l:0},{t:3,l:1},{t:3.25,l:3},{t:3.75,l:4}]},
+  {n:"New Orleans",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:.67,l:2},{t:1,l:1},{t:1.33,l:0},{t:1.67,l:2},
+    {t:2,l:4},{t:2.33,l:2},{t:2.67,l:0},{t:3,l:1},{t:3.33,l:2}]},
+  {n:"Hard Bop",bpm:165,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1,l:1},{t:1,l:0},{t:1.5,l:4},
+    {t:1.67,l:3},{t:2,l:3},{t:2.67,l:0},{t:3,l:1},{t:3,l:4},{t:3.67,l:3}]},
+  {n:"Modal Jazz",bpm:115,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1.33,l:0},{t:2,l:1},{t:2,l:4},
+    {t:2.67,l:3},{t:3.33,l:0}]},
+  {n:"Jazz Ballad",bpm:60,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1,l:1},{t:1.5,l:0},
+    {t:2,l:4},{t:2.67,l:3},{t:3,l:1}]},
+  {n:"Post-Bop",bpm:155,bars:8,p:[
+    {t:0,l:3},{t:.5,l:0},{t:.67,l:3},{t:1,l:1},{t:1.33,l:3},
+    {t:1.67,l:4},{t:2,l:3},{t:2.33,l:0},{t:2.67,l:1},{t:3,l:3},{t:3.5,l:4}]},
+  {n:"Medium Swing",bpm:130,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1,l:1},{t:1,l:0},{t:1.67,l:3},
+    {t:2,l:4},{t:2.67,l:3},{t:3,l:1},{t:3.67,l:3}]},
+ ],
+ "Hip Hop":[
+  {n:"Boom Bap",bpm:90,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.5,l:2},{t:1.75,l:0},
+    {t:2,l:4},{t:2.25,l:3},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"Trap",bpm:140,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:4},{t:1,l:1},{t:1.5,l:2},{t:1.75,l:2},
+    {t:2,l:4},{t:2.25,l:3},{t:3,l:1},{t:3.5,l:2},{t:3.75,l:4}]},
+  {n:"Lo-Fi",bpm:75,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.5,l:0},{t:1.75,l:4},
+    {t:2,l:2},{t:2.5,l:3},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"Classic Hip Hop",bpm:85,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:.75,l:0},{t:1,l:1},{t:1.5,l:2},
+    {t:2,l:4},{t:2.5,l:3},{t:2.75,l:2},{t:3,l:1},{t:3.5,l:2},{t:3.75,l:0}]},
+  {n:"East Coast",bpm:88,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.5,l:0},{t:1.75,l:4},
+    {t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"West Coast",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3.25,l:0},{t:3.5,l:2}]},
+  {n:"Drill",bpm:145,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:4},{t:1,l:1},{t:1.25,l:3},
+    {t:1.75,l:4},{t:2,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.75,l:4}]},
+  {n:"UK Grime",bpm:140,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.25,l:0},{t:1.5,l:3},
+    {t:2,l:4},{t:2.5,l:2},{t:2.75,l:1},{t:3.5,l:0}]},
+  {n:"Jazz Rap",bpm:92,bars:8,p:[
+    {t:0,l:4},{t:.67,l:2},{t:1,l:1},{t:1.5,l:0},{t:1.67,l:2},
+    {t:2,l:4},{t:2.33,l:3},{t:2.67,l:4},{t:3,l:1},{t:3.67,l:2}]},
+  {n:"R&B Hip Hop",bpm:88,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:4},{t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3.25,l:0},{t:3.5,l:2}]},
+  {n:"Crunk",bpm:75,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1,l:2},{t:1.5,l:3},
+    {t:2,l:4},{t:2.5,l:4},{t:3,l:1},{t:3,l:0},{t:3.5,l:4}]},
+  {n:"Cloud Rap",bpm:78,bars:8,p:[
+    {t:0,l:4},{t:.75,l:2},{t:1,l:1},{t:1.5,l:0},
+    {t:2,l:3},{t:3,l:1},{t:3.5,l:4}]},
+  {n:"Gangsta",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.5,l:4},{t:3,l:1},{t:3.75,l:0}]},
+  {n:"Freestyle",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.25,l:0},{t:1.5,l:3},
+    {t:2,l:4},{t:2.25,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:3},{t:3.75,l:4}]},
+  {n:"Chopped",bpm:60,bars:8,p:[
+    {t:0,l:4},{t:1,l:1},{t:1.5,l:0},{t:2,l:3},{t:2.5,l:4},{t:3,l:1}]},
+ ],
+ Funk:[
+  {n:"Classic Funk",bpm:98,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.25,l:0},{t:.5,l:2},{t:.75,l:1},
+    {t:1,l:2},{t:1.5,l:3},{t:1.75,l:2},{t:2,l:4},{t:2,l:2},
+    {t:2.5,l:1},{t:2.75,l:0},{t:3,l:4},{t:3.5,l:2}]},
+  {n:"Funk Pocket",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.25,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:3},{t:3.75,l:4}]},
+  {n:"Ghost Notes",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.25,l:1},{t:.5,l:2},{t:.75,l:0},
+    {t:1,l:1},{t:1.25,l:0},{t:1.5,l:3},{t:2,l:4},{t:2.25,l:0},
+    {t:2.5,l:2},{t:3,l:1},{t:3,l:2},{t:3.5,l:0}]},
+  {n:"P-Funk",bpm:108,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:2},{t:1,l:1},{t:1.25,l:3},
+    {t:1.5,l:2},{t:1.75,l:4},{t:2,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:3},{t:3.75,l:2}]},
+  {n:"Disco Funk",bpm:118,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:.5,l:2},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:4},{t:1.5,l:2},{t:2,l:0},{t:2,l:2},{t:2.5,l:4},
+    {t:2.5,l:2},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Soul Funk",bpm:85,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.5,l:0},
+    {t:1.75,l:3},{t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Syncopated",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:.25,l:2},{t:.75,l:0},{t:1,l:1},{t:1.25,l:3},
+    {t:1.5,l:4},{t:2,l:0},{t:2.25,l:2},{t:2.75,l:3},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"Afrobeat",bpm:105,bars:8,p:[
+    {t:0,l:4},{t:.5,l:3},{t:.75,l:0},{t:1,l:1},{t:1.25,l:2},
+    {t:1.5,l:3},{t:2,l:4},{t:2.5,l:0},{t:3,l:1},{t:3.25,l:3},{t:3.75,l:2}]},
+  {n:"Hi-Hat Funk",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.25,l:2},{t:.5,l:0},{t:.75,l:2},
+    {t:1,l:1},{t:1.25,l:2},{t:1.5,l:3},{t:1.75,l:4},
+    {t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:2}]},
+  {n:"New Orleans",bpm:90,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:.67,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.67,l:2},{t:2,l:4},{t:2.5,l:2},{t:2.67,l:0},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Electro Funk",bpm:112,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1,l:0},{t:1.5,l:3},
+    {t:1.5,l:2},{t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3,l:0},{t:3.5,l:4}]},
+  {n:"Trap Funk",bpm:130,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:2},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:4},{t:2,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.75,l:4}]},
+  {n:"Slow Funk",bpm:72,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.5,l:0},
+    {t:2,l:3},{t:2.5,l:2},{t:2.75,l:4},{t:3,l:1}]},
+  {n:"Funk Breakdown",bpm:88,bars:4,p:[
+    {t:0,l:4},{t:.25,l:2},{t:.5,l:0},{t:.75,l:2},{t:1,l:1},
+    {t:1.25,l:3},{t:1.5,l:2},{t:1.75,l:4},{t:2,l:0},{t:2.5,l:4},{t:2.75,l:1},{t:3,l:2}]},
+  {n:"Sly Groove",bpm:102,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:2},{t:2,l:4},{t:2.5,l:0},{t:3,l:1},{t:3.25,l:3},{t:3.75,l:2}]},
+ ],
+ Latin:[
+  {n:"Samba",bpm:130,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:3},{t:.75,l:0},{t:1,l:1},{t:1,l:2},
+    {t:1.5,l:3},{t:1.75,l:4},{t:2,l:0},{t:2,l:2},{t:2.5,l:3},
+    {t:2.75,l:3},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Bossa Nova",bpm:110,bars:8,p:[
+    {t:0,l:4},{t:0,l:3},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:3},{t:2,l:4},{t:2,l:0},{t:2.75,l:3},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Salsa",bpm:185,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:2},{t:3.5,l:1}]},
+  {n:"Cha Cha",bpm:120,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1.5,l:2},{t:1.75,l:3},
+    {t:2,l:4},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:2},{t:3.75,l:3}]},
+  {n:"Reggaeton",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1,l:2},{t:1.5,l:3},
+    {t:2,l:4},{t:2.5,l:4},{t:3,l:1},{t:3,l:0},{t:3.5,l:4}]},
+  {n:"Merengue",bpm:150,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:.5,l:2},{t:1,l:1},{t:1,l:2},
+    {t:1.5,l:3},{t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Cumbia",bpm:120,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:2},{t:2,l:4},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Mambo",bpm:165,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:4},{t:.75,l:2},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.25,l:0},{t:2.75,l:4},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Tango",bpm:65,bars:8,p:[
+    {t:0,l:4},{t:0,l:1},{t:.5,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:1},{t:2.5,l:0},{t:3,l:1}]},
+  {n:"Afro-Cuban",bpm:115,bars:8,p:[
+    {t:0,l:4},{t:.5,l:3},{t:.75,l:0},{t:1,l:1},{t:1.5,l:4},
+    {t:1.75,l:3},{t:2,l:0},{t:2.5,l:4},{t:3,l:1},{t:3.25,l:3},{t:3.75,l:0}]},
+  {n:"Flamenco",bpm:140,bars:8,p:[
+    {t:0,l:4},{t:.33,l:3},{t:.67,l:0},{t:1,l:1},{t:1.33,l:3},
+    {t:1.67,l:4},{t:2,l:0},{t:2.33,l:3},{t:2.67,l:1},{t:3,l:4},{t:3.33,l:0}]},
+  {n:"Bolero",bpm:72,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1,l:1},{t:1.33,l:0},{t:1.67,l:3},
+    {t:2,l:4},{t:2.67,l:3},{t:3,l:1},{t:3.67,l:0}]},
+  {n:"Baiao",bpm:110,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:.75,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:4},{t:2,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.25,l:3},{t:3.5,l:0}]},
+  {n:"Son Cubano",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:.5,l:3},{t:1,l:1},{t:1.5,l:0},
+    {t:1.75,l:4},{t:2,l:0},{t:2.5,l:3},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Timba",bpm:175,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:4},{t:.75,l:2},{t:1,l:1},{t:1.25,l:3},
+    {t:1.5,l:4},{t:1.75,l:2},{t:2,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:3}]},
+ ],
+ Electronic:[
+  {n:"4-on-Floor",bpm:128,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:2},{t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3,l:4},{t:3.5,l:2}]},
+  {n:"Techno",bpm:135,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:4},{t:1,l:2},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:4},{t:3,l:2},{t:3.5,l:3}]},
+  {n:"Drum & Bass",bpm:174,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:.75,l:1},{t:1.5,l:3},
+    {t:1.75,l:4},{t:2,l:1},{t:2.5,l:0},{t:2.75,l:4},{t:3,l:1},{t:3.5,l:4}]},
+  {n:"Dubstep",bpm:140,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:4},{t:2,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.75,l:4}]},
+  {n:"Breakbeat",bpm:110,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:.75,l:4},{t:1,l:1},{t:1.5,l:3},
+    {t:1.75,l:2},{t:2,l:4},{t:2.25,l:0},{t:2.5,l:2},{t:3,l:1},{t:3.25,l:4},{t:3.5,l:0}]},
+  {n:"Trance",bpm:138,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.25,l:0},{t:.5,l:2},{t:.75,l:3},
+    {t:1,l:1},{t:1,l:4},{t:1.5,l:0},{t:2,l:4},{t:2,l:2},{t:2.5,l:3},
+    {t:3,l:1},{t:3,l:4},{t:3.5,l:0}]},
+  {n:"Jungle",bpm:160,bars:8,p:[
+    {t:0,l:4},{t:.25,l:1},{t:.5,l:0},{t:.75,l:2},{t:1,l:3},
+    {t:1.25,l:1},{t:1.5,l:4},{t:1.75,l:2},{t:2,l:0},{t:2.5,l:1},
+    {t:2.75,l:3},{t:3,l:2},{t:3.25,l:4},{t:3.75,l:0}]},
+  {n:"Synthwave",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:2},{t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3,l:3},{t:3.5,l:2}]},
+  {n:"Future Bass",bpm:150,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1,l:3},{t:1.5,l:2},
+    {t:1.75,l:4},{t:2,l:0},{t:2.5,l:3},{t:3,l:1},{t:3.25,l:4},{t:3.75,l:0}]},
+  {n:"IDM",bpm:120,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:1},{t:.75,l:3},{t:1,l:2},
+    {t:1.25,l:4},{t:1.75,l:0},{t:2,l:2},{t:2.25,l:3},{t:2.5,l:1},
+    {t:2.75,l:0},{t:3.25,l:4},{t:3.75,l:2}]},
+  {n:"Big Beat",bpm:115,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:.75,l:2},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:4},{t:1.75,l:0},{t:2,l:4},{t:2,l:2},{t:2.5,l:3},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Electro",bpm:118,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:4},{t:1.5,l:2},{t:2,l:0},{t:2,l:2},{t:2.5,l:4},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Minimal",bpm:130,bars:8,p:[
+    {t:0,l:4},{t:1,l:0},{t:1,l:2},{t:2,l:4},{t:2,l:1},{t:3,l:0},{t:3,l:2}]},
+  {n:"Footwork",bpm:160,bars:8,p:[
+    {t:0,l:4},{t:.25,l:0},{t:.5,l:1},{t:.75,l:4},{t:1,l:3},
+    {t:1.25,l:4},{t:1.5,l:0},{t:1.75,l:4},{t:2,l:1},{t:2.5,l:0},
+    {t:2.75,l:3},{t:3,l:4},{t:3.25,l:1},{t:3.5,l:0}]},
+  {n:"Ambient",bpm:75,bars:8,p:[
+    {t:0,l:4},{t:1,l:2},{t:1.5,l:0},{t:2,l:1},{t:2.5,l:3},{t:3,l:2}]},
+ ],
+ Country:[
+  {n:"Two-Step",bpm:105,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:1,l:1},{t:1,l:3},{t:1.5,l:0},
+    {t:2,l:4},{t:2,l:2},{t:3,l:1},{t:3,l:3}]},
+  {n:"Honky Tonk",bpm:120,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Shuffle",bpm:100,bars:8,p:[
+    {t:0,l:4},{t:.67,l:2},{t:1,l:1},{t:1.5,l:0},{t:1.67,l:2},
+    {t:2,l:4},{t:2.67,l:2},{t:3,l:1},{t:3.5,l:0},{t:3.67,l:2}]},
+  {n:"Bluegrass",bpm:145,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1,l:3},
+    {t:2,l:4},{t:2.5,l:0},{t:3,l:1},{t:3,l:3}]},
+  {n:"Ballad",bpm:68,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:1,l:1},{t:1.5,l:0},
+    {t:2,l:4},{t:2,l:2},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Western Swing",bpm:130,bars:8,p:[
+    {t:0,l:4},{t:.67,l:3},{t:1,l:1},{t:1.5,l:0},{t:1.67,l:3},
+    {t:2,l:4},{t:2.33,l:0},{t:2.67,l:3},{t:3,l:1},{t:3.67,l:3}]},
+  {n:"Southern Rock",bpm:125,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1,l:3},{t:1.5,l:0},
+    {t:2,l:4},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Rockabilly",bpm:155,bars:8,p:[
+    {t:0,l:4},{t:.5,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2.25,l:4},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Outlaw",bpm:110,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:2},{t:2,l:4},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"New Country",bpm:118,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1.5,l:3},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:0},{t:3,l:1},{t:3.5,l:3}]},
+  {n:"Gospel",bpm:88,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:1,l:1},{t:1,l:3},{t:1.5,l:0},
+    {t:2,l:4},{t:2,l:2},{t:2.5,l:2},{t:3,l:1},{t:3,l:0},{t:3.5,l:3}]},
+  {n:"Americana",bpm:95,bars:8,p:[
+    {t:0,l:4},{t:.5,l:2},{t:1,l:1},{t:1.5,l:0},
+    {t:1.5,l:4},{t:2,l:3},{t:2.5,l:2},{t:3,l:1},{t:3.5,l:0}]},
+  {n:"Texas Blues",bpm:78,bars:8,p:[
+    {t:0,l:4},{t:.67,l:2},{t:1,l:1},{t:1.5,l:0},{t:1.67,l:2},
+    {t:2,l:4},{t:2.33,l:0},{t:2.67,l:2},{t:3,l:1},{t:3.67,l:2}]},
+  {n:"Cajun",bpm:115,bars:8,p:[
+    {t:0,l:4},{t:.67,l:2},{t:1,l:1},{t:1.33,l:0},{t:1.67,l:2},
+    {t:2,l:4},{t:2.33,l:3},{t:2.67,l:2},{t:3,l:1},{t:3.33,l:0}]},
+  {n:"Barn Dance",bpm:138,bars:8,p:[
+    {t:0,l:4},{t:0,l:2},{t:.5,l:0},{t:1,l:1},{t:1,l:3},
+    {t:1.5,l:2},{t:2,l:4},{t:2.5,l:0},{t:3,l:1},{t:3,l:0},{t:3.5,l:2}]},
+ ],
+};
+
+// ── STATE ──────────────────────────────────────────────
+let mode="builtin",curGenre=Object.keys(GENRES)[0],curIdx=0;
+let players=[{name:"Player 1"}];
+let savedScores=lsLoad();
+let previewAc=null,previewNodes=[],previewing=false;
+let gameAc=null,mp3Buffer=null,mp3Src=null;
+let notes=[],gameStartTime=null,playing=false;
+let gamePlayers=[],activePIdx=0;
+let cScore=0,cStreak=0,cTotal=0,cGood=0,cMaxStreak=0;
+let laneFlash=[0,0,0,0,0],msgTmr=null,prevBtns={};
+let gameRhythm=null;
+const HIT_WIN=0.17,SPEED=260;
+
+// ── SCREEN ─────────────────────────────────────────────
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");}
+function goMenu(){stopGame();stopPreview();show("sm");refreshMiniLB();}
+function goScores(){renderScores();show("ss");}
+
+// ── PAD TOGGLES ────────────────────────────────────────
+function buildPadToggles(){
+  const el=document.getElementById("pad-toggles");el.innerHTML="";
+  LANES.forEach((lane,i)=>{
+    const b=document.createElement("button");
+    b.className="ptog"+(activePads[i]?" on":"");
+    b.style.borderColor=lane.color;b.style.color=lane.color;
+    b.textContent=lane.label+(i===4?" (Kick)":"");
+    b.onclick=()=>{activePads[i]=!activePads[i];buildPadToggles();};
+    el.appendChild(b);
+  });
+}
+buildPadToggles();
+
+// ── MENU ───────────────────────────────────────────────
+function buildMenu(){
+  const gt=document.getElementById("gtabs");gt.innerHTML="";
+  Object.keys(GENRES).forEach(g=>{
+    const b=document.createElement("button");
+    b.className="gtab"+(g===curGenre?" active":"");
+    b.textContent=g;b.onclick=()=>{curGenre=g;curIdx=0;stopPreview();buildMenu();};
+    gt.appendChild(b);
+  });
+  const rg=document.getElementById("rgrid");rg.innerHTML="";
+  GENRES[curGenre].forEach((r,i)=>{
+    const b=document.createElement("button");
+    b.className="rbtn"+(i===curIdx?" sel":"");
+    b.innerHTML=`${r.n}<small>${r.bpm} bpm</small>`;
+    b.onclick=()=>{curIdx=i;stopPreview();document.getElementById("pvlbl").textContent=r.n+" selected";buildMenu();};
+    rg.appendChild(b);
+  });
+  const pl=document.getElementById("plist");pl.innerHTML="";
+  players.forEach((p,i)=>{
+    const row=document.createElement("div");row.className="prow";
+    const inp=document.createElement("input");inp.type="text";inp.value=p.name;
+    inp.oninput=e=>players[i].name=e.target.value;
+    row.appendChild(inp);
+    if(players.length>1){const d=document.createElement("button");d.className="smbtn red";d.textContent="✕";d.onclick=()=>{players.splice(i,1);buildMenu();};row.appendChild(d);}
+    pl.appendChild(row);
+  });
+}
+buildMenu();
+function addPlayer(){players.push({name:"Player "+(players.length+1)});buildMenu();}
+function setMode(m){
+  mode=m;
+  document.getElementById("mc-b").classList.toggle("sel",m==="builtin");
+  document.getElementById("mc-m").classList.toggle("sel",m==="mp3");
+  document.getElementById("rc").style.display=m==="builtin"?"block":"none";
+  document.getElementById("mc-mp3").style.display=m==="mp3"?"block":"none";
+}
+document.getElementById("fi").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;
+  document.getElementById("mp3n").textContent="Loading…";
+  const ac=getAc(true);
+  mp3Buffer=await ac.decodeAudioData(await f.arrayBuffer());
+  document.getElementById("mp3n").textContent=f.name;
+});
+
+// ── AUDIO CTX ──────────────────────────────────────────
+// Linux/Chrome requires a user gesture before AudioContext will run.
+// We create one shared context and resume it on every user interaction.
+let _ac=null;
+function getAc(prev=false){
+  if(prev){
+    if(!previewAc||previewAc.state==="closed")previewAc=new(window.AudioContext||window.webkitAudioContext)();
+    previewAc.resume();
+    return previewAc;
+  }
+  if(!gameAc||gameAc.state==="closed")gameAc=new(window.AudioContext||window.webkitAudioContext)();
+  gameAc.resume();
+  return gameAc;
+}
+// Unlock audio on ANY user interaction — click, touch, keydown
+function unlockAudio(){
+  [previewAc,gameAc].forEach(ac=>{if(ac&&ac.state==="suspended")ac.resume();});
+  // create them early so they're ready
+  if(!previewAc){previewAc=new(window.AudioContext||window.webkitAudioContext)();previewAc.resume();}
+  if(!gameAc){gameAc=new(window.AudioContext||window.webkitAudioContext)();gameAc.resume();}
+}
+["click","touchstart","keydown","mousedown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:false}));
+
+// ── PREVIEW ────────────────────────────────────────────
+function togglePreview(){previewing?stopPreview():startPreview();}
+function stopPreview(){
+  previewing=false;previewNodes.forEach(n=>{try{n.stop();}catch(e){}});previewNodes=[];
+  const b=document.getElementById("pvbtn");b.textContent="▶ Preview";b.classList.remove("playing");
+}
+function startPreview(){
+  stopPreview();previewing=true;
+  const b=document.getElementById("pvbtn");b.textContent="■ Stop";b.classList.add("playing");
+  const r=GENRES[curGenre][curIdx];
+  document.getElementById("pvlbl").textContent="▶ "+r.n;
+  loopPreview(r,0);
+}
+function loopPreview(r,gen){
+  if(!previewing||gen>200)return;
+  const ac=getAc(true),bs=60/r.bpm,bars=r.bars||8,len=bars*4*bs,t0=ac.currentTime+0.05;
+  for(let bar=0;bar<bars;bar++)for(const p of r.p)schedPvHit(ac,p.l,t0+bar*4*bs+p.t*bs);
+  setTimeout(()=>loopPreview(r,gen+1),len*1000-100);
+}
+function schedPvHit(ac,lane,t){playDrumAt(ac,lane,t,1.5,previewNodes);}
+
+// ── SCORES ─────────────────────────────────────────────
+function lsLoad(){try{const s=localStorage.getItem("drgame5");return s?JSON.parse(s):[]}catch(e){return[];}}
+function lsSave(){try{localStorage.setItem("drgame5",JSON.stringify(savedScores));}catch(e){}}
+function clearScores(){if(confirm("Clear all scores?")){savedScores=[];lsSave();renderScores();refreshMiniLB();}}
+function refreshMiniLB(){
+  const top=[...savedScores].sort((a,b)=>b.score-a.score).slice(0,3);
+  document.getElementById("mlb").innerHTML=top.length?top.map((s,i)=>`${["🥇","🥈","🥉"][i]} <b>${s.player}</b> — ${s.rhythm} — ${s.score.toLocaleString()} (${s.acc}%)`).join("<br>"):"No scores yet.";
+}
+function renderScores(){
+  const all=[...savedScores].sort((a,b)=>b.score-a.score);
+  document.getElementById("stbody").innerHTML=all.map((s,i)=>`<tr><td>${["🥇","🥈","🥉"][i]||""}</td><td>${s.player}</td><td>${s.rhythm}</td><td><b>${s.score.toLocaleString()}</b></td><td>${s.acc}%</td><td>${s.streak}</td><td>${s.date}</td></tr>`).join("");
+}
+refreshMiniLB();
+
+// ── GAME START ─────────────────────────────────────────
+function startGame(){
+  stopPreview();
+  gamePlayers=players.map(p=>({...p,score:0,streak:0,maxStreak:0,total:0,good:0}));
+  activePIdx=0;resetStats();show("sg");resizeCv();
+  if(mode==="builtin"){
+    gameRhythm=GENRES[curGenre][curIdx];
+    document.getElementById("hud-title").textContent=curGenre+" — "+gameRhythm.n+" ("+gameRhythm.bpm+" bpm)";
+    notes=buildNotes(gameRhythm);
+    countdown(()=>beginBuiltin());
+  } else {
+    gameRhythm=null;notes=[];
+    document.getElementById("hud-title").textContent=mp3Buffer?"MP3 Jam":"Jam";
+    countdown(()=>beginMp3());
+  }
+  updateHud();
+}
+function stopGame(){playing=false;if(mp3Src){try{mp3Src.stop();}catch(e){}mp3Src=null;}}
+function resetStats(){cScore=0;cStreak=0;cTotal=0;cGood=0;cMaxStreak=0;}
+
+function buildNotes(r){
+  const bs=60/r.bpm,bars=r.bars||8,res=[];
+  for(let bar=0;bar<bars;bar++)
+    for(const p of r.p)
+      if(activePads[p.l]) // only include active lanes
+        res.push({time:(bar*4+p.t)*bs,lane:p.l,hit:false,missed:false});
+  return res.sort((a,b)=>a.time-b.time);
+}
+
+function countdown(cb){
+  const el=document.getElementById("cdown");let n=3;
+  el.style.opacity=1;el.textContent=n;
+  const iv=setInterval(()=>{n--;if(n<=0){clearInterval(iv);el.style.opacity=0;cb();}else el.textContent=n;},1000);
+}
+
+function beginBuiltin(){
+  playing=true;
+  const ac=getAc(),r=gameRhythm,bs=60/r.bpm,bars=r.bars||8;
+  gameStartTime=ac.currentTime;
+  // Schedule ALL drum hits as audio — this IS the music
+  for(let bar=0;bar<bars;bar++)
+    for(const p of r.p)
+      playDrumAt(ac,p.l,gameStartTime+bar*4*bs+p.t*bs,4,[]);
+  const totalSec=bars*4*bs;
+  setTimeout(()=>{if(playing)endTurn();},totalSec*1000+800);
+}
+
+function beginMp3(){
+  playing=true;gameStartTime=getAc().currentTime;
+  if(mp3Buffer){
+    mp3Src=getAc().createBufferSource();mp3Src.buffer=mp3Buffer;
+    mp3Src.connect(getAc().destination);mp3Src.start();
+    mp3Src.onended=()=>{if(playing)endTurn();};
+  } else setTimeout(()=>{if(playing)endTurn();},30000);
+}
+
+function endTurn(){
+  playing=false;
+  const p=gamePlayers[activePIdx];
+  p.score=cScore;p.streak=cMaxStreak;p.total=cTotal;p.good=cGood;
+  const acc=cTotal?Math.round(cGood/cTotal*100):0;
+  savedScores.push({player:p.name,rhythm:gameRhythm?curGenre+" — "+gameRhythm.n:"MP3 Jam",score:cScore,acc,streak:cMaxStreak,date:new Date().toLocaleDateString()});
+  lsSave();
+  activePIdx++;
+  if(activePIdx<gamePlayers.length){
+    resetStats();notes=gameRhythm?buildNotes(gameRhythm):[];updateHud();
+    const banner=document.getElementById("pbanner");
+    banner.textContent="Next: "+gamePlayers[activePIdx].name+"!";banner.style.opacity=1;
+    setTimeout(()=>{banner.style.opacity=0;setTimeout(()=>countdown(()=>beginBuiltin()),400);},2200);
+  } else {
+    const sorted=[...gamePlayers].sort((a,b)=>b.score-a.score);
+    const lines=sorted.map((p,i)=>`${["🥇","🥈","🥉"][i]||"  "} ${p.name}: ${p.score.toLocaleString()} (${p.total?Math.round(p.good/p.total*100):0}%)`);
+    setTimeout(()=>{alert("Results:\n\n"+lines.join("\n"));goMenu();},500);
+  }
+}
+
+// ── HIT LOGIC ──────────────────────────────────────────
+function triggerPad(lane){
+  playDrumAt(getAc(),lane,getAc().currentTime,8,[]);
+  laneFlash[lane]=1;setTimeout(()=>laneFlash[lane]=0,120);
+  if(!playing)return;
+  if(mode==="mp3"){showMsg("♪",LANES[lane].color);return;}
+  if(!activePads[lane])return; // inactive pad — sound only
+  const now=getAc().currentTime-gameStartTime;
+  let best=null,bestD=HIT_WIN;
+  for(const n of notes){
+    if(n.lane!==lane||n.hit||n.missed)continue;
+    const d=Math.abs(n.time-now);
+    if(d<bestD){bestD=d;best=n;}
+  }
+  cTotal++;
+  if(best){
+    best.hit=true;cStreak++;cGood++;cScore+=100*Math.min(cStreak,10);
+    if(cStreak>cMaxStreak)cMaxStreak=cStreak;
+    showMsg(bestD<0.05?"PERFECT!":"GOOD",bestD<0.05?"#68d391":"#d69e2e");
+  } else {cStreak=0;showMsg("MISS","#fc8181");}
+  updateHud();
+}
+function updateHud(){
+  document.getElementById("hs").textContent=cScore.toLocaleString();
+  document.getElementById("hst").textContent=cStreak;
+  document.getElementById("ha").textContent=cTotal?Math.round(cGood/cTotal*100)+"%":"-";
+  document.getElementById("hp").textContent=gamePlayers[activePIdx]?.name||"-";
+}
+function showMsg(txt,color){
+  const el=document.getElementById("msg");el.textContent=txt;el.style.color=color;el.style.opacity=1;
+  clearTimeout(msgTmr);msgTmr=setTimeout(()=>el.style.opacity=0,500);
+}
+
+// ── CANVAS ─────────────────────────────────────────────
+const canvas=document.getElementById("c");
+const wrap=document.getElementById("cwrap");
+const cx=canvas.getContext("2d");
+function resizeCv(){canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;}
+resizeCv();window.addEventListener("resize",resizeCv);
+
+function draw(){
+  requestAnimationFrame(draw);
+  const W=canvas.width,H=canvas.height;
+  if(!W||!H)return;
+  cx.clearRect(0,0,W,H);
+
+  // Active pad lanes (only those toggled on, excluding kick)
+  const activeLanes=LANES.slice(0,4).map((l,i)=>i).filter(i=>activePads[i]);
+  const hasKick=activePads[4];
+  const PAD_H=hasKick?Math.floor(H*0.78):H;
+  const KICK_H=H-PAD_H;
+  const nLanes=activeLanes.length;
+  const PAD_W=nLanes>0?W/nLanes:W;
+  const HIT_Y=Math.floor(PAD_H*0.76);
+  const KICK_HIT_Y=PAD_H+Math.floor(KICK_H*0.55);
+  const now=(playing&&gameStartTime!=null)?getAc().currentTime-gameStartTime:-9999;
+
+  // Lane positions map: lane index -> x center
+  const laneX={};
+  activeLanes.forEach((li,col)=>{laneX[li]=col*PAD_W+PAD_W/2;});
+
+  // Draw pad lanes
+  activeLanes.forEach((li,col)=>{
+    const x=col*PAD_W;
+    cx.fillStyle=laneFlash[li]?LANES[li].color+"33":"#0d0d16";
+    cx.fillRect(x,0,PAD_W,PAD_H);
+    if(col>0){cx.strokeStyle="#1e1e2e";cx.lineWidth=1;cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,PAD_H);cx.stroke();}
+    cx.fillStyle=LANES[li].color;cx.font="bold 12px sans-serif";cx.textAlign="center";
+    cx.fillText(LANES[li].label,x+PAD_W/2,PAD_H-20);
+    cx.fillStyle="#999";cx.font="10px sans-serif";
+    cx.fillText(LANES[li].key.toUpperCase(),x+PAD_W/2,PAD_H-7);
+  });
+
+  // Kick zone
+  if(hasKick){
+    cx.fillStyle=laneFlash[4]?LANES[4].color+"33":"#0a0a12";
+    cx.fillRect(0,PAD_H,W,KICK_H);
+    cx.strokeStyle="#1e1e2e";cx.lineWidth=1;cx.beginPath();cx.moveTo(0,PAD_H);cx.lineTo(W,PAD_H);cx.stroke();
+    cx.fillStyle=LANES[4].color;cx.font="bold 13px sans-serif";cx.textAlign="center";
+    cx.fillText("Kick",W/2,PAD_H+KICK_H*0.42);
+    cx.fillStyle="#999";cx.font="10px sans-serif";
+    cx.fillText("SPACE",W/2,PAD_H+KICK_H*0.72);
+  }
+
+  if(nLanes===0&&!hasKick)return;
+
+  // Hit line
+  if(nLanes>0){
+    cx.strokeStyle="rgba(255,255,255,0.5)";cx.lineWidth=2;
+    cx.beginPath();cx.moveTo(0,HIT_Y);cx.lineTo(W,HIT_Y);cx.stroke();
+    cx.fillStyle="rgba(255,255,255,0.03)";
+    cx.fillRect(0,HIT_Y-SPEED*HIT_WIN,W,SPEED*HIT_WIN*2);
+  }
+
+  // Kick hit line
+  if(hasKick){
+    cx.strokeStyle=LANES[4].color+"88";cx.lineWidth=2;
+    cx.beginPath();cx.moveTo(W*0.15,KICK_HIT_Y);cx.lineTo(W*0.85,KICK_HIT_Y);cx.stroke();
+  }
+
+  // Target rings — pads
+  activeLanes.forEach(li=>{
+    const x=laneX[li],r=Math.min(PAD_W*0.33,26);
+    cx.beginPath();cx.arc(x,HIT_Y,r,0,Math.PI*2);
+    cx.strokeStyle=laneFlash[li]?LANES[li].color:LANES[li].color+"55";
+    cx.lineWidth=laneFlash[li]?3:2;cx.stroke();
+    if(laneFlash[li]){cx.beginPath();cx.arc(x,HIT_Y,r,0,Math.PI*2);cx.fillStyle=LANES[li].color+"44";cx.fill();}
+  });
+  // Kick ring
+  if(hasKick){
+    const kr=Math.min(W*0.08,34);
+    cx.beginPath();cx.arc(W/2,KICK_HIT_Y,kr,0,Math.PI*2);
+    cx.strokeStyle=laneFlash[4]?LANES[4].color:LANES[4].color+"55";
+    cx.lineWidth=laneFlash[4]?3:2;cx.stroke();
+    if(laneFlash[4]){cx.beginPath();cx.arc(W/2,KICK_HIT_Y,kr,0,Math.PI*2);cx.fillStyle=LANES[4].color+"44";cx.fill();}
+  }
+
+  // Notes
+  if(mode==="builtin"&&now>-9000){
+    for(const n of notes){
+      if(n.hit)continue;
+      const dt=n.time-now;
+      if(n.lane<4){
+        if(!laneX.hasOwnProperty(n.lane))continue;
+        const ny=HIT_Y-dt*SPEED;
+        if(ny<-40||ny>PAD_H+40){
+          if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+          continue;
+        }
+        const x=laneX[n.lane],r=Math.min(PAD_W*0.33,26);
+        cx.globalAlpha=n.missed?0.2:1;
+        const g=cx.createRadialGradient(x,ny,0,x,ny,r*2);
+        g.addColorStop(0,LANES[n.lane].color+"aa");g.addColorStop(1,LANES[n.lane].color+"00");
+        cx.fillStyle=g;cx.beginPath();cx.arc(x,ny,r*2,0,Math.PI*2);cx.fill();
+        cx.fillStyle=LANES[n.lane].color;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.fill();
+        cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.stroke();
+        cx.globalAlpha=1;
+        if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+      } else if(hasKick){
+        const ky=KICK_HIT_Y-dt*SPEED*0.5;
+        if(ky<PAD_H-30||ky>H+30){
+          if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+          continue;
+        }
+        const kr=Math.min(W*0.08,34);
+        cx.globalAlpha=n.missed?0.2:1;
+        cx.fillStyle=LANES[4].color;cx.beginPath();cx.arc(W/2,ky,kr,0,Math.PI*2);cx.fill();
+        cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(W/2,ky,kr,0,Math.PI*2);cx.stroke();
+        cx.globalAlpha=1;
+        if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+      }
+    }
+  }
+}
+draw();
+
+// ── DRUM SOUNDS ────────────────────────────────────────
+function playDrumAt(ac,lane,t,vol,arr){
+  const type=LANES[lane].type;
+  function mk(n){if(arr)arr.push(n);}
+  if(type==="kick"||type==="bass"){
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(40,t+0.15);
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+    o.start(t);o.stop(t+0.35);mk(o);
+  } else if(type==="snare"){
+    const sz=ac.sampleRate*0.12,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
+    const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+    f.type="highpass";f.frequency.value=1500;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(vol*.75,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+    s.start(t);s.stop(t+0.15);mk(s);
+    const o=ac.createOscillator(),g2=ac.createGain();
+    o.connect(g2);g2.connect(ac.destination);o.frequency.value=180;
+    g2.gain.setValueAtTime(vol*.35,t);g2.gain.exponentialRampToValueAtTime(0.001,t+0.07);
+    o.start(t);o.stop(t+0.08);mk(o);
+  } else if(type==="hihat"){
+    const sz=ac.sampleRate*0.05,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
+    const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+    f.type="highpass";f.frequency.value=7000;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(vol*.5,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+    s.start(t);s.stop(t+0.06);mk(s);
+  } else { // tom / tom2
+    const freq=type==="tom"?160:120;
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*0.4,t+0.2);
+    g.gain.setValueAtTime(vol*.85,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+    o.start(t);o.stop(t+0.28);mk(o);
+  }
+}
+
+// ── INPUT ──────────────────────────────────────────────
+window.addEventListener("keydown",e=>{
+  const i=LANES.findIndex(l=>l.key===e.key.toLowerCase()||(l.key===" "&&e.key===" "));
+  if(i>=0){e.preventDefault();triggerPad(i);}
+});
+function pollGP(){
+  const gps=navigator.getGamepads?navigator.getGamepads():[];
+  let found=false;
+  for(const gp of gps){
+    if(!gp)continue;found=true;
+    document.getElementById("gpd").textContent="🎮 "+gp.id.slice(0,20);
+    gp.buttons.forEach((btn,bi)=>{
+      if(btn.pressed&&!prevBtns[bi]){
+        const m={0:2,1:3,2:0,3:1,4:4,8:4};
+        if(m[bi]!==undefined)triggerPad(m[bi]);
+      }
+      prevBtns[bi]=btn.pressed;
+    });
+  }
+  if(!found)document.getElementById("gpd").textContent="No gamepad";
+  requestAnimationFrame(pollGP);
+}
+pollGP();
+</script>
+</body>
+</html>
