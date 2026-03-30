@@ -539,7 +539,7 @@ const NT={C3:130.81,D3:146.83,Eb3:155.56,E3:164.81,F3:174.61,G3:196.00,Ab3:207.6
 
 function playSynth(ac,freq,t,dur,inst,vol,arr){
   if(t<ac.currentTime-0.1)return;
-  var v=vol||0.25;
+  var v=(vol||0.25)*3;
   if(inst==='strings'){
     var o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();
     o.type='sawtooth';o.frequency.value=freq;
@@ -600,7 +600,7 @@ function playSynth(ac,freq,t,dur,inst,vol,arr){
 const CLASSICAL_PIECES=(function(){
   var G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,Bb3=NT.Bb3,B3=NT.B3,
     C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,
-    C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5;
+    C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,F3=NT.F3;
 
   // ── Beethoven's 5th Symphony (Opening) ──
   var b5=(function(){
@@ -610,60 +610,97 @@ const CLASSICAL_PIECES=(function(){
       bg.push({t:t,f:freq,d:dur,i:'brass',v:(v||0.35)*0.6});
       if(freq>200)bg.push({t:t,f:freq/2,d:dur,i:'bass',v:(v||0.35)*0.5});
     }
-    // Section 1: G-G-G-Eb (the famous motif)
+    function str(t,freq,dur,v){bg.push({t:t,f:freq,d:dur,i:'strings',v:v||0.3});}
+    // === EXPOSITION ===
+    // Section 1: G-G-G-Eb (THE famous motif, ff)
     orch(0,G4,0.18,0.5);orch(q,G4,0.18,0.5);orch(q*2,G4,0.18,0.5);
-    orch(q*3,Eb4,1.5,0.55);
+    orch(q*3,Eb4,1.8,0.55);
     mel.push({t:0,l:0},{t:q,l:0},{t:q*2,l:0},{t:q*3,l:3});
-    // Section 2: F-F-F-D
-    var s=3.0;
+    // Section 2: F-F-F-D (answer phrase)
+    var s=3.2;
     orch(s,F4,0.18,0.5);orch(s+q,F4,0.18,0.5);orch(s+q*2,F4,0.18,0.5);
-    orch(s+q*3,D4,1.5,0.55);
+    orch(s+q*3,D4,1.8,0.55);
     mel.push({t:s,l:1},{t:s+q,l:1},{t:s+q*2,l:1},{t:s+q*3,l:3});
-    // Section 3: Faster motifs
-    s=6.0;
+    // Section 3: Motif restated by strings (softer echo)
+    s=6.8;
+    str(s,G4,0.16,0.3);str(s+q,G4,0.16,0.3);str(s+q*2,G4,0.16,0.3);
+    str(s+q*3,Eb4,1.2,0.35);
+    mel.push({t:s,l:0},{t:s+q,l:0},{t:s+q*2,l:0},{t:s+q*3,l:3});
+    s=9.5;
+    str(s,F4,0.16,0.3);str(s+q,F4,0.16,0.3);str(s+q*2,F4,0.16,0.3);
+    str(s+q*3,D4,1.2,0.35);
+    mel.push({t:s,l:1},{t:s+q,l:1},{t:s+q*2,l:1},{t:s+q*3,l:3});
+    // === DEVELOPMENT ===
+    // Section 4: Faster motifs (compressed)
+    s=12.0;
     orch(s,G4,0.15,0.45);orch(s+e,G4,0.15,0.45);orch(s+e*2,G4,0.15,0.45);
     orch(s+e*3,Eb4,0.5,0.5);
     mel.push({t:s,l:0},{t:s+e,l:0},{t:s+e*2,l:0},{t:s+e*3,l:3});
-    s=7.2;
+    s=13.0;
     orch(s,F4,0.15,0.45);orch(s+e,F4,0.15,0.45);orch(s+e*2,F4,0.15,0.45);
     orch(s+e*3,D4,0.5,0.5);
     mel.push({t:s,l:1},{t:s+e,l:1},{t:s+e*2,l:1},{t:s+e*3,l:3});
-    // Section 4: Scalar passage
-    s=8.6;
-    [Eb4,D4,C4,B3,C4,D4,Eb4,F4,G4,Ab4,G4,F4,Eb4,D4,C4].forEach(function(f,i){
-      var t2=s+i*e;orch(t2,f,0.16,0.4);mel.push({t:t2,l:i%2===0?2:1});
+    // Section 5: Extended scalar passage (descending then ascending)
+    s=14.2;
+    [G4,F4,Eb4,D4,C4,B3,C4,D4,Eb4,F4,G4,Ab4,Bb4,Ab4,G4,F4,Eb4,D4,C4,B3].forEach(function(f,i){
+      var t2=s+i*e;orch(t2,f,0.16,0.4);mel.push({t:t2,l:[2,1,0,1][i%4]});
     });
-    // Section 5: Power chords
-    s=11.5;
-    [[G4,Eb4],[Ab4,F4],[G4,Eb4],[F4,D4],[Eb4,C4]].forEach(function(ch,i){
-      var t2=s+i*0.8;ch.forEach(function(f){orch(t2,f,0.7,0.55);});
-      bg.push({t:t2,f:ch[1]/2,d:0.7,i:'timpani',v:0.5});mel.push({t:t2,l:4});
-    });
-    // Section 6: Motif returns fortissimo
-    s=15.5;
-    orch(s,G4,0.18,0.6);orch(s+q,G4,0.18,0.6);orch(s+q*2,G4,0.18,0.6);
-    orch(s+q*3,Eb4,1.2,0.65);bg.push({t:s+q*3,f:Eb4,d:1.2,i:'choir',v:0.3});
-    mel.push({t:s,l:0},{t:s+q,l:0},{t:s+q*2,l:0},{t:s+q*3,l:3});
+    // Section 6: Power chords with timpani
     s=18.0;
+    [[G4,Eb4],[Ab4,F4],[Bb4,G4],[Ab4,F4],[G4,Eb4],[F4,D4],[Eb4,C4],[D4,B3]].forEach(function(ch,i){
+      var t2=s+i*0.7;ch.forEach(function(f){orch(t2,f,0.6,0.55);});
+      bg.push({t:t2,f:ch[1]/2,d:0.6,i:'timpani',v:0.5});mel.push({t:t2,l:4});
+    });
+    // === RECAPITULATION ===
+    // Section 7: Motif returns fortissimo with choir
+    s=24.0;
+    orch(s,G4,0.18,0.6);orch(s+q,G4,0.18,0.6);orch(s+q*2,G4,0.18,0.6);
+    orch(s+q*3,Eb4,1.5,0.65);bg.push({t:s+q*3,f:Eb4,d:1.5,i:'choir',v:0.3});
+    mel.push({t:s,l:0},{t:s+q,l:0},{t:s+q*2,l:0},{t:s+q*3,l:3});
+    s=27.0;
     orch(s,F4,0.18,0.6);orch(s+q,F4,0.18,0.6);orch(s+q*2,F4,0.18,0.6);
-    orch(s+q*3,D4,1.2,0.65);
+    orch(s+q*3,D4,1.5,0.65);bg.push({t:s+q*3,f:D4,d:1.5,i:'choir',v:0.3});
     mel.push({t:s,l:1},{t:s+q,l:1},{t:s+q*2,l:1},{t:s+q*3,l:3});
-    // Section 7: Rapid development at different pitches
-    s=20.5;
-    [[G4,Eb4],[Ab4,F4],[Bb4,G4],[C5,Ab4]].forEach(function(fr,fi){
-      var t2=s+fi*1.0;
-      orch(t2,fr[0],0.15,0.5);orch(t2+e,fr[0],0.15,0.5);orch(t2+e*2,fr[0],0.15,0.5);
-      orch(t2+e*3,fr[1],0.5,0.55);
+    // Section 8: Ascending scalar with full orchestra
+    s=30.0;
+    [C4,D4,Eb4,F4,G4,Ab4,Bb4,C5,D5,Eb5,D5,C5,Bb4,Ab4,G4,F4].forEach(function(f,i){
+      var t2=s+i*e;orch(t2,f,0.16,0.5);mel.push({t:t2,l:[0,1,2,3][i%4]});
+    });
+    // Section 9: Rapid motif at rising pitches
+    s=33.5;
+    [[G4,Eb4],[Ab4,F4],[Bb4,G4],[C5,Ab4],[D5,Bb4]].forEach(function(fr,fi){
+      var t2=s+fi*0.9;
+      orch(t2,fr[0],0.14,0.55);orch(t2+e,fr[0],0.14,0.55);orch(t2+e*2,fr[0],0.14,0.55);
+      orch(t2+e*3,fr[1],0.45,0.6);
       mel.push({t:t2,l:0},{t:t2+e,l:0},{t:t2+e*2,l:0},{t:t2+e*3,l:3});
     });
-    // Section 8: Final chords
-    [24.5,25.0,25.5].forEach(function(t2){
-      [C4,Eb4,G4].forEach(function(f){orch(t2,f,0.45,0.65);});
-      bg.push({t:t2,f:NT.C3,d:0.4,i:'timpani',v:0.6});mel.push({t:t2,l:4});
+    // Section 10: Dramatic sustained chords with choir
+    s=38.5;
+    [[C4,Eb4,G4],[Bb3,D4,F4],[Ab3,C4,Eb4],[G3,B3,D4]].forEach(function(ch,i){
+      var t2=s+i*1.5;
+      ch.forEach(function(f){orch(t2,f,1.3,0.6);bg.push({t:t2,f:f,d:1.3,i:'choir',v:0.25});});
+      bg.push({t:t2,f:NT.C3,d:1.3,i:'timpani',v:0.55});
+      mel.push({t:t2,l:4},{t:t2+0.75,l:i%2===0?0:1});
     });
-    [C4,Eb4,G4].forEach(function(f){orch(26,f,1.5,0.6);});
-    bg.push({t:26,f:NT.C3,d:1.5,i:'timpani',v:0.55});
-    return {n:"Beethoven's 5th (Opening)",composer:"Beethoven",bpm:160,duration:28,isClassical:true,bg:bg,melody:mel};
+    // Section 11: Final motif statement fff
+    s=45.0;
+    orch(s,G4,0.2,0.7);orch(s+q,G4,0.2,0.7);orch(s+q*2,G4,0.2,0.7);
+    orch(s+q*3,Eb4,2.0,0.7);
+    bg.push({t:s+q*3,f:Eb4,d:2.0,i:'choir',v:0.4});
+    bg.push({t:s,f:G3,d:0.2,i:'timpani',v:0.6});
+    mel.push({t:s,l:0},{t:s+q,l:0},{t:s+q*2,l:0},{t:s+q*3,l:3});
+    // Section 12: Final chords
+    s=48.5;
+    [0,0.5,1.0,1.5,2.0].forEach(function(dt){
+      var t2=s+dt;
+      [C4,Eb4,G4].forEach(function(f){orch(t2,f,0.4,0.7);});
+      bg.push({t:t2,f:NT.C3,d:0.4,i:'timpani',v:0.65});mel.push({t:t2,l:4});
+    });
+    // Very final long chord
+    s=51.0;
+    [C4,Eb4,G4,C5].forEach(function(f){orch(s,f,2.5,0.65);bg.push({t:s,f:f,d:2.5,i:'choir',v:0.35});});
+    bg.push({t:s,f:NT.C3,d:2.0,i:'timpani',v:0.6});
+    return {n:"Beethoven's 5th (Opening)",composer:"Beethoven",bpm:160,duration:54,isClassical:true,bg:bg,melody:mel};
   })();
 
   // ── Hall of the Mountain King ──
@@ -673,113 +710,185 @@ const CLASSICAL_PIECES=(function(){
     var theme=[A3,B3,C4,D4,E4,C4,E4,Eb4,E4,Eb4,E4,D4,C4,B3];
     var lanes=[0,1,2,0,1,2,1,3,1,3,1,0,2,1];
     var t=0;
-    // Pass 1: Slow (pizzicato feel)
-    var d1=0.35;
+    // Pass 1: Very slow, barely audible (creeping start)
+    var d0=0.55;
+    theme.forEach(function(f,i){
+      orch(t,f,d0*0.8,0.2,'woodwind');
+      mel.push({t:t,l:lanes[i]});t+=d0;
+    });
+    t+=0.5;
+    // Pass 2: Slow, a bit louder
+    var d1=0.45;
     theme.forEach(function(f,i){
       orch(t,f,d1*0.8,0.25,'woodwind');orch(t,f/2,d1*0.8,0.15,'bass');
       mel.push({t:t,l:lanes[i]});t+=d1;
     });
-    t+=0.3;
-    // Pass 2: Medium speed, strings
-    var d2=0.27;
+    t+=0.4;
+    // Pass 3: Medium-slow, strings enter
+    var d2=0.35;
     theme.forEach(function(f,i){
       orch(t,f,d2*0.8,0.3,'strings');orch(t,f/2,d2*0.8,0.2,'bass');
       mel.push({t:t,l:lanes[i]});t+=d2;
     });
-    t+=0.3;
-    // Pass 3: Faster, add brass
-    var d3=0.2;
+    t+=0.35;
+    // Pass 4: Medium, strings + woodwind
+    var d3=0.27;
     theme.forEach(function(f,i){
-      orch(t,f,d3*0.8,0.35,'strings');orch(t,f,d3*0.8,0.2,'brass');
+      orch(t,f,d3*0.8,0.35,'strings');orch(t,f,d3*0.8,0.2,'woodwind');
       orch(t,f/2,d3*0.8,0.25,'bass');mel.push({t:t,l:lanes[i]});t+=d3;
     });
-    t+=0.2;
-    // Pass 4: Fast, full orchestra
-    var d4=0.15;
+    t+=0.3;
+    // Pass 5: Medium-fast, add brass
+    var d4=0.21;
     theme.forEach(function(f,i){
-      orch(t,f,d4*0.8,0.45,'strings');orch(t,f,d4*0.8,0.3,'brass');
-      orch(t,f/2,d4*0.8,0.3,'bass');
-      if(i%4===0)bg.push({t:t,f:A3/2,d:0.3,i:'timpani',v:0.4});
-      mel.push({t:t,l:lanes[i]});t+=d4;
+      orch(t,f,d4*0.8,0.4,'strings');orch(t,f,d4*0.8,0.25,'brass');
+      orch(t,f/2,d4*0.8,0.3,'bass');mel.push({t:t,l:lanes[i]});t+=d4;
     });
-    t+=0.15;
-    // Pass 5: Very fast, frantic finale
-    var d5=0.12;
+    t+=0.25;
+    // Pass 6: Fast, full orchestra
+    var d5=0.16;
     theme.forEach(function(f,i){
-      orch(t,f,d5*0.8,0.55,'strings');orch(t,f,d5*0.8,0.4,'brass');
+      orch(t,f,d5*0.8,0.5,'strings');orch(t,f,d5*0.8,0.35,'brass');
       orch(t,f/2,d5*0.8,0.35,'bass');
-      if(i%2===0)bg.push({t:t,f:A3/2,d:0.2,i:'timpani',v:0.5});
+      if(i%4===0)bg.push({t:t,f:A3/2,d:0.3,i:'timpani',v:0.45});
       mel.push({t:t,l:lanes[i]});t+=d5;
     });
-    // Big finale chord
-    t+=0.1;
-    [A3,C4,E4,A4].forEach(function(f){
-      orch(t,f,1.0,0.6,'brass');orch(t,f,1.0,0.5,'strings');
+    t+=0.2;
+    // Pass 7: Very fast, frantic
+    var d6=0.12;
+    theme.forEach(function(f,i){
+      orch(t,f,d6*0.8,0.6,'strings');orch(t,f,d6*0.8,0.45,'brass');
+      orch(t,f/2,d6*0.8,0.4,'bass');
+      if(i%2===0)bg.push({t:t,f:A3/2,d:0.2,i:'timpani',v:0.55});
+      mel.push({t:t,l:lanes[i]});t+=d6;
     });
-    bg.push({t:t,f:A3/2,d:0.8,i:'timpani',v:0.65});
+    t+=0.15;
+    // Pass 8: Extremely fast, maximum intensity
+    var d7=0.095;
+    theme.forEach(function(f,i){
+      orch(t,f,d7*0.8,0.65,'strings');orch(t,f,d7*0.8,0.5,'brass');
+      orch(t,f/2,d7*0.8,0.45,'bass');
+      bg.push({t:t,f:A3/2,d:0.15,i:'timpani',v:0.6});
+      mel.push({t:t,l:lanes[i]});t+=d7;
+    });
+    // Big finale: repeated chords
+    t+=0.15;
+    for(var ci=0;ci<4;ci++){
+      var t2=t+ci*0.4;
+      [A3,C4,E4,A4].forEach(function(f){
+        orch(t2,f,0.35,0.65,'brass');orch(t2,f,0.35,0.55,'strings');
+      });
+      bg.push({t:t2,f:A3/2,d:0.4,i:'timpani',v:0.65});
+      mel.push({t:t2,l:4});
+    }
+    // Final long chord
+    t=t+1.8;
+    [A3,C4,E4,A4].forEach(function(f){
+      orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5,'strings');
+    });
+    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.7});
     mel.push({t:t,l:4});
-    return {n:"Hall of the Mountain King",composer:"Grieg",bpm:120,duration:Math.ceil(t+1.5),isClassical:true,bg:bg,melody:mel};
+    return {n:"Hall of the Mountain King",composer:"Grieg",bpm:120,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
 
   // ── O Fortuna (Carmina Burana) ──
   var ofort=(function(){
-    var bg=[],mel=[],q=0.45,h=q/2;
+    var bg=[],mel=[],q=0.6,h=q/2;
     function orch(t,freq,dur,v){
       bg.push({t:t,f:freq,d:dur,i:'strings',v:v||0.35});
       bg.push({t:t,f:freq,d:dur,i:'brass',v:(v||0.35)*0.7});
     }
     function choir(t,freq,dur,v){bg.push({t:t,f:freq,d:dur,i:'choir',v:v||0.4});}
     function timp(t,v){bg.push({t:t,f:110,d:0.5,i:'timpani',v:v||0.5});}
-    // Section 1: Opening chant
-    var openMel=[D4,D4,D4,D4,A3,A3,Bb3,Bb3,A3,A3];
-    var openDur=[h,h,h,q,h,q,h,q,h,q*2];
-    var openLn=[0,0,0,0,1,1,2,2,1,1];
+    // Section 1: Opening chant "O Fortuna"
     var t=0;
-    openMel.forEach(function(f,i){
-      choir(t,f,openDur[i]*0.9,0.45);orch(t,f,openDur[i]*0.9,0.3);
-      if(openDur[i]>=q)timp(t,0.45);
-      mel.push({t:t,l:openLn[i]});t+=openDur[i];
+    var ch1=[D4,D4,D4,D4,A3,A3,Bb3,Bb3,A3,A3];
+    var ch1d=[h,h,h,q,h,q,h,q,h,q*1.5];
+    var ch1l=[0,0,0,0,1,1,2,2,1,1];
+    ch1.forEach(function(f,i){
+      choir(t,f,ch1d[i]*0.9,0.45);orch(t,f,ch1d[i]*0.9,0.25);
+      if(ch1d[i]>=q)timp(t,0.4);
+      mel.push({t:t,l:ch1l[i]});t+=ch1d[i];
     });
-    // Section 2: Ascending
-    t+=0.3;
+    // Section 2: Second chant phrase
+    t+=0.4;
+    var ch2=[G3,G3,A3,Bb3,A3,G3,A3,A3];
+    var ch2d=[h,h,h,h,q,q,h,q*2];
+    var ch2l=[3,3,1,2,1,3,1,1];
+    ch2.forEach(function(f,i){
+      choir(t,f,ch2d[i]*0.9,0.45);orch(t,f,ch2d[i]*0.9,0.25);
+      if(ch2d[i]>=q)timp(t,0.4);
+      mel.push({t:t,l:ch2l[i]});t+=ch2d[i];
+    });
+    // Section 3: Ascending passage
+    t+=0.4;
     var asc=[D4,E4,F4,E4,D4,D4,E4,F4,G4,A4];
-    var ascDur=[h,h,h,h,q*2,h,h,h,h,q*2];
-    var ascLn=[0,1,2,1,0,0,1,2,3,0];
+    var ascd=[h,h,h,h,q*1.5,h,h,h,h,q*2];
+    var ascl=[0,1,2,1,0,0,1,2,3,0];
     asc.forEach(function(f,i){
-      choir(t,f,ascDur[i]*0.9,0.5);orch(t,f,ascDur[i]*0.9,0.35);
-      bg.push({t:t,f:f/2,d:ascDur[i]*0.9,i:'bass',v:0.3});
-      if(ascDur[i]>=q)timp(t,0.5);
-      mel.push({t:t,l:ascLn[i]});t+=ascDur[i];
+      choir(t,f,ascd[i]*0.9,0.5);orch(t,f,ascd[i]*0.9,0.35);
+      bg.push({t:t,f:f/2,d:ascd[i]*0.9,i:'bass',v:0.3});
+      if(ascd[i]>=q)timp(t,0.5);
+      mel.push({t:t,l:ascl[i]});t+=ascd[i];
     });
-    // Section 3: Dramatic descent
-    t+=0.3;
-    var desc=[A4,G4,F4,E4,D4,E4,F4,G4,A4,A4,G4,F4,E4,D4];
-    var descDur=[h,h,h,h,h,h,h,h,q,h,h,h,h,q*2];
-    var descLn=[3,2,1,0,4,1,2,3,3,3,2,1,0,4];
-    desc.forEach(function(f,i){
-      choir(t,f,descDur[i]*0.9,0.55);orch(t,f,descDur[i]*0.9,0.4);
-      bg.push({t:t,f:f/2,d:descDur[i]*0.9,i:'bass',v:0.35});
-      if(i%3===0)timp(t,0.55);
-      mel.push({t:t,l:descLn[i]});t+=descDur[i];
-    });
-    // Section 4: Climactic reprise
+    // Section 4: Quiet interlude (strings only, mysterious)
     t+=0.5;
-    for(var i=0;i<8;i++){
-      var f=i<4?D4:D5;
+    var qi=[A3,Bb3,A3,G3,F3,G3,A3,Bb3,C4,D4];
+    var qid=[q,h,q,h,q,h,h,h,h,q*2];
+    var qil=[1,2,1,3,4,3,1,2,0,0];
+    qi.forEach(function(f,i){
+      bg.push({t:t,f:f,d:qid[i]*0.9,i:'strings',v:0.25});
+      bg.push({t:t,f:f/2,d:qid[i]*0.9,i:'bass',v:0.2});
+      mel.push({t:t,l:qil[i]});t+=qid[i];
+    });
+    // Section 5: Dramatic descent
+    t+=0.4;
+    var desc=[A4,G4,F4,E4,D4,E4,F4,G4,A4,A4,G4,F4,E4,D4];
+    var descd=[h,h,h,h,h,h,h,h,q,h,h,h,h,q*2];
+    var descl=[3,2,1,0,4,1,2,3,3,3,2,1,0,4];
+    desc.forEach(function(f,i){
+      choir(t,f,descd[i]*0.9,0.55);orch(t,f,descd[i]*0.9,0.4);
+      bg.push({t:t,f:f/2,d:descd[i]*0.9,i:'bass',v:0.35});
+      if(i%3===0)timp(t,0.55);
+      mel.push({t:t,l:descl[i]});t+=descd[i];
+    });
+    // Section 6: Second ascending at higher intensity
+    t+=0.4;
+    var a2=[D4,E4,F4,G4,A4,Bb4,A4,G4,A4,Bb4,C5,D5];
+    var a2d=[h,h,h,h,h,h,h,h,h,h,h,q*2];
+    var a2l=[0,1,2,3,0,2,0,3,0,2,1,4];
+    a2.forEach(function(f,i){
+      choir(t,f,a2d[i]*0.9,0.6);orch(t,f,a2d[i]*0.9,0.45);
+      bg.push({t:t,f:f/2,d:a2d[i]*0.9,i:'bass',v:0.4});
+      if(i%2===0)timp(t,0.55);
+      mel.push({t:t,l:a2l[i]});t+=a2d[i];
+    });
+    // Section 7: Extended climactic reprise
+    t+=0.5;
+    for(var i=0;i<12;i++){
+      var f=i<4?D4:i<8?D5:A4;
       choir(t,f,q*0.9,0.6);orch(t,f,q*0.9,0.55);
       bg.push({t:t,f:NT.D3,d:q*0.9,i:'bass',v:0.4});
-      timp(t,0.6);mel.push({t:t,l:i<4?0:4});t+=q;
+      timp(t,0.6);mel.push({t:t,l:i<4?0:i<8?4:i%2===0?0:3});t+=q;
     }
-    // Final massive chord
+    // Section 8: Final massive chord sequence
     t+=0.3;
     [D4,F4,A4,D5].forEach(function(f){
-      bg.push({t:t,f:f,d:2.0,i:'choir',v:0.5});
-      bg.push({t:t,f:f,d:2.0,i:'strings',v:0.45});
-      bg.push({t:t,f:f,d:2.0,i:'brass',v:0.4});
+      bg.push({t:t,f:f,d:1.5,i:'choir',v:0.55});
+      bg.push({t:t,f:f,d:1.5,i:'strings',v:0.5});
+      bg.push({t:t,f:f,d:1.5,i:'brass',v:0.45});
     });
-    bg.push({t:t,f:NT.D3,d:2.0,i:'bass',v:0.5});
+    bg.push({t:t,f:NT.D3,d:1.5,i:'bass',v:0.5});
     timp(t,0.65);mel.push({t:t,l:4});
-    return {n:"O Fortuna",composer:"Orff",bpm:133,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+    t+=2.0;
+    // Final D unison
+    [D4,D5].forEach(function(f){
+      bg.push({t:t,f:f,d:2.0,i:'choir',v:0.5});
+      bg.push({t:t,f:f,d:2.0,i:'brass',v:0.5});
+    });
+    bg.push({t:t,f:NT.D3,d:2.0,i:'bass',v:0.55});
+    timp(t,0.7);mel.push({t:t,l:4});
+    return {n:"O Fortuna",composer:"Orff",bpm:120,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
 
   return [b5,hmk,ofort];
@@ -793,8 +902,9 @@ function buildClassicalNotes(piece){
 
 function beginClassical(){
   playing=true;gameSynthNodes=[];
-  var ac=getAc(),piece=gameRhythm;
-  gameStartTime=ac.currentTime;
+  var ac=getAc();ac.resume();
+  var piece=gameRhythm;
+  gameStartTime=ac.currentTime+0.15;
   for(var i=0;i<piece.bg.length;i++){
     var n=piece.bg[i];
     playSynth(ac,n.f,gameStartTime+n.t,n.d,n.i,n.v,gameSynthNodes);
@@ -921,7 +1031,7 @@ function startPreview(){
 }
 function loopPreview(r,gen){
   if(!previewing||gen>200)return;
-  if(r.isClassical){var ac2=getAc(true),t0c=ac2.currentTime+0.05;for(var ci=0;ci<r.bg.length;ci++){var cn=r.bg[ci];playSynth(ac2,cn.f,t0c+cn.t,cn.d,cn.i,(cn.v||0.3)*0.7,previewNodes);}return;}
+  if(r.isClassical){var ac2=getAc(true);ac2.resume();var t0c=ac2.currentTime+0.15;for(var ci=0;ci<r.bg.length;ci++){var cn=r.bg[ci];playSynth(ac2,cn.f,t0c+cn.t,cn.d,cn.i,(cn.v||0.3)*0.7,previewNodes);}return;}
   const ac=getAc(true),bs=60/r.bpm,bars=r.bars||8,len=bars*4*bs,t0=ac.currentTime+0.05;
   for(let bar=0;bar<bars;bar++)for(const p of r.p)schedPvHit(ac,p.l,t0+bar*4*bs+p.t*bs);
   setTimeout(()=>loopPreview(r,gen+1),len*1000-100);
@@ -945,6 +1055,8 @@ refreshMiniLB();
 // ── GAME START ─────────────────────────────────────────
 function startGame(){
   stopPreview();
+  // Pre-warm AudioContext on Linux — resume early so it's ready after countdown
+  var warmAc=getAc();warmAc.resume();
   gamePlayers=players.map(p=>({...p,score:0,streak:0,maxStreak:0,total:0,good:0}));
   activePIdx=0;resetStats();show("sg");resizeCv();
   if(mode==="builtin"){
