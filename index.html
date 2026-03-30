@@ -46,6 +46,12 @@ canvas{display:block;}
 .stbl th{text-align:left;padding:7px 9px;border-bottom:1px solid #222;font-size:11px;opacity:.5;}
 .stbl td{padding:7px 9px;border-bottom:1px solid #111;font-size:12px;}
 .sticky-start{position:sticky;bottom:0;padding:12px 0 4px;background:linear-gradient(transparent,#0a0a0f 35%);z-index:10;display:flex;gap:8px;justify-content:center;align-items:center;width:100%;max-width:700px;}
+#game-controls{display:flex;gap:0;background:#0d0d18;border-bottom:1px solid #1e1e2e;padding:5px 14px;flex-shrink:0;width:100%;align-items:center;justify-content:center;gap:28px;}
+.gctrl-label{display:flex;align-items:center;gap:8px;cursor:default;}
+.gctrl-icon{font-size:16px;}
+.gctrl-name{font-size:11px;color:#aaa;min-width:44px;}
+.gctrl-slider{width:140px;height:6px;accent-color:#805ad5;cursor:pointer;}
+.gctrl-val{font-size:13px;font-weight:bold;color:#b794f4;min-width:40px;text-align:right;}
 #pause-overlay{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:20;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
 #pause-overlay.show{display:flex;}
 #pause-overlay h2{font-size:28px;color:#fff;}
@@ -139,9 +145,21 @@ canvas{display:block;}
     <div class="hstat"><span>Streak</span><b id="hst">0</b></div>
     <div class="hstat"><span>Acc</span><b id="ha">-</b></div>
     <div class="hstat"><span>Player</span><b id="hp">-</b></div>
-    <label style="font-size:9px;opacity:.5;display:flex;align-items:center;gap:3px;" title="Speed">🏃<input type="range" min="50" max="150" value="100" step="5" id="hud-speed" style="width:50px;" oninput="setSpeed(this.value);document.getElementById('speed-slider').value=this.value"></label>
-    <label style="font-size:9px;opacity:.5;display:flex;align-items:center;gap:3px;" title="Volume">🔊<input type="range" min="0" max="150" value="100" step="5" id="hud-vol" style="width:50px;" oninput="setVolume(this.value);document.getElementById('vol-slider').value=this.value"></label>
-    <span id="gpd" style="font-size:10px;opacity:.4">No gamepad</span>
+    <span id="gpd" style="font-size:10px;opacity:.4;margin-left:auto">No gamepad</span>
+  </div>
+  <div id="game-controls">
+    <label class="gctrl-label">
+      <span class="gctrl-icon">🏃</span>
+      <span class="gctrl-name">Tempo</span>
+      <input type="range" min="50" max="150" value="100" step="5" id="hud-speed" class="gctrl-slider" oninput="setSpeed(this.value);document.getElementById('speed-slider').value=this.value">
+      <span class="gctrl-val" id="hud-speed-val">100%</span>
+    </label>
+    <label class="gctrl-label">
+      <span class="gctrl-icon">🔊</span>
+      <span class="gctrl-name">Volume</span>
+      <input type="range" min="0" max="150" value="100" step="5" id="hud-vol" class="gctrl-slider" oninput="setVolume(this.value);document.getElementById('vol-slider').value=this.value">
+      <span class="gctrl-val" id="hud-vol-val">100%</span>
+    </label>
   </div>
   <div id="cwrap">
     <canvas id="c"></canvas><div id="msg"></div><div id="cdown"></div><div id="pbanner"></div>
@@ -2292,7 +2310,8 @@ function beginClassical(){
     var n=piece.bg[i];
     playSynth(ac,n.f,gameStartTime+n.t/gameSpeed,n.d/gameSpeed,n.i,n.v*1.5,gameSynthNodes);
   }
-  setTimeout(function(){if(playing)endTurn();},(piece.duration/gameSpeed)*1000+800);
+  gameEndTime=piece.duration/gameSpeed;
+  setTimeout(function(){if(playing)endTurn();},(piece.duration/gameSpeed)*1000+5000);
 }
 
 // ── STATE ──────────────────────────────────────────────
@@ -2301,7 +2320,7 @@ let players=[{name:"Player 1"}];
 let savedScores=lsLoad();
 let previewAc=null,previewNodes=[],previewing=false;
 let gameAc=null,mp3Buffer=null,mp3Src=null;
-let notes=[],gameStartTime=null,playing=false;
+let notes=[],gameStartTime=null,gameEndTime=null,playing=false;
 let gamePlayers=[],activePIdx=0;
 let cScore=0,cStreak=0,cTotal=0,cGood=0,cMaxStreak=0;
 let laneFlash=[0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[],classicalHitMode='orchestra';
@@ -2352,6 +2371,8 @@ function syncSliders(){
   ['vol-slider','hud-vol'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=vv;});
   var se=document.getElementById("speed-val");if(se)se.textContent=sv+"%";
   var ve=document.getElementById("vol-val");if(ve)ve.textContent=vv+"%";
+  var hse=document.getElementById("hud-speed-val");if(hse)hse.textContent=sv+"%";
+  var hve=document.getElementById("hud-vol-val");if(hve)hve.textContent=vv+"%";
 }
 function setSpeed(v){gameSpeed=v/100;syncSliders();saveSettings();}
 function setVolume(v){masterVolume=v/100;syncSliders();saveSettings();}
@@ -2406,7 +2427,7 @@ function buildMenu(){
     sb.onclick=function(){hiddenGenres=[];localStorage.setItem("drgameHidden","[]");buildMenu();};
     gt.appendChild(sb);
   }
-  const rg=document.getElementById("rgrid");rg.innerHTML="";
+  const rg=document.getElementById("rgrid");rg.innerHTML="";rg.ondblclick=()=>startGame();
   var songList=SYNTH_GENRES[curGenre]||GENRES[curGenre];
   var hidCount=0;
   songList.forEach((r,i)=>{
@@ -2530,7 +2551,7 @@ function startGame(){
   updateHud();
 }
 function stopGame(){playing=false;if(mp3Src){try{mp3Src.stop();}catch(e){}mp3Src=null;}gameSynthNodes.forEach(function(n){try{n.stop();}catch(e){}});gameSynthNodes=[];}
-function resetStats(){cScore=0;cStreak=0;cTotal=0;cGood=0;cMaxStreak=0;}
+function resetStats(){cScore=0;cStreak=0;cTotal=0;cGood=0;cMaxStreak=0;gameEndTime=null;}
 
 function buildNotes(r){
   const bs=60/r.bpm/gameSpeed,bars=r.bars||8,res=[];
@@ -2555,7 +2576,8 @@ function beginBuiltin(){
     for(const p of r.p)
       playDrumAt(ac,p.l,gameStartTime+bar*4*bs+p.t*bs,4,[]);
   const totalSec=bars*4*bs;
-  setTimeout(()=>{if(playing)endTurn();},totalSec*1000+800);
+  gameEndTime=totalSec;
+  setTimeout(()=>{if(playing)endTurn();},totalSec*1000+5000);
 }
 
 function beginMp3(){
@@ -2719,6 +2741,11 @@ function draw(){
     cx.strokeStyle=laneFlash[4]?LANES[4].color:LANES[4].color+"55";
     cx.lineWidth=laneFlash[4]?3:2;cx.stroke();
     if(laneFlash[4]){cx.beginPath();cx.arc(W/2,KICK_HIT_Y,kr,0,Math.PI*2);cx.fillStyle=LANES[4].color+"44";cx.fill();}
+  }
+
+  // Auto-end when all notes resolved and past expected end time
+  if(playing&&mode==="builtin"&&gameEndTime!=null&&now>=gameEndTime){
+    if(notes.length===0||notes.every(n=>n.hit||n.missed))endTurn();
   }
 
   // Notes
