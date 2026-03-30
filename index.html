@@ -108,14 +108,18 @@ canvas{display:block;}
   <div class="card">
     <h2>Leaderboard</h2>
     <div id="mlb" style="font-size:12px;opacity:.5">No scores yet.</div>
-    <button class="smbtn" style="margin-top:8px" onclick="goScores()">View All</button>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="smbtn" onclick="goScores()">View All</button>
+      <button class="smbtn red" onclick="if(confirm('Clear ALL saved data? (scores, settings, gamepad mapping)')){localStorage.removeItem('drgame5');localStorage.removeItem('drgameSettings');localStorage.removeItem('drgameGpMap');savedScores=[];refreshMiniLB();resetSettings();gpMap={0:2,1:3,2:0,3:1,4:4,8:4};}">Reset All Data</button>
+    </div>
   </div>
 
   <div class="card">
     <h2>Settings</h2>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
-      <label style="font-size:12px;display:flex;align-items:center;gap:6px;">Speed: <input type="range" min="50" max="150" value="100" step="5" id="speed-slider" oninput="gameSpeed=this.value/100;document.getElementById('speed-val').textContent=this.value+'%'"><span id="speed-val" style="font-size:11px;min-width:32px">100%</span></label>
-      <label style="font-size:12px;display:flex;align-items:center;gap:6px;">Volume: <input type="range" min="0" max="150" value="100" step="5" id="vol-slider" oninput="masterVolume=this.value/100;document.getElementById('vol-val').textContent=this.value+'%'"><span id="vol-val" style="font-size:11px;min-width:32px">100%</span></label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;">Speed: <input type="range" min="50" max="150" value="100" step="5" id="speed-slider" oninput="setSpeed(this.value)"><span id="speed-val" style="font-size:11px;min-width:32px">100%</span></label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;">Volume: <input type="range" min="0" max="150" value="100" step="5" id="vol-slider" oninput="setVolume(this.value)"><span id="vol-val" style="font-size:11px;min-width:32px">100%</span></label>
+      <button class="smbtn" onclick="resetSettings()" style="font-size:11px;">Reset</button>
     </div>
   </div>
 
@@ -1923,16 +1927,69 @@ const SINGALONG_PIECES=(function(){
      1,1,1,1,1,1,1,1,2,1,1,1,1,2,
      1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,3],
     4,A3);
-  return [drunken,wellerman,molly,whiskey,parting,amazing,auld,saints,clementine,scarborough,bonnie];
+  // ── Leave Her Johnny ──
+  var leavejohnny=pub("Leave Her Johnny","Sea Shanty (Trad.)",105,
+    [A3,A3,C4,D4,E4,E4,D4,C4,A3,G3,A3,C4,D4,E4,G4,E4,D4,C4,A3,G3,A3,C4,E4,D4,C4,A3],
+    [0,0,1,0,2,2,0,1,0,3,0,1,0,2,3,2,0,1,0,3,0,1,2,0,1,0],
+    [1,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,3],
+    5,A3);
+  // ── Blow the Man Down ──
+  var blowman=pub("Blow the Man Down","Sea Shanty (Trad.)",120,
+    [C4,E4,G4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,C5,B4,A4,G4,F4,E4,D4,C4],
+    [0,2,3,3,1,2,1,0,1,2,1,2,1,0,0,2,3,0,3,0,3,1,2,1,0],
+    [1,1,2,1,1,1,1,2,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,4],
+    5,C4);
+  // ── Randy Dandy Oh ──
+  var randy=pub("Randy Dandy Oh","Sea Shanty (Trad.)",130,
+    [G4,G4,A4,B4,B4,A4,G4,E4,D4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,G4,A4,B4,D5,B4,G4],
+    [3,3,0,3,3,0,3,2,1,3,3,0,3,1,3,0,3,2,1,3,0,3,1,3,3],
+    [1,1,1,2,1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,4],
+    5,G4);
+  // ── South Australia ──
+  var southaus=pub("South Australia","Sea Shanty (Trad.)",115,
+    [C4,C4,D4,E4,G4,G4,E4,D4,C4,E4,G4,A4,G4,E4,C4,D4,E4,G4,E4,D4,C4,C4,E4,G4,E4,C4],
+    [0,0,1,2,3,3,2,1,0,2,3,0,3,2,0,1,2,3,2,1,0,0,2,3,2,0],
+    [1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,4],
+    5,C4);
+  // ── Roll the Old Chariot ──
+  var chariot=pub("Roll the Old Chariot Along","Sea Shanty (Trad.)",120,
+    [C4,E4,G4,G4,G4,A4,G4,E4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,C5,A4,G4,E4,D4,C4],
+    [0,2,3,3,3,0,3,2,0,1,2,1,2,1,0,0,2,3,0,0,3,2,1,0],
+    [1,1,1,1,1,1,1,1,2,1,1,1,1,1,3,1,1,1,2,1,1,1,1,4],
+    5,C4);
+  // ── Haul Away Joe ──
+  var hauljoe=pub("Haul Away Joe","Sea Shanty (Trad.)",115,
+    [D4,D4,F4,A4,A4,G4,F4,D4,D4,F4,A4,C5,A4,G4,F4,D4,F4,A4,G4,F4,D4,C4,D4],
+    [0,0,1,0,0,3,1,0,0,1,0,0,0,3,1,0,1,0,3,1,0,1,0],
+    [1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,2,1,4],
+    5,D4);
+  // ── Spanish Ladies ──
+  var spanish=pub("Spanish Ladies","Royal Navy Shanty (1790s)",110,
+    [E4,E4,D4,C4,D4,E4,F4,G4,A4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,B3,A3,G3,A3,B3,C4,D4,E4],
+    [2,2,1,0,1,2,1,3,0,3,1,2,1,0,1,2,1,2,1,0,3,0,3,0,3,0,1,2],
+    [1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,4],
+    5,C4);
+  // ── The Skye Boat Song ──
+  var skye=pub("The Skye Boat Song","Scottish (1884)",85,
+    [C4,F4,A4,G4,F4,E4,F4,G4,A4,C5,A4,G4,F4,E4,D4,C4,F4,A4,G4,F4,E4,F4,G4,A4,F4,D4,C4],
+    [0,1,0,3,1,2,1,3,0,0,0,3,1,2,1,0,1,0,3,1,2,1,3,0,1,1,0],
+    [1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,2,2,1,1,1,1,1,2,1,1,1,4],
+    4,F4);
+  // ── Bella Ciao ──
+  var bella=pub("Bella Ciao","Italian Partisan Folk (1900s)",120,
+    [A3,B3,C4,D4,D4,C4,D4,E4,A3,B3,C4,D4,D4,C4,B3,A3,E4,E4,D4,E4,F4,F4,E4,D4,C4,B3,A3,C4,B3,A3],
+    [0,3,0,1,1,0,1,2,0,3,0,1,1,0,3,0,2,2,1,2,1,1,2,1,0,3,0,1,3,0],
+    [1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,4],
+    5,A3);
+  return [drunken,wellerman,molly,whiskey,parting,leavejohnny,blowman,randy,southaus,chariot,hauljoe,spanish,skye,bella,amazing,auld,saints,clementine,scarborough,bonnie];
 })();
 
 var SYNTH_GENRES={"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
 
 function buildClassicalNotes(piece){
-  var raw=piece.melody.filter(function(m){return activePads[m.l];})
+  return piece.melody.filter(function(m){return activePads[m.l];})
     .map(function(m){
-      // Find matching frequency from background notes at same time
-      var freq=261.63; // default C4
+      var freq=261.63;
       for(var i=0;i<piece.bg.length;i++){
         var b=piece.bg[i];
         if(Math.abs(b.t-m.t)<0.01&&b.i!=='bass'&&b.i!=='timpani'){freq=b.f;break;}
@@ -1940,16 +1997,6 @@ function buildClassicalNotes(piece){
       return{time:m.t/gameSpeed,lane:m.l,freq:freq,hit:false,missed:false};
     })
     .sort(function(a,b){return a.time-b.time;});
-  // Enforce minimum gap between notes so stacked/simultaneous notes are playable
-  // Without this, fast passes create 2-3 notes within 0.07s on different lanes
-  var MIN_GAP=0.12;
-  var result=[],lastTime=-1;
-  for(var i=0;i<raw.length;i++){
-    if(raw[i].time-lastTime>=MIN_GAP){
-      result.push(raw[i]);lastTime=raw[i].time;
-    }
-  }
-  return result;
 }
 
 function beginClassical(){
@@ -1977,7 +2024,8 @@ let laneFlash=[0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[],classicalHit
 let paused=false,pauseTime=0;
 var gpMap=JSON.parse(localStorage.getItem("drgameGpMap")||"null")||{0:2,1:3,2:0,3:1,4:4,8:4};
 var remapping=false,remapStep=0,remapResult={};
-var gameSpeed=1.0,masterVolume=1.0;
+var _savedSettings=JSON.parse(localStorage.getItem("drgameSettings")||"{}");
+var gameSpeed=_savedSettings.speed||1.0,masterVolume=_savedSettings.volume||1.0;
 let gameRhythm=null;
 const HIT_WIN=0.17,SPEED=260;
 
@@ -1999,6 +2047,16 @@ function buildPadToggles(){
   });
 }
 buildPadToggles();
+function saveSettings(){localStorage.setItem("drgameSettings",JSON.stringify({speed:gameSpeed,volume:masterVolume}));}
+function setSpeed(v){gameSpeed=v/100;document.getElementById("speed-val").textContent=v+"%";saveSettings();}
+function setVolume(v){masterVolume=v/100;document.getElementById("vol-val").textContent=v+"%";saveSettings();}
+function resetSettings(){gameSpeed=1.0;masterVolume=1.0;document.getElementById("speed-slider").value=100;document.getElementById("vol-slider").value=100;document.getElementById("speed-val").textContent="100%";document.getElementById("vol-val").textContent="100%";saveSettings();}
+function loadSettings(){
+  document.getElementById("speed-slider").value=Math.round(gameSpeed*100);
+  document.getElementById("speed-val").textContent=Math.round(gameSpeed*100)+"%";
+  document.getElementById("vol-slider").value=Math.round(masterVolume*100);
+  document.getElementById("vol-val").textContent=Math.round(masterVolume*100)+"%";
+}
 function setHitMode(m){
   classicalHitMode=m;
   document.getElementById("hitmode-drums").className="smbtn"+(m==='drums'?' purple':'');
@@ -2045,7 +2103,7 @@ function buildMenu(){
   });
   updateHitModeVisibility();
 }
-buildMenu();
+buildMenu();loadSettings();
 function addPlayer(){players.push({name:"Player "+(players.length+1)});buildMenu();}
 function setMode(m){
   mode=m;
