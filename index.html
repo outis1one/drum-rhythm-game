@@ -641,155 +641,196 @@ const CLASSICAL_PIECES=(function(){
     C3=NT.C3,D3=NT.D3,E3=NT.E3,B4=NT.B4,F3=NT.F3,Gb3=NT.Gb3,Db4=NT.Db4,Gb4=NT.Gb4,Db5=NT.Db5;
 
   // ── Beethoven's 5th Symphony (Opening) ──
+  // ~87 seconds to the natural break at recapitulation
+  // Continuous orchestral bed plays throughout; only strong melody accents are hittable
   var b5=(function(){
     var q=0.375,e=q/2,bg=[],mel=[];
-    // Full orchestra: melody + harmony voices + woodwinds + horns + bass + timpani
+
+    // === CONTINUOUS HARMONIC BED (plays throughout, not hittable) ===
+    // Sustained string/woodwind chords that change with the harmony
+    var harmony=[
+      [0,5.5,[C4,Eb4,G4],0.15],       // Cm - opening
+      [5.5,11,[C4,Eb4,G4],0.12],       // Cm - echo
+      [11,18,[C4,Eb4,G4],0.18],        // Cm - development
+      [18,26,[Ab3,C4,Eb4],0.2],        // Ab - power chords
+      [26,32,[C4,Eb4,G4],0.15],        // Cm - transition
+      [32,40,[G3,Bb3,D4],0.18],        // Gm - rising tension
+      [40,50,[C4,Eb4,G4],0.22],        // Cm - recapitulation
+      [50,60,[Ab3,C4,Eb4],0.2],        // Ab - chords
+      [60,72,[C4,Eb4,G4],0.25],        // Cm - building
+      [72,82,[G3,B3,D4],0.22],         // G - dominant tension
+      [82,90,[C4,Eb4,G4],0.2]          // Cm - resolution
+    ];
+    harmony.forEach(function(h){
+      for(var t=h[0];t<h[1];t+=2.0){
+        h[2].forEach(function(f){
+          bg.push({t:t,f:f,d:1.9,i:'strings',v:h[3]});
+        });
+        bg.push({t:t,f:h[2][0]/2,d:1.9,i:'bass',v:h[3]*0.6});
+        if(h[3]>0.18)bg.push({t:t,f:h[2][1],d:1.9,i:'woodwind',v:h[3]*0.5});
+      }
+    });
+
+    // === SECTION 1 (0-5.5s): THE OPENING — G-G-G-Eb, F-F-F-D ===
     function tutti(t,freq,dur,v){
-      v=v||0.35;
-      bg.push({t:t,f:freq,d:dur,i:'strings',v:v});          // 1st violins (melody)
-      bg.push({t:t,f:freq,d:dur,i:'brass',v:v*0.6});         // trumpets doubling
-      bg.push({t:t,f:freq*0.75,d:dur,i:'strings',v:v*0.4});  // 2nd violins (harmony 5th below)
-      bg.push({t:t,f:freq*0.6,d:dur,i:'woodwind',v:v*0.35}); // clarinets (harmony 3rd)
-      if(freq>200)bg.push({t:t,f:freq/2,d:dur,i:'bass',v:v*0.5}); // cellos/basses
+      bg.push({t:t,f:freq,d:dur,i:'strings',v:v});
+      bg.push({t:t,f:freq,d:dur,i:'brass',v:v*0.6});
+      bg.push({t:t,f:freq*0.75,d:dur,i:'strings',v:v*0.35});
+      bg.push({t:t,f:freq*0.6,d:dur,i:'woodwind',v:v*0.3});
+      if(freq>200)bg.push({t:t,f:freq/2,d:dur,i:'bass',v:v*0.5});
     }
-    // Sustained horn/woodwind pad for held notes
-    function pad(t,dur,v){
-      bg.push({t:t,f:Eb4,d:dur,i:'brass',v:(v||0.3)*0.3});   // horn Eb
-      bg.push({t:t,f:G3,d:dur,i:'brass',v:(v||0.3)*0.25});    // horn G
-      bg.push({t:t,f:C4,d:dur,i:'woodwind',v:(v||0.3)*0.2});  // bassoon C
-    }
-    // === EXPOSITION ===
-    // Section 1: G-G-G-Eb (THE motif — full orchestra unison, ff)
+    // G-G-G-Eb (ff)
     tutti(0,G4,0.18,0.55);tutti(q,G4,0.18,0.55);tutti(q*2,G4,0.18,0.55);
-    tutti(q*3,Eb4,1.8,0.6);pad(q*3,1.8,0.5);
-    bg.push({t:0,f:G3,d:0.18,i:'timpani',v:0.4});
+    tutti(q*3,Eb4,1.8,0.6);
+    bg.push({t:0,f:G3,d:0.18,i:'timpani',v:0.45});
     mel.push({t:0,l:0},{t:q,l:0},{t:q*2,l:0},{t:q*3,l:3});
-    // Section 2: F-F-F-D (answer, whole orchestra)
+    // F-F-F-D
     var s=3.2;
     tutti(s,F4,0.18,0.55);tutti(s+q,F4,0.18,0.55);tutti(s+q*2,F4,0.18,0.55);
     tutti(s+q*3,D4,1.8,0.6);
-    bg.push({t:s+q*3,f:Bb3,d:1.8,i:'brass',v:0.2});bg.push({t:s+q*3,f:F3,d:1.8,i:'woodwind',v:0.18});
     mel.push({t:s,l:1},{t:s+q,l:1},{t:s+q*2,l:1},{t:s+q*3,l:3});
-    // Section 3: Strings restate softly, woodwinds add color
-    s=6.8;
-    bg.push({t:s,f:G4,d:0.16,i:'strings',v:0.3});bg.push({t:s,f:Eb4,d:0.16,i:'woodwind',v:0.2});
-    bg.push({t:s+q,f:G4,d:0.16,i:'strings',v:0.3});bg.push({t:s+q,f:Eb4,d:0.16,i:'woodwind',v:0.2});
-    bg.push({t:s+q*2,f:G4,d:0.16,i:'strings',v:0.3});bg.push({t:s+q*2,f:Eb4,d:0.16,i:'woodwind',v:0.2});
-    bg.push({t:s+q*3,f:Eb4,d:1.2,i:'strings',v:0.35});bg.push({t:s+q*3,f:C4,d:1.2,i:'woodwind',v:0.2});bg.push({t:s+q*3,f:G3,d:1.2,i:'bass',v:0.2});
-    mel.push({t:s,l:0},{t:s+q,l:0},{t:s+q*2,l:0},{t:s+q*3,l:3});
-    s=9.5;
-    bg.push({t:s,f:F4,d:0.16,i:'strings',v:0.3});bg.push({t:s,f:D4,d:0.16,i:'woodwind',v:0.2});
-    bg.push({t:s+q,f:F4,d:0.16,i:'strings',v:0.3});bg.push({t:s+q,f:D4,d:0.16,i:'woodwind',v:0.2});
-    bg.push({t:s+q*2,f:F4,d:0.16,i:'strings',v:0.3});bg.push({t:s+q*2,f:D4,d:0.16,i:'woodwind',v:0.2});
-    bg.push({t:s+q*3,f:D4,d:1.2,i:'strings',v:0.35});bg.push({t:s+q*3,f:Bb3,d:1.2,i:'woodwind',v:0.2});bg.push({t:s+q*3,f:F3,d:1.2,i:'bass',v:0.2});
-    mel.push({t:s,l:1},{t:s+q,l:1},{t:s+q*2,l:1},{t:s+q*3,l:3});
-    // === DEVELOPMENT ===
-    // Section 4: Faster motifs, full orchestra
-    s=12.0;
+
+    // === SECTION 2 (5.5-11s): SOFT RESTATEMENT — strings only, woodwind color ===
+    s=6.0;
+    // Running eighth notes in 2nd violins (background texture, not hittable)
+    for(var ri=0;ri<20;ri++){
+      var rf=[G4,Eb4,F4,D4,G4,F4,Eb4,D4,C4,Eb4,G4,F4,Eb4,D4,C4,B3,C4,D4,Eb4,F4][ri];
+      bg.push({t:s+ri*e,f:rf,d:e*0.8,i:'strings',v:0.18});
+    }
+    // Melody accents (hittable) — just the motif peaks
+    bg.push({t:6.0,f:G4,d:0.16,i:'woodwind',v:0.3});mel.push({t:6.0,l:0});
+    bg.push({t:6.0+q,f:G4,d:0.16,i:'woodwind',v:0.3});mel.push({t:6.0+q,l:0});
+    bg.push({t:6.0+q*2,f:G4,d:0.16,i:'woodwind',v:0.3});mel.push({t:6.0+q*2,l:0});
+    bg.push({t:6.0+q*3,f:Eb4,d:1.0,i:'woodwind',v:0.35});mel.push({t:6.0+q*3,l:3});
+    s=8.5;
+    bg.push({t:s,f:F4,d:0.16,i:'woodwind',v:0.3});mel.push({t:s,l:1});
+    bg.push({t:s+q,f:F4,d:0.16,i:'woodwind',v:0.3});mel.push({t:s+q,l:1});
+    bg.push({t:s+q*2,f:F4,d:0.16,i:'woodwind',v:0.3});mel.push({t:s+q*2,l:1});
+    bg.push({t:s+q*3,f:D4,d:1.0,i:'woodwind',v:0.35});mel.push({t:s+q*3,l:3});
+
+    // === SECTION 3 (11-18s): DEVELOPMENT — faster motifs + scalar run ===
+    s=11.5;
     tutti(s,G4,0.15,0.5);tutti(s+e,G4,0.15,0.5);tutti(s+e*2,G4,0.15,0.5);
-    tutti(s+e*3,Eb4,0.5,0.55);pad(s+e*3,0.5,0.4);
+    tutti(s+e*3,Eb4,0.5,0.55);
     mel.push({t:s,l:0},{t:s+e,l:0},{t:s+e*2,l:0},{t:s+e*3,l:3});
-    s=13.0;
+    s=12.5;
     tutti(s,F4,0.15,0.5);tutti(s+e,F4,0.15,0.5);tutti(s+e*2,F4,0.15,0.5);
     tutti(s+e*3,D4,0.5,0.55);
     mel.push({t:s,l:1},{t:s+e,l:1},{t:s+e*2,l:1},{t:s+e*3,l:3});
-    // Section 5: Scalar passage — violins lead, violas in 3rds below, bass walks
-    s=14.2;
-    var scale=[G4,F4,Eb4,D4,C4,B3,C4,D4,Eb4,F4,G4,Ab4,Bb4,Ab4,G4,F4,Eb4,D4,C4,B3];
-    scale.forEach(function(f,i){
-      var t2=s+i*e;
-      bg.push({t:t2,f:f,d:e*0.85,i:'strings',v:0.45});
-      bg.push({t:t2,f:f*0.8,d:e*0.85,i:'strings',v:0.25}); // violas in parallel
-      bg.push({t:t2,f:f*0.6,d:e*0.85,i:'woodwind',v:0.2}); // bassoon
-      if(i%4===0)bg.push({t:t2,f:f/2,d:e*3,i:'bass',v:0.3}); // bass on downbeats
-      mel.push({t:t2,l:[2,1,0,1][i%4]});
+    // Scalar run — violins play fast, you hit the accent notes
+    s=14.0;
+    var scaleDown=[G4,F4,Eb4,D4,C4,B3,C4,D4,Eb4,F4,G4,Ab4,Bb4,Ab4,G4,F4,Eb4,D4,C4,B3];
+    scaleDown.forEach(function(f,i){
+      bg.push({t:s+i*e,f:f,d:e*0.85,i:'strings',v:0.4});
+      bg.push({t:s+i*e,f:f*0.8,d:e*0.85,i:'strings',v:0.2}); // violas
     });
-    // Section 6: Power chords — full C minor harmony, horns + timpani
-    s=18.0;
-    [[G4,Eb4,C4],[Ab4,F4,C4],[Bb4,G4,Eb4],[Ab4,F4,C4],[G4,Eb4,C4],[F4,D4,Bb3],[Eb4,C4,Ab3],[D4,B3,G3]].forEach(function(ch,i){
-      var t2=s+i*0.7;
+    // Hittable: only every 4th note (the downbeat accents)
+    [0,4,8,12,16].forEach(function(i){
+      mel.push({t:s+i*e,l:[2,0,2,0,0][Math.floor(i/4)]});
+    });
+
+    // === SECTION 4 (18-28s): POWER CHORDS — big hits with timpani ===
+    s=18.5;
+    var chords=[[G4,Eb4,C4],[Ab4,F4,C4],[Bb4,G4,Eb4],[Ab4,F4,C4],[G4,Eb4,C4],[F4,D4,Bb3],[Eb4,C4,Ab3],[D4,B3,G3]];
+    chords.forEach(function(ch,i){
+      var t2=s+i*1.1;
       ch.forEach(function(f){
-        bg.push({t:t2,f:f,d:0.6,i:'brass',v:0.55});
-        bg.push({t:t2,f:f,d:0.6,i:'strings',v:0.45});
+        bg.push({t:t2,f:f,d:1.0,i:'brass',v:0.55});
+        bg.push({t:t2,f:f,d:1.0,i:'strings',v:0.45});
       });
-      bg.push({t:t2,f:ch[2],d:0.6,i:'bass',v:0.4});
-      bg.push({t:t2,f:ch[2]/2,d:0.6,i:'timpani',v:0.55});
+      bg.push({t:t2,f:ch[2],d:1.0,i:'bass',v:0.4});
+      bg.push({t:t2,f:ch[2]/2,d:0.8,i:'timpani',v:0.55});
       mel.push({t:t2,l:4});
     });
-    // === RECAPITULATION ===
-    // Section 7: Motif fff — full orchestra + choir + horns
-    s=24.0;
-    tutti(s,G4,0.18,0.65);tutti(s+q,G4,0.18,0.65);tutti(s+q*2,G4,0.18,0.65);
-    tutti(s+q*3,Eb4,1.5,0.7);pad(s+q*3,1.5,0.6);
-    bg.push({t:s+q*3,f:Eb4,d:1.5,i:'choir',v:0.3});bg.push({t:s+q*3,f:G4,d:1.5,i:'choir',v:0.25});
-    bg.push({t:s,f:G3,d:0.2,i:'timpani',v:0.5});
+
+    // === SECTION 5 (28-40s): MOTIF IN NEW KEYS — rising tension ===
+    // Motif passed between brass and strings at different pitches
+    s=28.0;
+    // Background: continuous running strings
+    for(var ri=0;ri<48;ri++){
+      var rf2=[G4,Eb4,C4,Eb4,F4,D4,Bb3,D4][ri%8];
+      bg.push({t:s+ri*e,f:rf2,d:e*0.8,i:'strings',v:0.15});
+    }
+    // Hittable motif fragments at rising pitches
+    [[s,G4,Eb4],[s+2.5,Ab4,F4],[s+5.0,Bb4,G4],[s+7.5,C5,Ab4],[s+10.0,D5,Bb4]].forEach(function(m){
+      tutti(m[0],m[1],0.14,0.55);tutti(m[0]+e,m[1],0.14,0.55);tutti(m[0]+e*2,m[1],0.14,0.55);
+      tutti(m[0]+e*3,m[2],0.6,0.6);
+      mel.push({t:m[0],l:0},{t:m[0]+e,l:0},{t:m[0]+e*2,l:0},{t:m[0]+e*3,l:3});
+    });
+
+    // === SECTION 6 (40-52s): SUSTAINED DRAMA — choir + horns, slow chords ===
+    s=41.0;
+    [[C4,Eb4,G4],[Bb3,D4,F4],[Ab3,C4,Eb4],[G3,B3,D4],[C4,Eb4,G4],[F3,Ab3,C4]].forEach(function(ch,i){
+      var t2=s+i*1.8;
+      ch.forEach(function(f){
+        bg.push({t:t2,f:f,d:1.6,i:'strings',v:0.5});
+        bg.push({t:t2,f:f,d:1.6,i:'brass',v:0.4});
+        bg.push({t:t2,f:f,d:1.6,i:'choir',v:0.3});
+      });
+      bg.push({t:t2,f:ch[0]/2,d:1.6,i:'bass',v:0.4});
+      bg.push({t:t2,f:ch[0]/2,d:1.2,i:'timpani',v:0.5});
+      mel.push({t:t2,l:4},{t:t2+0.9,l:i%2===0?0:1});
+    });
+
+    // === SECTION 7 (52-64s): RECAPITULATION — motif returns fff ===
+    s=53.0;
+    tutti(s,G4,0.18,0.7);tutti(s+q,G4,0.18,0.7);tutti(s+q*2,G4,0.18,0.7);
+    tutti(s+q*3,Eb4,1.8,0.75);
+    bg.push({t:s+q*3,f:Eb4,d:1.8,i:'choir',v:0.35});bg.push({t:s+q*3,f:G4,d:1.8,i:'choir',v:0.3});
+    bg.push({t:s,f:G3,d:0.2,i:'timpani',v:0.55});
     mel.push({t:s,l:0},{t:s+q,l:0},{t:s+q*2,l:0},{t:s+q*3,l:3});
-    s=27.0;
-    tutti(s,F4,0.18,0.65);tutti(s+q,F4,0.18,0.65);tutti(s+q*2,F4,0.18,0.65);
-    tutti(s+q*3,D4,1.5,0.7);
-    bg.push({t:s+q*3,f:D4,d:1.5,i:'choir',v:0.3});bg.push({t:s+q*3,f:F4,d:1.5,i:'choir',v:0.25});
-    bg.push({t:s+q*3,f:Bb3,d:1.5,i:'brass',v:0.25});
+    s=56.2;
+    tutti(s,F4,0.18,0.7);tutti(s+q,F4,0.18,0.7);tutti(s+q*2,F4,0.18,0.7);
+    tutti(s+q*3,D4,1.8,0.75);
+    bg.push({t:s+q*3,f:D4,d:1.8,i:'choir',v:0.35});bg.push({t:s+q*3,f:F4,d:1.8,i:'choir',v:0.3});
     mel.push({t:s,l:1},{t:s+q,l:1},{t:s+q*2,l:1},{t:s+q*3,l:3});
-    // Section 8: Ascending scalar — full orchestra layered
-    s=30.0;
+    // Ascending run with full orchestra
+    s=59.5;
     [C4,D4,Eb4,F4,G4,Ab4,Bb4,C5,D5,Eb5,D5,C5,Bb4,Ab4,G4,F4].forEach(function(f,i){
       var t2=s+i*e;
       bg.push({t:t2,f:f,d:e*0.85,i:'strings',v:0.5});
-      bg.push({t:t2,f:f,d:e*0.85,i:'woodwind',v:0.25});
+      bg.push({t:t2,f:f,d:e*0.85,i:'brass',v:0.3});
       bg.push({t:t2,f:f*0.75,d:e*0.85,i:'strings',v:0.25});
-      if(i%4===0)bg.push({t:t2,f:f/2,d:e*3,i:'bass',v:0.35});
-      mel.push({t:t2,l:[0,1,2,3][i%4]});
     });
-    // Section 9: Rapid motif rising — brass + strings unison
-    s=33.5;
-    [[G4,Eb4],[Ab4,F4],[Bb4,G4],[C5,Ab4],[D5,Bb4]].forEach(function(fr,fi){
-      var t2=s+fi*0.9;
-      tutti(t2,fr[0],0.14,0.6);tutti(t2+e,fr[0],0.14,0.6);tutti(t2+e*2,fr[0],0.14,0.6);
-      tutti(t2+e*3,fr[1],0.45,0.65);
-      if(fi%2===0)bg.push({t:t2,f:fr[1]/2,d:0.4,i:'timpani',v:0.45});
-      mel.push({t:t2,l:0},{t:t2+e,l:0},{t:t2+e*2,l:0},{t:t2+e*3,l:3});
+    [0,4,8,12].forEach(function(i){mel.push({t:s+i*e,l:[0,1,2,3][Math.floor(i/4)]});});
+
+    // === SECTION 8 (64-76s): FINAL MOTIF HAMMERING ===
+    s=64.0;
+    // Motif stated 3 times, each louder — whole orchestra
+    [[G4,Eb4,0.65],[G4,Eb4,0.72],[G4,Eb4,0.8]].forEach(function(m,mi){
+      var t2=s+mi*3.5;
+      tutti(t2,m[0],0.2,m[2]);tutti(t2+q,m[0],0.2,m[2]);tutti(t2+q*2,m[0],0.2,m[2]);
+      tutti(t2+q*3,m[1],2.0,m[2]);
+      bg.push({t:t2+q*3,f:m[1],d:2.0,i:'choir',v:m[2]*0.5});
+      bg.push({t:t2,f:G3,d:0.2,i:'timpani',v:m[2]*0.7});
+      mel.push({t:t2,l:0},{t:t2+q,l:0},{t:t2+q*2,l:0},{t:t2+q*3,l:3});
     });
-    // Section 10: Sustained chords — choir + horns + strings (harmonic richness)
-    s=38.5;
-    [[C4,Eb4,G4],[Bb3,D4,F4],[Ab3,C4,Eb4],[G3,B3,D4]].forEach(function(ch,i){
-      var t2=s+i*1.5;
-      ch.forEach(function(f){
-        bg.push({t:t2,f:f,d:1.3,i:'strings',v:0.5});
-        bg.push({t:t2,f:f,d:1.3,i:'brass',v:0.4});
-        bg.push({t:t2,f:f,d:1.3,i:'choir',v:0.3});
-      });
-      bg.push({t:t2,f:ch[0]/2,d:1.3,i:'bass',v:0.4});
-      bg.push({t:t2,f:ch[0]/2,d:1.3,i:'timpani',v:0.55});
-      mel.push({t:t2,l:4},{t:t2+0.75,l:i%2===0?0:1});
-    });
-    // Section 11: Final motif fff — everything playing
-    s=45.0;
-    tutti(s,G4,0.2,0.75);tutti(s+q,G4,0.2,0.75);tutti(s+q*2,G4,0.2,0.75);
-    tutti(s+q*3,Eb4,2.0,0.75);pad(s+q*3,2.0,0.7);
-    bg.push({t:s+q*3,f:Eb4,d:2.0,i:'choir',v:0.4});bg.push({t:s+q*3,f:G4,d:2.0,i:'choir',v:0.35});bg.push({t:s+q*3,f:C4,d:2.0,i:'choir',v:0.3});
-    bg.push({t:s,f:G3,d:0.2,i:'timpani',v:0.6});
-    mel.push({t:s,l:0},{t:s+q,l:0},{t:s+q*2,l:0},{t:s+q*3,l:3});
-    // Section 12: Final chords — Cm tutti with timpani
-    s=48.5;
-    [0,0.5,1.0,1.5,2.0].forEach(function(dt){
+
+    // === SECTION 9 (76-85s): FINAL CHORDS — cadence to the break ===
+    s=76.0;
+    [0,0.6,1.2,1.8,2.4,3.0,3.6,4.2].forEach(function(dt,i){
       var t2=s+dt;
       [C4,Eb4,G4].forEach(function(f){
-        bg.push({t:t2,f:f,d:0.4,i:'brass',v:0.7});
-        bg.push({t:t2,f:f,d:0.4,i:'strings',v:0.6});
+        bg.push({t:t2,f:f,d:0.5,i:'brass',v:0.7});
+        bg.push({t:t2,f:f,d:0.5,i:'strings',v:0.6});
       });
-      bg.push({t:t2,f:C3,d:0.4,i:'bass',v:0.55});
-      bg.push({t:t2,f:C3,d:0.4,i:'timpani',v:0.65});mel.push({t:t2,l:4});
+      bg.push({t:t2,f:C3,d:0.5,i:'bass',v:0.55});
+      bg.push({t:t2,f:C3,d:0.5,i:'timpani',v:0.65});
+      mel.push({t:t2,l:4});
     });
-    // Final long chord — full orchestra + choir sustain
-    s=51.0;
+
+    // === SECTION 10 (81-87s): FINAL SUSTAINED CHORD — natural break ===
+    s=81.0;
     [C4,Eb4,G4,C5].forEach(function(f){
-      bg.push({t:s,f:f,d:2.5,i:'brass',v:0.65});
-      bg.push({t:s,f:f,d:2.5,i:'strings',v:0.55});
-      bg.push({t:s,f:f,d:2.5,i:'choir',v:0.4});
+      bg.push({t:s,f:f,d:5.0,i:'brass',v:0.6});
+      bg.push({t:s,f:f,d:5.0,i:'strings',v:0.5});
+      bg.push({t:s,f:f,d:5.0,i:'choir',v:0.35});
     });
-    bg.push({t:s,f:C3,d:2.5,i:'bass',v:0.5});
-    bg.push({t:s,f:C3,d:2.0,i:'timpani',v:0.6});
-    return {n:"Beethoven's 5th (Opening)",composer:"Beethoven",bpm:160,duration:54,isClassical:true,bg:bg,melody:mel};
+    bg.push({t:s,f:C3,d:4.0,i:'bass',v:0.5});
+    bg.push({t:s,f:C3,d:3.0,i:'timpani',v:0.55});
+    mel.push({t:s,l:4});
+
+    return {n:"Beethoven's 5th (Opening)",composer:"Beethoven",bpm:160,duration:88,isClassical:true,bg:bg,melody:mel};
   })();
 
   // ── Hall of the Mountain King ──
