@@ -1428,6 +1428,313 @@ const CLASSICAL_PIECES=(function(){
   return [b5,hmk,ofort,valk,mars,toccata,tell,bolero,zarath,barber,danube,sabre,bald,sorcerer,swan,morning,bumblebee,sugarplum,overture1812,habanera,spring,furelise,canon,hungarian,odeToJoy,tellStorm];
 })();
 
+// ── VIDEO GAMES (public domain pieces associated with games) ──
+const VIDEOGAME_PIECES=(function(){
+  var C3=NT.C3,D3=NT.D3,E3=NT.E3,G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,B3=NT.B3,
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,Gb4=NT.Gb4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
+
+  // ── Korobeiniki (Tetris Theme) ──
+  var tetris=(function(){
+    var bg=[],mel=[],t=0;
+    // The iconic Tetris melody in A minor
+    var theme=[E4,B3,C4,D4,C4,B3,A3,A3,C4,E4,D4,C4,B3,B3,C4,D4,E4,C4,A3,A3];
+    var tLn=  [2,3,0,1,0,3,0,0,1,2,1,0,3,3,0,1,2,0,0,0];
+    var durations=[2,1,1,1,1,1,2,1,1,2,1,1,2,1,1,2,2,2,2,2];
+    var q=0.22;
+    for(var rep=0;rep<5;rep++){
+      var v=0.2+rep*0.08;
+      var inst=rep<2?'woodwind':rep<4?'strings':'brass';
+      theme.forEach(function(f,i){
+        var d=durations[i]*q;
+        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
+        if(rep>1)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.4});
+        if(rep>3)bg.push({t:t,f:f,d:d*0.85,i:'brass',v:v*0.4});
+        mel.push({t:t,l:tLn[i]});t+=d;
+      });
+      t+=0.4;
+    }
+    [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'brass',v:0.55});bg.push({t:t,f:f,d:2.0,i:'strings',v:0.45});});
+    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.6});mel.push({t:t,l:4});
+    return {n:"Korobeiniki (Tetris Theme)",composer:"Russian Folk",bpm:140,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  })();
+
+  // ── Turkish March (Mozart) ──
+  var turkish=(function(){
+    var bg=[],mel=[],t=0,q=0.18;
+    var theme=[B3,A3,Ab3,A3,C4,D4,C4,B3,A3,B3,C4,D4,E4,D4,C4,B3,A3,B3,A3,A3];
+    var tLn= [3,0,1,0,2,1,2,3,0,3,0,1,2,1,0,3,0,3,0,0];
+    for(var rep=0;rep<6;rep++){
+      var v=0.22+rep*0.06;
+      var inst=rep<2?'woodwind':rep<4?'strings':'brass';
+      theme.forEach(function(f,i){
+        bg.push({t:t,f:f,d:q*0.85,i:inst,v:v});
+        if(rep>2)bg.push({t:t,f:f/2,d:q*0.85,i:'bass',v:v*0.4});
+        if(rep>4)bg.push({t:t,f:f,d:q*0.85,i:'brass',v:v*0.4});
+        mel.push({t:t,l:tLn[i]});t+=q;
+      });
+      t+=0.35;
+    }
+    [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'brass',v:0.6});});
+    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.6});mel.push({t:t,l:4});
+    return {n:"Turkish March",composer:"Mozart",bpm:132,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  })();
+
+  // ── Hungarian Rhapsody No. 2 (Liszt) ──
+  var rhapsody=(function(){
+    var bg=[],mel=[],t=0;
+    function orch(t,f,d,v,i){bg.push({t:t,f:f,d:d,i:i||'strings',v:v||0.4});}
+    // Slow dramatic opening then fast friska
+    var slow=[C4,D4,Eb4,D4,C4,D4,Eb4,F4,G4,F4,Eb4,D4];
+    var sLn= [0,1,2,1,0,1,2,3,0,3,2,1];
+    // Slow section
+    [0.45,0.42].forEach(function(qs,qi){
+      var v=0.35+qi*0.1;
+      slow.forEach(function(f,i){
+        orch(t,f,qs*0.85,v,'strings');
+        if(qi>0)orch(t,f,qs*0.85,v*0.5,'brass');
+        bg.push({t:t,f:f/2,d:qs*0.85,i:'bass',v:v*0.4});
+        mel.push({t:t,l:sLn[i]});t+=qs;
+      });
+      t+=0.5;
+    });
+    // Fast friska
+    var fast=[C4,E4,G4,C5,G4,E4,C4,D4,F4,A4,F4,D4,C4,E4,G4,C5,B4,A4,G4,E4];
+    var fLn= [0,2,3,0,3,2,0,1,2,1,2,1,0,2,3,0,3,1,3,2];
+    [0.16,0.14,0.12,0.10].forEach(function(qf,qi){
+      var v=0.4+qi*0.06;
+      fast.forEach(function(f,i){
+        orch(t,f,qf*0.85,v);
+        if(qi>0)orch(t,f,qf*0.85,v*0.5,'brass');
+        orch(t,f/2,qf*0.85,v*0.4,'bass');
+        if(qi>1&&i%4===0)bg.push({t:t,f:C3,d:0.2,i:'timpani',v:v*0.6});
+        mel.push({t:t,l:fLn[i]});t+=qf;
+      });
+      t+=0.3;
+    });
+    for(var c=0;c<4;c++){
+      [C4,E4,G4,C5].forEach(function(f){orch(t,f,0.35,0.65,'brass');});
+      bg.push({t:t,f:C3,d:0.35,i:'timpani',v:0.65});mel.push({t:t,l:4});t+=0.45;
+    }
+    [C4,E4,G4,C5].forEach(function(f){orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5);});
+    bg.push({t:t,f:C3,d:1.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+    return {n:"Hungarian Rhapsody No. 2",composer:"Liszt",bpm:140,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  })();
+
+  // ── Can-Can (Offenbach) ──
+  var cancan=(function(){
+    var bg=[],mel=[],t=0,q=0.16;
+    var theme=[C4,D4,E4,C4,E4,C4,E4,D4,E4,F4,E4,D4,C4,D4,E4,F4,G4,A4,G4,E4,C4,D4,E4,C4];
+    var tLn=  [0,1,2,0,2,0,2,1,2,3,2,1,0,1,2,3,0,1,0,2,0,1,2,0];
+    for(var rep=0;rep<6;rep++){
+      var v=0.25+rep*0.06;
+      var inst=rep<2?'strings':rep<4?'strings':'brass';
+      theme.forEach(function(f,i){
+        bg.push({t:t,f:f,d:q*0.85,i:inst,v:v});
+        if(rep>2)bg.push({t:t,f:f/2,d:q*0.85,i:'bass',v:v*0.4});
+        if(rep>3)bg.push({t:t,f:f,d:q*0.85,i:'brass',v:v*0.4});
+        if(rep>4&&i%4===0)bg.push({t:t,f:C3,d:0.2,i:'timpani',v:v*0.6});
+        mel.push({t:t,l:tLn[i]});t+=q;
+      });
+      t+=0.35;
+    }
+    [C4,E4,G4,C5].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'brass',v:0.6});});
+    bg.push({t:t,f:C3,d:1.5,i:'timpani',v:0.65});mel.push({t:t,l:4});
+    return {n:"Can-Can",composer:"Offenbach",bpm:152,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  })();
+
+  // ── Kalinka (Russian Folk) ──
+  var kalinka=(function(){
+    var bg=[],mel=[],t=0;
+    // Kalinka starts slow then gets very fast
+    var theme=[E4,E4,D4,C4,B3,A3,B3,C4,D4,E4,F4,E4,D4,C4,B3,A3];
+    var tLn=  [2,2,0,1,3,0,3,1,0,2,1,2,0,1,3,0];
+    var speeds=[0.35,0.30,0.25,0.20,0.16,0.13,0.10];
+    var vols=  [0.2, 0.26,0.32,0.38,0.45,0.52,0.6];
+    var insts= ['woodwind','woodwind','strings','strings','brass','brass','brass'];
+    speeds.forEach(function(spd,si){
+      theme.forEach(function(f,i){
+        bg.push({t:t,f:f,d:spd*0.85,i:insts[si],v:vols[si]});
+        if(si>2)bg.push({t:t,f:f/2,d:spd*0.85,i:'bass',v:vols[si]*0.4});
+        if(si>4&&i%3===0)bg.push({t:t,f:A3/2,d:0.2,i:'timpani',v:vols[si]*0.6});
+        mel.push({t:t,l:tLn[i]});t+=spd;
+      });
+      t+=0.35;
+    });
+    [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'brass',v:0.6});});
+    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+    return {n:"Kalinka",composer:"Russian Folk",bpm:140,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  })();
+
+  return [tetris,turkish,rhapsody,cancan,kalinka];
+})();
+
+// ── CHIPTUNE ORIGINALS (Claude.ai compositions using square waves) ──
+const CHIPTUNE_PIECES=(function(){
+  var C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5,G3=NT.G3,A3=NT.A3,B3=NT.B3,C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,
+    Gb4=NT.Gb4,F5=NT.F5,G5=NT.G5;
+
+  // Chiptune helper: square wave + simple pulse bass
+  function chip(name,bpm,theme,lanes,passes,root){
+    var bg=[],mel=[],t=0;
+    passes.forEach(function(p,pi){
+      theme.forEach(function(f,ni){
+        // Square wave lead (chiptune character)
+        bg.push({t:t,f:f,d:p.d*0.8,i:'brass',v:p.v}); // square-ish
+        // Pulse bass on beat
+        if(ni%4===0)bg.push({t:t,f:root||theme[0],d:p.d*3,i:'bass',v:p.v*0.35});
+        // Add arpeggiated accompaniment in later passes
+        if(pi>=Math.floor(passes.length*0.4)){
+          bg.push({t:t,f:f*1.5,d:p.d*0.4,i:'woodwind',v:p.v*0.25});
+        }
+        if(pi>=Math.floor(passes.length*0.7)&&ni%2===0){
+          bg.push({t:t,f:root||theme[0],d:p.d*0.5,i:'timpani',v:p.v*0.4});
+        }
+        mel.push({t:t,l:lanes[ni%lanes.length]});t+=p.d;
+      });
+      t+=0.3;
+    });
+    var r=root||theme[0];
+    for(var c=0;c<3;c++){bg.push({t:t,f:r,d:0.3,i:'brass',v:0.6});bg.push({t:t,f:r*2,d:0.3,i:'brass',v:0.5});bg.push({t:t,f:r/2,d:0.3,i:'timpani',v:0.55});mel.push({t:t,l:4});t+=0.4;}
+    bg.push({t:t,f:r,d:1.5,i:'brass',v:0.55});bg.push({t:t,f:r*2,d:1.5,i:'brass',v:0.45});mel.push({t:t,l:4});
+    return {n:name,composer:"Claude.ai",bpm:bpm,duration:Math.ceil(t+2),isClassical:true,bg:bg,melody:mel};
+  }
+
+  // ── Pixel Quest (Platformer Theme) ──
+  var platformer=chip("Pixel Quest",150,
+    [C4,E4,G4,C5,G4,E4,C4,D4,F4,A4,F4,D4,E4,G4,B4,G4,C4,E4,G4,E4,C4,G4,E4,C4],
+    [0,2,3,0,3,2,0,1,2,1,2,1,2,3,0,3,0,2,3,2,0,3,2,0],
+    [{d:0.20,v:0.22,i:'brass'},{d:0.18,v:0.28,i:'brass'},{d:0.16,v:0.35,i:'brass'},{d:0.15,v:0.42,i:'brass'},{d:0.14,v:0.48,i:'brass'},{d:0.13,v:0.55,i:'brass'}],
+    C4);
+
+  // ── Starfield (Space Shooter Theme) ──
+  var spaceshooter=chip("Starfield",160,
+    [E4,E4,G4,A4,G4,E4,D4,E4,G4,A4,B4,A4,G4,E4,D4,C4,E4,G4,B4,D5,B4,G4,E4,D4],
+    [2,2,3,0,3,2,1,2,3,0,1,0,3,2,1,0,2,3,1,0,1,3,2,1],
+    [{d:0.18,v:0.22,i:'brass'},{d:0.16,v:0.3,i:'brass'},{d:0.15,v:0.38,i:'brass'},{d:0.14,v:0.44,i:'brass'},{d:0.13,v:0.5,i:'brass'},{d:0.12,v:0.56,i:'brass'}],
+    E4);
+
+  // ── Dragon's Keep (RPG Overworld) ──
+  var rpg=chip("Dragon's Keep",110,
+    [A3,C4,E4,A4,G4,F4,E4,D4,C4,E4,G4,C5,B4,A4,G4,E4,F4,A4,C5,A4,F4,D4,E4,A3],
+    [0,1,2,0,3,1,2,0,1,2,3,0,3,0,3,2,1,0,2,0,1,0,2,0],
+    [{d:0.30,v:0.18,i:'brass'},{d:0.28,v:0.24,i:'brass'},{d:0.26,v:0.32,i:'brass'},{d:0.24,v:0.4,i:'brass'},{d:0.22,v:0.48,i:'brass'},{d:0.20,v:0.55,i:'brass'}],
+    A3);
+
+  // ── Turbo Dash (Racing Theme) ──
+  var racing=chip("Turbo Dash",170,
+    [G4,B4,D5,G5,D5,B4,G4,A4,C5,E5,C5,A4,G4,B4,D5,B4,G4,D4,G4,B4,D5,G4,B4,D5],
+    [0,3,1,0,1,3,0,1,2,0,2,1,0,3,1,3,0,1,0,3,1,0,3,1],
+    [{d:0.16,v:0.25,i:'brass'},{d:0.14,v:0.32,i:'brass'},{d:0.13,v:0.4,i:'brass'},{d:0.12,v:0.46,i:'brass'},{d:0.11,v:0.52,i:'brass'},{d:0.10,v:0.58,i:'brass'}],
+    G4);
+
+  // ── Dungeon Crawl (Dark Adventure) ──
+  var dungeon=chip("Dungeon Crawl",100,
+    [D4,F4,A4,D4,Eb4,G4,Bb4,Eb4,D4,F4,Ab4,D4,C4,Eb4,G4,C4,D4,F4,A4,F4,D4,A3,D4,F4],
+    [0,2,0,0,1,3,2,1,0,2,0,0,1,2,3,1,0,2,0,2,0,4,0,2],
+    [{d:0.32,v:0.2,i:'brass'},{d:0.30,v:0.28,i:'brass'},{d:0.28,v:0.35,i:'brass'},{d:0.26,v:0.42,i:'brass'},{d:0.24,v:0.48,i:'brass'},{d:0.22,v:0.55,i:'brass'}],
+    D4);
+
+  // ── Victory Fanfare (Boss Defeated) ──
+  var victory=chip("Victory Fanfare",130,
+    [C4,C4,C4,E4,G4,E4,G4,A4,G4,E4,C4,E4,G4,C5,G4,E4,C5,D5,E5,C5,G4,E4,C4,C5],
+    [0,0,0,2,3,2,3,0,3,2,0,2,3,0,3,2,0,1,2,0,3,2,0,0],
+    [{d:0.22,v:0.25,i:'brass'},{d:0.20,v:0.32,i:'brass'},{d:0.18,v:0.4,i:'brass'},{d:0.16,v:0.48,i:'brass'},{d:0.14,v:0.55,i:'brass'},{d:0.12,v:0.62,i:'brass'}],
+    C4);
+
+  return [platformer,spaceshooter,rpg,racing,dungeon,victory];
+})();
+
+// ── FOLK (public domain traditional songs) ──
+const FOLK_PIECES=(function(){
+  var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,B3=NT.B3,
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,Gb4=NT.Gb4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
+
+  // Folk piece helper
+  function folk(name,origin,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=0.25;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.2+rep*0.08;
+      var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
+        if(rep>1)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.35});
+        if(rep>Math.floor(passes*0.6))bg.push({t:t,f:f,d:d*0.85,i:'strings',v:v*0.4});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.4;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.5});bg.push({t:t,f:f,d:2.0,i:'brass',v:0.4});});
+    bg.push({t:t,f:r/2,d:1.5,i:'timpani',v:0.55});mel.push({t:t,l:4});
+    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  }
+
+  // ── Oh Susanna ──
+  var ohsusanna=folk("Oh! Susanna","Stephen Foster (1848)",120,
+    [C4,D4,E4,G4,G4,A4,G4,E4,C4,D4,E4,E4,D4,C4,D4,C4,D4,E4,G4,G4,A4,G4,E4,C4,D4,E4,E4,D4,D4,C4],
+    [0,1,2,3,3,0,3,2,0,1,2,2,1,0,1,0,1,2,3,3,0,3,2,0,1,2,2,1,1,0],
+    [1,1,2,2,1,1,2,2,1,1,2,1,1,2,2,1,1,2,2,1,1,2,2,1,1,2,1,1,1,3],
+    5,C4);
+
+  // ── Greensleeves ──
+  var greensleeves=folk("Greensleeves","English Traditional (1580)",100,
+    [A3,C4,D4,E4,F4,E4,D4,B3,G3,A3,B3,C4,A3,A3,Ab3,A3,B3,G3,A3,C4,D4,E4,F4,E4,D4,B3,G3,A3,B3,C4,B3,A3],
+    [0,1,0,2,1,2,0,3,3,0,3,1,0,0,1,0,3,3,0,1,0,2,1,2,0,3,3,0,3,1,3,0],
+    [2,1,2,2,1,2,2,1,2,1,1,2,2,1,1,1,2,2,2,1,2,2,1,2,2,1,2,1,1,1,1,3],
+    4,A3);
+
+  // ── Camptown Races ──
+  var camptown=folk("Camptown Races","Stephen Foster (1850)",140,
+    [G4,G4,E4,G4,A4,G4,E4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,G4,E4,G4,A4,G4,E4,C4],
+    [3,3,2,3,0,3,2,0,1,2,1,2,1,0,0,2,3,3,2,3,0,3,2,0],
+    [1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,3],
+    5,C4);
+
+  // ── Red River Valley ──
+  var redriver=folk("Red River Valley","American Traditional (1870s)",85,
+    [C4,D4,E4,G4,G4,E4,D4,C4,D4,E4,F4,E4,D4,C4,E4,G4,A4,G4,E4,D4,C4,D4,E4,C4],
+    [0,1,2,3,3,2,1,0,1,2,1,2,1,0,2,3,0,3,2,1,0,1,2,0],
+    [2,1,1,3,1,1,1,2,1,1,1,2,1,2,1,2,2,1,1,1,2,1,2,3],
+    4,C4);
+
+  // ── Home on the Range ──
+  var homerange=folk("Home on the Range","American Traditional (1870s)",95,
+    [C4,E4,G4,A4,G4,E4,C4,D4,F4,A4,G4,F4,E4,D4,C4,E4,G4,C5,A4,G4,E4,D4,C4,C4],
+    [0,2,3,0,3,2,0,1,1,0,3,1,2,1,0,2,3,0,0,3,2,1,0,0],
+    [2,1,2,2,1,1,2,1,1,2,1,1,2,1,2,1,2,2,1,1,1,1,2,3],
+    4,C4);
+
+  // ── Yankee Doodle ──
+  var yankee=folk("Yankee Doodle","American Traditional (1770s)",130,
+    [C4,C4,D4,E4,C4,E4,D4,G3,C4,C4,D4,E4,C4,B3,C4,C4,D4,E4,F4,E4,D4,C4,B3,G3,A3,B3,C4,C4],
+    [0,0,1,2,0,2,1,3,0,0,1,2,0,3,0,0,1,2,1,2,1,0,3,3,0,3,0,0],
+    [1,1,1,1,1,1,2,2,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,3],
+    5,C4);
+
+  // ── Turkey in the Straw ──
+  var turkey=folk("Turkey in the Straw","American Traditional (1820s)",145,
+    [G4,A4,B4,G4,E4,G4,A4,B4,C5,B4,A4,G4,E4,D4,E4,G4,A4,B4,C5,D5,C5,B4,A4,G4],
+    [0,1,3,0,2,0,1,3,0,3,1,0,2,1,2,0,1,3,0,1,0,3,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    5,G4);
+
+  // ── Danny Boy ──
+  var dannyboy=folk("Danny Boy","Irish Traditional (1910s)",72,
+    [C4,E4,F4,G4,A4,G4,F4,E4,C4,D4,E4,F4,E4,D4,C4,E4,F4,G4,A4,C5,A4,G4,F4,C4],
+    [0,2,1,3,0,3,1,2,0,1,2,1,2,1,0,2,1,3,0,0,0,3,1,0],
+    [2,1,1,2,2,1,1,2,2,1,2,1,2,2,2,1,1,2,2,2,1,1,2,3],
+    4,C4);
+
+  return [ohsusanna,greensleeves,camptown,redriver,homerange,yankee,turkey,dannyboy];
+})();
+
+// Synth genre lookup — all genres that use bg+melody synth mode
+var SYNTH_GENRES={"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES,"Folk":FOLK_PIECES};
+
 function buildClassicalNotes(piece){
   var raw=piece.melody.filter(function(m){return activePads[m.l];})
     .map(function(m){
@@ -1501,7 +1808,7 @@ function setHitMode(m){
   document.getElementById("hitmode-orch").className="smbtn"+(m==='orchestra'?' purple':'');
 }
 function updateHitModeVisibility(){
-  document.getElementById("hitmode-toggle").style.display=curGenre==="Classical"?"block":"none";
+  document.getElementById("hitmode-toggle").style.display=SYNTH_GENRES[curGenre]?"block":"none";
 }
 
 // ── MENU ───────────────────────────────────────────────
@@ -1513,13 +1820,16 @@ function buildMenu(){
     b.textContent=g;b.onclick=()=>{curGenre=g;curIdx=0;stopPreview();buildMenu();};
     gt.appendChild(b);
   });
-  // Classical genre tab
-  var cb=document.createElement("button");
-  cb.className="gtab"+(curGenre==="Classical"?" active":"");
-  cb.textContent="\uD83C\uDFBB Classical";cb.onclick=function(){curGenre="Classical";curIdx=0;stopPreview();buildMenu();};
-  gt.appendChild(cb);
+  // Synth genre tabs (Classical, Video Games, Chiptune Originals, Folk)
+  var synthIcons={"Classical":"\uD83C\uDFBB","Video Games":"\uD83C\uDFAE","Chiptune Originals":"\uD83D\uDC7E","Folk":"\uD83C\uDFB6"};
+  Object.keys(SYNTH_GENRES).forEach(function(sg){
+    var cb=document.createElement("button");
+    cb.className="gtab"+(curGenre===sg?" active":"");
+    cb.textContent=synthIcons[sg]+" "+sg;cb.onclick=function(){curGenre=sg;curIdx=0;stopPreview();buildMenu();};
+    gt.appendChild(cb);
+  });
   const rg=document.getElementById("rgrid");rg.innerHTML="";
-  (curGenre==="Classical"?CLASSICAL_PIECES:GENRES[curGenre]).forEach((r,i)=>{
+  (SYNTH_GENRES[curGenre]||GENRES[curGenre]).forEach((r,i)=>{
     const b=document.createElement("button");
     b.className="rbtn"+(i===curIdx?" sel":"");
     b.innerHTML=`${r.n}<small>${r.composer?r.composer+' \u00b7 ':''}${r.bpm} bpm</small>`;
@@ -1586,7 +1896,7 @@ function stopPreview(){
 function startPreview(){
   stopPreview();previewing=true;
   const b=document.getElementById("pvbtn");b.textContent="■ Stop";b.classList.add("playing");
-  const r=curGenre==="Classical"?CLASSICAL_PIECES[curIdx]:GENRES[curGenre][curIdx];
+  const r=SYNTH_GENRES[curGenre]?SYNTH_GENRES[curGenre][curIdx]:GENRES[curGenre][curIdx];
   document.getElementById("pvlbl").textContent="▶ "+r.n;
   loopPreview(r,0);
 }
@@ -1621,7 +1931,7 @@ function startGame(){
   gamePlayers=players.map(p=>({...p,score:0,streak:0,maxStreak:0,total:0,good:0}));
   activePIdx=0;resetStats();show("sg");resizeCv();
   if(mode==="builtin"){
-    gameRhythm=curGenre==="Classical"?CLASSICAL_PIECES[curIdx]:GENRES[curGenre][curIdx];
+    gameRhythm=SYNTH_GENRES[curGenre]?SYNTH_GENRES[curGenre][curIdx]:GENRES[curGenre][curIdx];
     document.getElementById("hud-title").textContent=curGenre+" — "+gameRhythm.n+" ("+gameRhythm.bpm+" bpm)";
     notes=gameRhythm.isClassical?buildClassicalNotes(gameRhythm):buildNotes(gameRhythm);
     countdown(()=>gameRhythm.isClassical?beginClassical():beginBuiltin());
