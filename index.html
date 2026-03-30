@@ -1429,7 +1429,7 @@ const CLASSICAL_PIECES=(function(){
 })();
 
 function buildClassicalNotes(piece){
-  return piece.melody.filter(function(m){return activePads[m.l];})
+  var raw=piece.melody.filter(function(m){return activePads[m.l];})
     .map(function(m){
       // Find matching frequency from background notes at same time
       var freq=261.63; // default C4
@@ -1440,6 +1440,16 @@ function buildClassicalNotes(piece){
       return{time:m.t,lane:m.l,freq:freq,hit:false,missed:false};
     })
     .sort(function(a,b){return a.time-b.time;});
+  // Enforce minimum gap between notes so stacked/simultaneous notes are playable
+  // Without this, fast passes create 2-3 notes within 0.07s on different lanes
+  var MIN_GAP=0.12;
+  var result=[],lastTime=-1;
+  for(var i=0;i<raw.length;i++){
+    if(raw[i].time-lastTime>=MIN_GAP){
+      result.push(raw[i]);lastTime=raw[i].time;
+    }
+  }
+  return result;
 }
 
 function beginClassical(){
@@ -1449,7 +1459,7 @@ function beginClassical(){
   gameStartTime=ac.currentTime+0.15;
   for(var i=0;i<piece.bg.length;i++){
     var n=piece.bg[i];
-    playSynth(ac,n.f,gameStartTime+n.t,n.d,n.i,n.v,gameSynthNodes);
+    playSynth(ac,n.f,gameStartTime+n.t,n.d,n.i,n.v*1.5,gameSynthNodes);
   }
   setTimeout(function(){if(playing)endTurn();},piece.duration*1000+800);
 }
@@ -1683,9 +1693,11 @@ function endTurn(){
 
 // ── HIT LOGIC ──────────────────────────────────────────
 function triggerPad(lane){
-  var isClassicalOrch=gameRhythm&&gameRhythm.isClassical&&classicalHitMode==='orchestra';
+  var isClassical=gameRhythm&&gameRhythm.isClassical;
+  var isClassicalOrch=isClassical&&classicalHitMode==='orchestra';
+  // Drum hit sound — quieter in classical so orchestra background is audible
   if(!isClassicalOrch){
-    playDrumAt(getAc(),lane,getAc().currentTime,8,[]);
+    playDrumAt(getAc(),lane,getAc().currentTime,isClassical?3:8,[]);
   }
   laneFlash[lane]=1;setTimeout(()=>laneFlash[lane]=0,120);
   if(!playing)return;
@@ -1705,15 +1717,15 @@ function triggerPad(lane){
     // Play orchestral hit sound for classical mode
     if(isClassicalOrch&&best.freq){
       var ac=getAc(),ct=ac.currentTime;
-      playSynth(ac,best.freq,ct,0.3,'strings',0.5,[]);
-      playSynth(ac,best.freq,ct,0.3,'brass',0.3,[]);
+      playSynth(ac,best.freq,ct,0.35,'strings',0.7,[]);
+      playSynth(ac,best.freq,ct,0.35,'brass',0.4,[]);
     } else if(isClassicalOrch){
-      playDrumAt(getAc(),lane,getAc().currentTime,8,[]);
+      playDrumAt(getAc(),lane,getAc().currentTime,3,[]);
     }
     showMsg(bestD<0.05?"PERFECT!":"GOOD",bestD<0.05?"#68d391":"#d69e2e");
   } else {
-    // Miss — play drum sound as feedback even in orchestra mode
-    if(isClassicalOrch)playDrumAt(getAc(),lane,getAc().currentTime,4,[]);
+    // Miss — quiet drum thud as feedback
+    if(isClassicalOrch)playDrumAt(getAc(),lane,getAc().currentTime,2,[]);
     cStreak=0;showMsg("MISS","#fc8181");
   }
   updateHud();
