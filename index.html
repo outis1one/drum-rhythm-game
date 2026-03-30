@@ -149,12 +149,6 @@ canvas{display:block;}
   </div>
   <div id="game-controls">
     <label class="gctrl-label">
-      <span class="gctrl-icon">🏃</span>
-      <span class="gctrl-name">Tempo</span>
-      <input type="range" min="50" max="150" value="100" step="5" id="hud-speed" class="gctrl-slider" oninput="setSpeed(this.value);document.getElementById('speed-slider').value=this.value">
-      <span class="gctrl-val" id="hud-speed-val">100%</span>
-    </label>
-    <label class="gctrl-label">
       <span class="gctrl-icon">🔊</span>
       <span class="gctrl-name">Volume</span>
       <input type="range" min="0" max="150" value="100" step="5" id="hud-vol" class="gctrl-slider" oninput="setVolume(this.value);document.getElementById('vol-slider').value=this.value">
@@ -2367,11 +2361,10 @@ buildPadToggles();
 function saveSettings(){localStorage.setItem("drgameSettings",JSON.stringify({speed:gameSpeed,volume:masterVolume}));}
 function syncSliders(){
   var sv=Math.round(gameSpeed*100),vv=Math.round(masterVolume*100);
-  ['speed-slider','hud-speed'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=sv;});
+  ['speed-slider'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=sv;});
   ['vol-slider','hud-vol'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=vv;});
   var se=document.getElementById("speed-val");if(se)se.textContent=sv+"%";
   var ve=document.getElementById("vol-val");if(ve)ve.textContent=vv+"%";
-  var hse=document.getElementById("hud-speed-val");if(hse)hse.textContent=sv+"%";
   var hve=document.getElementById("hud-vol-val");if(hve)hve.textContent=vv+"%";
 }
 function setSpeed(v){gameSpeed=v/100;syncSliders();saveSettings();}
