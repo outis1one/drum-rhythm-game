@@ -2162,6 +2162,19 @@ var remapping=false,remapStep=0,remapResult={};
 var _savedSettings=JSON.parse(localStorage.getItem("drgameSettings")||"{}");
 var gameSpeed=_savedSettings.speed||1.0,masterVolume=_savedSettings.volume||1.0;
 var hiddenGenres=JSON.parse(localStorage.getItem("drgameHidden")||"[]");
+var hiddenSongs=JSON.parse(localStorage.getItem("drgameHiddenSongs")||"{}");
+function isSongHidden(genre,name){return hiddenSongs[genre]&&hiddenSongs[genre].indexOf(name)>=0;}
+function hideSong(genre,name){
+  if(!hiddenSongs[genre])hiddenSongs[genre]=[];
+  if(hiddenSongs[genre].indexOf(name)<0)hiddenSongs[genre].push(name);
+  localStorage.setItem("drgameHiddenSongs",JSON.stringify(hiddenSongs));
+  buildMenu();
+}
+function showAllSongs(genre){
+  delete hiddenSongs[genre];
+  localStorage.setItem("drgameHiddenSongs",JSON.stringify(hiddenSongs));
+  buildMenu();
+}
 let gameRhythm=null;
 const HIT_WIN=0.17,SPEED=260;
 
@@ -2199,8 +2212,8 @@ function confirmReset(){
   if(ans===null)return;
   if(parseInt(ans)===a+b){
     localStorage.removeItem("drgame5");localStorage.removeItem("drgameSettings");
-    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameHidden");
-    savedScores=[];hiddenGenres=[];gpMap={0:2,1:3,2:0,3:1,4:4,8:4};
+    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameHidden");localStorage.removeItem("drgameHiddenSongs");
+    savedScores=[];hiddenGenres=[];hiddenSongs={};gpMap={0:2,1:3,2:0,3:1,4:4,8:4};
     refreshMiniLB();resetSettings();buildMenu();
     alert("All data cleared!");
   } else {alert("Incorrect — data NOT cleared.");}
@@ -2243,13 +2256,22 @@ function buildMenu(){
     gt.appendChild(sb);
   }
   const rg=document.getElementById("rgrid");rg.innerHTML="";
-  (SYNTH_GENRES[curGenre]||GENRES[curGenre]).forEach((r,i)=>{
+  var songList=SYNTH_GENRES[curGenre]||GENRES[curGenre];
+  var hidCount=0;
+  songList.forEach((r,i)=>{
+    if(isSongHidden(curGenre,r.n)){hidCount++;return;}
     const b=document.createElement("button");
     b.className="rbtn"+(i===curIdx?" sel":"");
     b.innerHTML=`${r.n}<small>${r.composer?r.composer+' \u00b7 ':''}${r.bpm} bpm</small>`;
     b.onclick=()=>{curIdx=i;stopPreview();document.getElementById("pvlbl").textContent=r.n+" selected";buildMenu();};
+    b.oncontextmenu=(e)=>{e.preventDefault();hideSong(curGenre,r.n);};
     rg.appendChild(b);
   });
+  if(hidCount>0){
+    const sb=document.createElement("button");sb.className="rbtn";sb.style.opacity="0.4";sb.style.fontSize="10px";
+    sb.textContent="\u2795 Show "+hidCount+" hidden";sb.onclick=()=>showAllSongs(curGenre);
+    rg.appendChild(sb);
+  }
   const pl=document.getElementById("plist");pl.innerHTML="";
   players.forEach((p,i)=>{
     const row=document.createElement("div");row.className="prow";
