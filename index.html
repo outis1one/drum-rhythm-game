@@ -139,6 +139,8 @@ canvas{display:block;}
     <div class="hstat"><span>Streak</span><b id="hst">0</b></div>
     <div class="hstat"><span>Acc</span><b id="ha">-</b></div>
     <div class="hstat"><span>Player</span><b id="hp">-</b></div>
+    <label style="font-size:9px;opacity:.5;display:flex;align-items:center;gap:3px;" title="Speed">🏃<input type="range" min="50" max="150" value="100" step="5" id="hud-speed" style="width:50px;" oninput="setSpeed(this.value);document.getElementById('speed-slider').value=this.value"></label>
+    <label style="font-size:9px;opacity:.5;display:flex;align-items:center;gap:3px;" title="Volume">🔊<input type="range" min="0" max="150" value="100" step="5" id="hud-vol" style="width:50px;" oninput="setVolume(this.value);document.getElementById('vol-slider').value=this.value"></label>
     <span id="gpd" style="font-size:10px;opacity:.4">No gamepad</span>
   </div>
   <div id="cwrap">
@@ -1915,18 +1917,73 @@ const SINGALONG_PIECES=(function(){
     [3,1,2,1,3,0,3,1,2,0,1,2,1,3,1,2,1,3,0,3,1,2,1,0,2,3,2,0],
     [1,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,2,1,4],
     5,C4);
-  // ── Wellerman ──
-  var wellerman=pub("Wellerman","NZ Sea Shanty (1860s)",125,
-    [A3,A3,A3,A3,C4,C4,B3,A3,A3,A3,A3,C4,C4,B3,A3,G3,
-     E4,E4,E4,E4,E4,D4,C4,D4,E4,C4,A3,C4,B3,A3,
-     C4,C4,C4,C4,D4,E4,E4,D4,C4,D4,E4,C4,A3,C4,B3,A3,G3,A3],
-    [0,0,0,0,1,1,3,0,0,0,0,1,1,3,0,3,
-     2,2,2,2,2,1,0,1,2,0,0,1,3,0,
-     1,1,1,1,1,2,2,1,0,1,2,0,0,1,3,0,3,0],
-    [1,1,1,1,1,1,1,2,1,1,1,1,1,1,2,2,
-     1,1,1,1,1,1,1,1,2,1,1,1,1,2,
-     1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,3],
-    4,A3);
+  // ── Wellerman (accurate melody with driving stomp beat) ──
+  var wellerman=(function(){
+    var bg=[],mel=[],t=0,q=0.32;
+    function vox(t,f,d,v,inst){bg.push({t:t,f:f,d:d,i:inst||'strings',v:v||0.35});}
+    function stomp(t,v){bg.push({t:t,f:110,d:0.2,i:'timpani',v:v||0.4});}
+    // Verse melody (Am): "There once was a ship that put to sea..."
+    var verse1=[E4,E4,E4,E4,A4,A4,G4,E4];
+    var verse2=[E4,E4,E4,E4,A4,A4,G4,E4];
+    var verse3=[A4,A4,A4,A4,C5,C5,B4,A4];
+    var verse4=[E4,E4,G4,G4,E4,D4];
+    var vL1=[2,2,2,2,0,0,3,2],vL2=[2,2,2,2,0,0,3,2],vL3=[0,0,0,0,1,1,3,0],vL4=[2,2,3,3,2,1];
+    var vD1=[1,1,1,1,1,1,1,2],vD2=[1,1,1,1,1,1,1,2],vD3=[1,1,1,1,1,1,1,2],vD4=[1,1,1,1,1,3];
+    // Chorus melody: "Soon may the Wellerman come..."
+    var ch1=[A4,C5,C5,C5,D5,E5];
+    var ch2=[E5,D5,C5,D5,E5,C5];
+    var ch3=[A4,C5,C5,C5,D5,E5];
+    var ch4=[E5,D5,C5,B4,A4];
+    var cL1=[0,1,1,1,1,2],cL2=[2,1,0,1,2,0],cL3=[0,1,1,1,1,2],cL4=[2,1,0,3,0];
+    var cD1=[1,1,1,1,1,2],cD2=[1,1,1,1,1,2],cD3=[1,1,1,1,1,2],cD4=[1,1,1,1,4];
+    function playLine(notes,lanes,durs,v,inst){
+      notes.forEach(function(f,i){
+        var d=durs[i]*q;
+        vox(t,f,d*0.85,v,inst);
+        if(v>0.3)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.4});
+        mel.push({t:t,l:lanes[i]});
+        // Driving stomp on every beat
+        if(durs[i]>=1)stomp(t,v*0.8);
+        t+=d;
+      });
+    }
+    // 3 full rounds: verse+chorus, each building
+    var rounds=[
+      {v:0.3,i:'woodwind'},{v:0.4,i:'strings'},{v:0.55,i:'brass'}
+    ];
+    rounds.forEach(function(r,ri){
+      // Add chord backing from round 2
+      if(ri>0){
+        var chordT=t;
+        [A3,A3,A3,A3,A3,A3,E3,E3].forEach(function(f,ci){
+          bg.push({t:chordT+ci*q*4,f:f,d:q*3.5,i:'strings',v:r.v*0.3});
+        });
+      }
+      // Add choir from round 3
+      if(ri>1){
+        var choirNotes=verse1.concat(verse2,verse3,verse4,ch1,ch2,ch3,ch4);
+        var choirT=t;
+        var allDurs=vD1.concat(vD2,vD3,vD4,cD1,cD2,cD3,cD4);
+        choirNotes.forEach(function(f,i){bg.push({t:choirT,f:f,d:allDurs[i]*q*0.8,i:'choir',v:r.v*0.3});choirT+=allDurs[i]*q;});
+      }
+      // Verse
+      playLine(verse1,vL1,vD1,r.v,r.i);
+      playLine(verse2,vL2,vD2,r.v,r.i);
+      playLine(verse3,vL3,vD3,r.v,r.i);
+      playLine(verse4,vL4,vD4,r.v,r.i);
+      t+=q*0.5;
+      // Chorus (bigger)
+      playLine(ch1,cL1,cD1,r.v*1.2,r.i);
+      playLine(ch2,cL2,cD2,r.v*1.2,r.i);
+      playLine(ch3,cL3,cD3,r.v*1.2,r.i);
+      playLine(ch4,cL4,cD4,r.v*1.2,r.i);
+      t+=q;
+    });
+    // Finale: big Am chord
+    [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'brass',v:0.55});bg.push({t:t,f:f,d:2.5,i:'choir',v:0.4});});
+    bg.push({t:t,f:A3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
+    return {n:"Wellerman",composer:"NZ Sea Shanty (1860s)",bpm:125,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
   // ── Leave Her Johnny ──
   var leavejohnny=pub("Leave Her Johnny","Sea Shanty (Trad.)",105,
     [A3,A3,C4,D4,E4,E4,D4,C4,A3,G3,A3,C4,D4,E4,G4,E4,D4,C4,A3,G3,A3,C4,E4,D4,C4,A3],
@@ -2197,15 +2254,17 @@ function buildPadToggles(){
 }
 buildPadToggles();
 function saveSettings(){localStorage.setItem("drgameSettings",JSON.stringify({speed:gameSpeed,volume:masterVolume}));}
-function setSpeed(v){gameSpeed=v/100;document.getElementById("speed-val").textContent=v+"%";saveSettings();}
-function setVolume(v){masterVolume=v/100;document.getElementById("vol-val").textContent=v+"%";saveSettings();}
-function resetSettings(){gameSpeed=1.0;masterVolume=1.0;document.getElementById("speed-slider").value=100;document.getElementById("vol-slider").value=100;document.getElementById("speed-val").textContent="100%";document.getElementById("vol-val").textContent="100%";saveSettings();}
-function loadSettings(){
-  document.getElementById("speed-slider").value=Math.round(gameSpeed*100);
-  document.getElementById("speed-val").textContent=Math.round(gameSpeed*100)+"%";
-  document.getElementById("vol-slider").value=Math.round(masterVolume*100);
-  document.getElementById("vol-val").textContent=Math.round(masterVolume*100)+"%";
+function syncSliders(){
+  var sv=Math.round(gameSpeed*100),vv=Math.round(masterVolume*100);
+  ['speed-slider','hud-speed'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=sv;});
+  ['vol-slider','hud-vol'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=vv;});
+  var se=document.getElementById("speed-val");if(se)se.textContent=sv+"%";
+  var ve=document.getElementById("vol-val");if(ve)ve.textContent=vv+"%";
 }
+function setSpeed(v){gameSpeed=v/100;syncSliders();saveSettings();}
+function setVolume(v){masterVolume=v/100;syncSliders();saveSettings();}
+function resetSettings(){gameSpeed=1.0;masterVolume=1.0;syncSliders();saveSettings();}
+function loadSettings(){syncSliders();}
 function confirmReset(){
   var a=Math.floor(Math.random()*20)+5,b=Math.floor(Math.random()*20)+5;
   var ans=prompt("To reset ALL saved data (scores, settings, gamepad mapping, hidden genres), solve this:\n\nWhat is "+a+" + "+b+"?");
@@ -2688,10 +2747,13 @@ function showRemapStep(){
   document.getElementById("remap-prompt").innerHTML="Hit your <span style='color:"+rl.color+";font-size:24px'>"+rl.name+"</span> pad";
   document.getElementById("remap-status").textContent="Step "+(remapStep+1)+" of "+remapLanes.length+(remapStep===4?" (or press foot pedal)":"");
 }
+var remapCooldown=false;
 function handleRemapButton(bi){
-  if(!remapping)return false;
+  if(!remapping||remapCooldown)return false;
   remapResult[bi]=remapLanes[remapStep].l;
   remapStep++;
+  remapCooldown=true;
+  setTimeout(function(){remapCooldown=false;},300);
   showRemapStep();
   return true;
 }
@@ -2709,9 +2771,12 @@ function pollGP(){
   for(const gp of gps){
     if(!gp)continue;found=true;
     document.getElementById("gpd").textContent="🎮 "+gp.id.slice(0,20);
+    var remapHandled=false;
     gp.buttons.forEach((btn,bi)=>{
       if(btn.pressed&&!prevBtns[bi]){
-        if(remapping){handleRemapButton(bi);}
+        if(remapping){
+          if(!remapHandled){remapHandled=true;handleRemapButton(bi);}
+        }
         else if(!paused&&gpMap[bi]!==undefined)triggerPad(gpMap[bi]);
       }
       prevBtns[bi]=btn.pressed;
