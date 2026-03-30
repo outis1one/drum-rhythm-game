@@ -110,7 +110,7 @@ canvas{display:block;}
     <div id="mlb" style="font-size:12px;opacity:.5">No scores yet.</div>
     <div style="display:flex;gap:6px;margin-top:8px">
       <button class="smbtn" onclick="goScores()">View All</button>
-      <button class="smbtn red" onclick="if(confirm('Clear ALL saved data? (scores, settings, gamepad mapping)')){localStorage.removeItem('drgame5');localStorage.removeItem('drgameSettings');localStorage.removeItem('drgameGpMap');savedScores=[];refreshMiniLB();resetSettings();gpMap={0:2,1:3,2:0,3:1,4:4,8:4};}">Reset All Data</button>
+      <button class="smbtn red" onclick="confirmReset()">Reset All Data</button>
     </div>
   </div>
 
@@ -1984,7 +1984,142 @@ const SINGALONG_PIECES=(function(){
   return [drunken,wellerman,molly,whiskey,parting,leavejohnny,blowman,randy,southaus,chariot,hauljoe,spanish,skye,bella,amazing,auld,saints,clementine,scarborough,bonnie];
 })();
 
-var SYNTH_GENRES={"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
+// ── SPIRITUALS (traditional African American songs) ──
+const SPIRITUAL_PIECES=(function(){
+  var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,A3=NT.A3,Bb3=NT.Bb3,B3=NT.B3,
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5;
+  function spirit(name,origin,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=0.25;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.2+rep*0.08;
+      var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.6)?'strings':'choir';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
+        if(rep>0)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.3});
+        if(rep>Math.floor(passes*0.5))bg.push({t:t,f:f,d:d*0.85,i:'choir',v:v*0.35});
+        if(rep>Math.floor(passes*0.7))bg.push({t:t,f:f,d:d*0.85,i:'brass',v:v*0.3});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.4;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'choir',v:0.5});bg.push({t:t,f:f,d:2.5,i:'strings',v:0.35});});
+    bg.push({t:t,f:r/2,d:2.0,i:'timpani',v:0.5});mel.push({t:t,l:4});
+    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  }
+  var swing=spirit("Swing Low, Sweet Chariot","Spiritual (1862)",80,
+    [G4,C5,C5,E5,D5,C5,A4,G4,E4,G4,A4,G4,E4,C4,D4,E4,G4,C5,C5,E5,D5,C5,A4,G4,E4,G4,A4,C5,G4],
+    [3,0,0,2,1,0,0,3,2,3,0,3,2,0,1,2,3,0,0,2,1,0,0,3,2,3,0,0,3],
+    [2,2,1,2,1,1,2,2,1,1,1,2,1,2,1,1,2,2,1,2,1,1,2,2,1,1,2,1,4],
+    4,C4);
+  var godown=spirit("Go Down Moses","Spiritual (Trad.)",90,
+    [A3,C4,C4,D4,E4,E4,D4,C4,A3,C4,D4,E4,G4,E4,D4,C4,A3,C4,E4,G4,A4,G4,E4,D4,C4,A3],
+    [0,0,0,1,2,2,1,0,0,0,1,2,3,2,1,0,0,0,2,3,0,3,2,1,0,0],
+    [1,2,1,1,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,2,4],
+    5,A3);
+  var wade=spirit("Wade in the Water","Spiritual (Trad.)",100,
+    [E4,E4,G4,A4,B4,A4,G4,E4,D4,E4,G4,A4,B4,D5,B4,A4,G4,E4,D4,E4,G4,B4,A4,G4,E4],
+    [2,2,3,0,3,0,3,2,1,2,3,0,3,1,3,0,3,2,1,2,3,3,0,3,2],
+    [1,1,1,1,2,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,4],
+    5,E4);
+  var kumbaya=spirit("Kumbaya","Spiritual (Trad.)",75,
+    [C4,E4,F4,G4,G4,F4,E4,C4,C4,E4,F4,G4,A4,G4,E4,C4,E4,F4,G4,G4,F4,E4,D4,C4],
+    [0,2,1,3,3,1,2,0,0,2,1,3,0,3,2,0,2,1,3,3,1,2,1,0],
+    [1,1,1,2,1,1,2,2,1,1,1,2,1,2,1,1,1,1,2,1,1,1,1,4],
+    5,C4);
+  var michael=spirit("Michael Row the Boat Ashore","Spiritual (1860s)",90,
+    [C4,E4,F4,E4,C4,D4,E4,F4,G4,A4,G4,E4,C4,D4,C4,C4,E4,G4,A4,G4,E4,F4,E4,D4,C4],
+    [0,2,1,2,0,1,2,1,3,0,3,2,0,1,0,0,2,3,0,3,2,1,2,1,0],
+    [1,1,1,2,1,1,1,1,2,1,1,1,2,1,3,1,1,2,1,1,1,1,1,1,4],
+    5,C4);
+  var wholeworld=spirit("He's Got the Whole World","Spiritual (Trad.)",110,
+    [C4,C4,E4,G4,G4,E4,G4,A4,G4,E4,C4,E4,G4,C5,A4,G4,E4,C4,E4,G4,E4,C4],
+    [0,0,2,3,3,2,3,0,3,2,0,2,3,0,0,3,2,0,2,3,2,0],
+    [1,1,1,2,1,1,1,1,1,1,2,1,1,2,1,1,1,2,1,1,1,4],
+    5,C4);
+  var nobody=spirit("Nobody Knows the Trouble I've Seen","Spiritual (Trad.)",75,
+    [C4,E4,G4,A4,G4,E4,C4,D4,E4,G4,C5,A4,G4,E4,D4,C4,E4,G4,A4,C5,A4,G4,E4,D4,C4],
+    [0,2,3,0,3,2,0,1,2,3,0,0,3,2,1,0,2,3,0,0,0,3,2,1,0],
+    [1,1,2,1,1,2,2,1,1,2,1,1,1,2,1,2,1,2,1,2,1,1,1,1,4],
+    4,C4);
+  var battle=spirit("Battle Hymn of the Republic","J.W. Howe (1861)",115,
+    [C4,C4,C4,E4,E4,D4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,G4,F4,E4,F4,G4,A4,G4,E4,C4,E4,D4,C4],
+    [0,0,0,2,2,1,0,1,2,1,2,1,0,0,2,3,3,1,2,1,3,0,3,2,0,2,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,4],
+    4,C4);
+  return [swing,godown,wade,kumbaya,michael,wholeworld,nobody,battle];
+})();
+
+// ── WORLD (folk songs from various cultures) ──
+const WORLD_PIECES=(function(){
+  var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,Bb3=NT.Bb3,B3=NT.B3,
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,Gb4=NT.Gb4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5;
+  function world(name,origin,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=0.25;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.2+rep*0.08;
+      var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
+        if(rep>1)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.35});
+        if(rep>Math.floor(passes*0.6))bg.push({t:t,f:f,d:d*0.85,i:'brass',v:v*0.35});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.4;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'brass',v:0.5});bg.push({t:t,f:f,d:2.0,i:'strings',v:0.4});});
+    bg.push({t:t,f:r/2,d:1.5,i:'timpani',v:0.55});mel.push({t:t,l:4});
+    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  }
+  var hava=world("Hava Nagila","Jewish/Israeli (1918)",130,
+    [E4,F4,E4,D4,E4,F4,G4,Ab4,G4,F4,E4,F4,G4,Ab4,B4,Ab4,G4,F4,E4,F4,G4,Ab4,G4,F4,E4,D4,E4],
+    [2,1,2,1,2,1,3,0,3,1,2,1,3,0,3,0,3,1,2,1,3,0,3,1,2,1,2],
+    [1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,4],
+    5,E4);
+  var cucaracha=world("La Cucaracha","Mexican (Trad.)",135,
+    [C4,C4,C4,F4,A4,C4,C4,C4,F4,A4,F4,F4,E4,E4,D4,D4,C4,C4,C4,G4,Bb4,C4,C4,C4,G4,Bb4,A4,G4,F4,E4,D4,C4],
+    [0,0,0,1,0,0,0,0,1,0,1,1,2,2,1,1,0,0,0,3,2,0,0,0,3,2,0,3,1,2,1,0],
+    [1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,1,4],
+    4,F4);
+  var frere=world("Fr\u00e8re Jacques","French (1780s)",110,
+    [C4,D4,E4,C4,C4,D4,E4,C4,E4,F4,G4,E4,F4,G4,G4,A4,G4,F4,E4,C4,G4,A4,G4,F4,E4,C4,C4,G3,C4,C4,G3,C4],
+    [0,1,2,0,0,1,2,0,2,1,3,2,1,3,3,0,3,1,2,0,3,0,3,1,2,0,0,3,0,0,3,0],
+    [1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,4],
+    4,C4);
+  var cielito=world("Cielito Lindo","Mexican (1882)",120,
+    [E4,E4,F4,G4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,E4,G4,C5,C5,B4,A4,G4,F4,E4,D4,C4,E4,G4,C5],
+    [2,2,1,3,0,3,1,2,1,2,1,2,1,0,2,3,0,0,3,0,3,1,2,1,0,2,3,0],
+    [1,1,1,1,2,1,1,1,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,2,1,1,4],
+    4,C4);
+  var waltzing=world("Waltzing Matilda","Australian (1895)",110,
+    [G4,G4,A4,B4,D5,B4,A4,G4,E4,G4,A4,B4,A4,G4,E4,D4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,G4],
+    [3,3,0,3,1,3,0,3,2,3,0,3,0,3,2,1,3,3,0,3,1,3,0,3,2,1,3],
+    [1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,2,1,1,1,1,1,1,4],
+    5,G4);
+  var osole=world("'O Sole Mio","Italian (1898)",90,
+    [C4,D4,E4,F4,G4,A4,G4,F4,E4,D4,C4,D4,E4,F4,G4,C5,B4,A4,G4,F4,E4,F4,G4,A4,G4,F4,E4,D4,C4],
+    [0,1,2,1,3,0,3,1,2,1,0,1,2,1,3,0,3,0,3,1,2,1,3,0,3,1,2,1,0],
+    [1,1,1,1,2,1,1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,4],
+    4,C4);
+  var ballgame=world("Take Me Out to the Ball Game","American (1908)",125,
+    [C4,C4,A4,G4,E4,G4,D4,C4,C4,A4,G4,E4,G4,C4,C4,A4,G4,F4,E4,D4,E4,F4,D4,C4,A4,G4,E4,C4],
+    [0,0,0,3,2,3,1,0,0,0,3,2,3,0,0,0,3,1,2,1,2,1,1,0,0,3,2,0],
+    [1,1,2,1,1,2,1,2,1,2,1,1,3,1,1,2,1,1,1,1,1,1,2,1,1,1,1,4],
+    4,C4);
+  var mountain=world("She'll Be Coming Round the Mountain","American (1890s)",130,
+    [G4,G4,B4,B4,D5,D5,B4,G4,A4,B4,C5,C5,A4,A4,G4,B4,D5,D5,B4,G4,A4,C5,B4,A4,G4],
+    [3,3,3,3,1,1,3,3,0,3,0,0,0,0,3,3,1,1,3,3,0,0,3,0,3],
+    [1,1,2,1,2,1,1,2,1,1,2,1,2,1,2,1,2,1,1,2,1,1,1,1,4],
+    5,G4);
+  return [hava,cucaracha,frere,cielito,waltzing,osole,ballgame,mountain];
+})();
+
+var SYNTH_GENRES={"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Spirituals":SPIRITUAL_PIECES,"World":WORLD_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
 
 function buildClassicalNotes(piece){
   return piece.melody.filter(function(m){return activePads[m.l];})
@@ -2026,6 +2161,7 @@ var gpMap=JSON.parse(localStorage.getItem("drgameGpMap")||"null")||{0:2,1:3,2:0,
 var remapping=false,remapStep=0,remapResult={};
 var _savedSettings=JSON.parse(localStorage.getItem("drgameSettings")||"{}");
 var gameSpeed=_savedSettings.speed||1.0,masterVolume=_savedSettings.volume||1.0;
+var hiddenGenres=JSON.parse(localStorage.getItem("drgameHidden")||"[]");
 let gameRhythm=null;
 const HIT_WIN=0.17,SPEED=260;
 
@@ -2057,6 +2193,24 @@ function loadSettings(){
   document.getElementById("vol-slider").value=Math.round(masterVolume*100);
   document.getElementById("vol-val").textContent=Math.round(masterVolume*100)+"%";
 }
+function confirmReset(){
+  var a=Math.floor(Math.random()*20)+5,b=Math.floor(Math.random()*20)+5;
+  var ans=prompt("To reset ALL saved data (scores, settings, gamepad mapping, hidden genres), solve this:\n\nWhat is "+a+" + "+b+"?");
+  if(ans===null)return;
+  if(parseInt(ans)===a+b){
+    localStorage.removeItem("drgame5");localStorage.removeItem("drgameSettings");
+    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameHidden");
+    savedScores=[];hiddenGenres=[];gpMap={0:2,1:3,2:0,3:1,4:4,8:4};
+    refreshMiniLB();resetSettings();buildMenu();
+    alert("All data cleared!");
+  } else {alert("Incorrect — data NOT cleared.");}
+}
+function hideGenre(g){
+  if(hiddenGenres.indexOf(g)<0)hiddenGenres.push(g);
+  localStorage.setItem("drgameHidden",JSON.stringify(hiddenGenres));
+  if(curGenre===g){var allG=Object.keys(SYNTH_GENRES).concat(Object.keys(GENRES));curGenre=allG.find(function(x){return hiddenGenres.indexOf(x)<0;})||allG[0];curIdx=0;}
+  buildMenu();
+}
 function setHitMode(m){
   classicalHitMode=m;
   document.getElementById("hitmode-drums").className="smbtn"+(m==='drums'?' purple':'');
@@ -2069,21 +2223,25 @@ function updateHitModeVisibility(){
 // ── MENU ───────────────────────────────────────────────
 function buildMenu(){
   const gt=document.getElementById("gtabs");gt.innerHTML="";
-  // Synth genres first (songs people know)
-  var synthIcons={"Singalong":"\uD83C\uDFB5","Christmas":"\uD83C\uDF84","Folk":"\uD83C\uDFB6","Classical":"\uD83C\uDFBB","Video Games":"\uD83C\uDFAE","Chiptune Originals":"\uD83D\uDC7E"};
-  Object.keys(SYNTH_GENRES).forEach(function(sg){
-    var cb=document.createElement("button");
-    cb.className="gtab"+(curGenre===sg?" active":"");
-    cb.textContent=synthIcons[sg]+" "+sg;cb.onclick=function(){curGenre=sg;curIdx=0;stopPreview();buildMenu();};
-    gt.appendChild(cb);
-  });
-  // Drum pattern genres
-  Object.keys(GENRES).forEach(g=>{
-    const b=document.createElement("button");
+  var synthIcons={"Singalong":"\uD83C\uDFB5","Christmas":"\uD83C\uDF84","Folk":"\uD83C\uDFB6","Spirituals":"\uD83D\uDE4F","World":"\uD83C\uDF0D","Classical":"\uD83C\uDFBB","Video Games":"\uD83C\uDFAE","Chiptune Originals":"\uD83D\uDC7E"};
+  var allGenres=Object.keys(SYNTH_GENRES).concat(Object.keys(GENRES));
+  var anyHidden=hiddenGenres.length>0;
+  allGenres.forEach(function(g){
+    if(hiddenGenres.indexOf(g)>=0)return;
+    var b=document.createElement("button");
     b.className="gtab"+(g===curGenre?" active":"");
-    b.textContent=g;b.onclick=()=>{curGenre=g;curIdx=0;stopPreview();buildMenu();};
+    b.textContent=(synthIcons[g]?synthIcons[g]+" ":"")+g;
+    b.onclick=function(){curGenre=g;curIdx=0;stopPreview();buildMenu();};
+    b.oncontextmenu=function(e){e.preventDefault();hideGenre(g);};
     gt.appendChild(b);
   });
+  if(anyHidden){
+    var sb=document.createElement("button");
+    sb.className="gtab";sb.style.opacity="0.4";sb.style.fontSize="10px";
+    sb.textContent="\u2795 Show All ("+hiddenGenres.length+" hidden)";
+    sb.onclick=function(){hiddenGenres=[];localStorage.setItem("drgameHidden","[]");buildMenu();};
+    gt.appendChild(sb);
+  }
   const rg=document.getElementById("rgrid");rg.innerHTML="";
   (SYNTH_GENRES[curGenre]||GENRES[curGenre]).forEach((r,i)=>{
     const b=document.createElement("button");
