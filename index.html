@@ -84,6 +84,11 @@ canvas{display:block;}
     <h2>Active Pads</h2>
     <div class="pad-toggle" id="pad-toggles"></div>
     <p style="font-size:11px;opacity:.4;margin-top:8px">Toggle which pads show notes. Inactive pads still make sound when hit.</p>
+    <div id="hitmode-toggle" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid #222;">
+      <span style="font-size:11px;opacity:.5;margin-right:8px;">Classical hit sound:</span>
+      <button class="smbtn" id="hitmode-drums" onclick="setHitMode('drums')">🥁 Drums</button>
+      <button class="smbtn purple" id="hitmode-orch" onclick="setHitMode('orchestra')">🎻 Orchestra</button>
+    </div>
   </div>
 
   <div class="card">
@@ -1425,7 +1430,15 @@ const CLASSICAL_PIECES=(function(){
 
 function buildClassicalNotes(piece){
   return piece.melody.filter(function(m){return activePads[m.l];})
-    .map(function(m){return{time:m.t,lane:m.l,hit:false,missed:false};})
+    .map(function(m){
+      // Find matching frequency from background notes at same time
+      var freq=261.63; // default C4
+      for(var i=0;i<piece.bg.length;i++){
+        var b=piece.bg[i];
+        if(Math.abs(b.t-m.t)<0.01&&b.i!=='bass'&&b.i!=='timpani'){freq=b.f;break;}
+      }
+      return{time:m.t,lane:m.l,freq:freq,hit:false,missed:false};
+    })
     .sort(function(a,b){return a.time-b.time;});
 }
 
@@ -1450,7 +1463,7 @@ let gameAc=null,mp3Buffer=null,mp3Src=null;
 let notes=[],gameStartTime=null,playing=false;
 let gamePlayers=[],activePIdx=0;
 let cScore=0,cStreak=0,cTotal=0,cGood=0,cMaxStreak=0;
-let laneFlash=[0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[];
+let laneFlash=[0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[],classicalHitMode='orchestra';
 let gameRhythm=null;
 const HIT_WIN=0.17,SPEED=260;
 
@@ -1472,6 +1485,14 @@ function buildPadToggles(){
   });
 }
 buildPadToggles();
+function setHitMode(m){
+  classicalHitMode=m;
+  document.getElementById("hitmode-drums").className="smbtn"+(m==='drums'?' purple':'');
+  document.getElementById("hitmode-orch").className="smbtn"+(m==='orchestra'?' purple':'');
+}
+function updateHitModeVisibility(){
+  document.getElementById("hitmode-toggle").style.display=curGenre==="Classical"?"block":"none";
+}
 
 // ── MENU ───────────────────────────────────────────────
 function buildMenu(){
@@ -1504,6 +1525,7 @@ function buildMenu(){
     if(players.length>1){const d=document.createElement("button");d.className="smbtn red";d.textContent="✕";d.onclick=()=>{players.splice(i,1);buildMenu();};row.appendChild(d);}
     pl.appendChild(row);
   });
+  updateHitModeVisibility();
 }
 buildMenu();
 function addPlayer(){players.push({name:"Player "+(players.length+1)});buildMenu();}
@@ -1661,7 +1683,10 @@ function endTurn(){
 
 // ── HIT LOGIC ──────────────────────────────────────────
 function triggerPad(lane){
-  playDrumAt(getAc(),lane,getAc().currentTime,8,[]);
+  var isClassicalOrch=gameRhythm&&gameRhythm.isClassical&&classicalHitMode==='orchestra';
+  if(!isClassicalOrch){
+    playDrumAt(getAc(),lane,getAc().currentTime,8,[]);
+  }
   laneFlash[lane]=1;setTimeout(()=>laneFlash[lane]=0,120);
   if(!playing)return;
   if(mode==="mp3"){showMsg("♪",LANES[lane].color);return;}
@@ -1677,8 +1702,20 @@ function triggerPad(lane){
   if(best){
     best.hit=true;cStreak++;cGood++;cScore+=100*Math.min(cStreak,10);
     if(cStreak>cMaxStreak)cMaxStreak=cStreak;
+    // Play orchestral hit sound for classical mode
+    if(isClassicalOrch&&best.freq){
+      var ac=getAc(),ct=ac.currentTime;
+      playSynth(ac,best.freq,ct,0.3,'strings',0.5,[]);
+      playSynth(ac,best.freq,ct,0.3,'brass',0.3,[]);
+    } else if(isClassicalOrch){
+      playDrumAt(getAc(),lane,getAc().currentTime,8,[]);
+    }
     showMsg(bestD<0.05?"PERFECT!":"GOOD",bestD<0.05?"#68d391":"#d69e2e");
-  } else {cStreak=0;showMsg("MISS","#fc8181");}
+  } else {
+    // Miss — play drum sound as feedback even in orchestra mode
+    if(isClassicalOrch)playDrumAt(getAc(),lane,getAc().currentTime,4,[]);
+    cStreak=0;showMsg("MISS","#fc8181");
+  }
   updateHud();
 }
 function updateHud(){
