@@ -14,8 +14,11 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
    - **F** = Red (Tom)
    - **G** = Yellow (Snare)
    - **H** = Blue (Hi-hat)
-   - **J** = Green (Tom)
+   - **J** = Green (Tom 2)
    - **Space** = Kick (Bass drum)
+   - **D** = Crash (off by default)
+   - **K** = Ride (off by default)
+   - **L** = Tom 3 (off by default)
    - **Escape** = Pause
 6. **Right-click** any genre tab or song to hide it
 
@@ -32,7 +35,7 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 - **Gamepad Remap** — configure any USB drum kit with the Remap Pads button
 - **Hide genres/songs** — right-click to hide, "Show All" to restore, saved across sessions
 - **Multiplayer** — take turns, scores compared at the end
-- **Pad Toggles** — turn pads on/off to adjust difficulty
+- **8 lanes** — 5 default pads + 3 extra (Crash, Ride, Tom 3) toggled on via Active Pads
 - **Preview** — hear any song before playing
 - **Leaderboard** — scores saved locally
 - **Settings persistence** — speed, volume, gamepad mapping, hidden items all saved to localStorage
@@ -231,6 +234,8 @@ All sounds are generated in real-time using the Web Audio API — no audio files
 | Snare | Highpass noise burst + 180Hz tone |
 | Hi-hat | Highpass noise burst, very short |
 | Toms | Sine oscillator pitch sweep |
+| Crash | Long noise burst, wide frequency |
+| Ride | Metallic ping, bandpass filtered |
 | Strings | Sawtooth + lowpass filter |
 | Brass | Square + lowpass filter |
 | Woodwind | Triangle oscillator |
