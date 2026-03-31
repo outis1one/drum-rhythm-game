@@ -21,8 +21,8 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 
 ## Features
 
-- **16 Genres** across two modes: synth orchestra songs + drum beat patterns
-- **91 synth pieces** with full synthesized orchestra background (68 minutes)
+- **17 Genres** across two modes: synth orchestra songs + drum beat patterns
+- **97 synth pieces** with full synthesized orchestra background
 - **120 drum patterns** across 8 genres
 - **Drums or Orchestra mode** — choose whether pad hits play drum sounds or the actual melody note
 - **Speed control** — slow down to 50% for practice or speed up to 150%
@@ -38,6 +38,14 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 - **Math-protected reset** — Reset All Data requires solving a math problem to prevent accidents
 
 ## Song List
+
+### Prime (6 songs)
+- Twinkle Twinkle Little Star (Traditional, 1760s)
+- Mary Had a Little Lamb (S.J. Hale, 1830)
+- Happy Birthday (P.S. Hill, 1893)
+- Chopsticks (Euphemia Allen, 1877)
+- Lavender's Blue (English Traditional, 1670s)
+- Shortnin' Bread (Traditional, 1900s)
 
 ### Singalong (20 songs)
 - Drunken Sailor (Sea Shanty)
@@ -204,7 +212,7 @@ All sounds are generated in real-time using the Web Audio API — no audio files
 ## Tech
 
 - Pure vanilla JavaScript — no libraries, no build step, no server
-- Single `index.html` file (~3000 lines)
+- Single `index.html` file (~4500 lines)
 - Web Audio API for all sound synthesis
 - Canvas 2D for the note highway
 - Gamepad API for drum kit input
