@@ -863,7 +863,7 @@ const CLASSICAL_PIECES=(function(){
   var hmk=(function(){
     var bg=[],mel=[];
     function orch(t,freq,dur,v,inst){bg.push({t:t,f:freq,d:dur,i:inst||'strings',v:v||0.3});}
-    var theme=[A3,B3,C4,D4,E4,C4,E4,D4,B3,D4,Db4,A3,Db4,A3];
+    var theme=[B3,Db4,D4,E4,Gb4,D4,Gb4,E4,Db4,E4,Eb4,B3,Eb4,B3];
     var lanes=[0,1,2,0,1,2,1,0,3,0,1,3,1,3];
     var t=0;
     // Pass 1: Very slow, barely audible (creeping start)
@@ -906,7 +906,7 @@ const CLASSICAL_PIECES=(function(){
     theme.forEach(function(f,i){
       orch(t,f,d5*0.8,0.5,'strings');orch(t,f,d5*0.8,0.35,'brass');
       orch(t,f/2,d5*0.8,0.35,'bass');
-      if(i%4===0)bg.push({t:t,f:A3/2,d:0.3,i:'timpani',v:0.45});
+      if(i%4===0)bg.push({t:t,f:B3/2,d:0.3,i:'timpani',v:0.45});
       mel.push({t:t,l:lanes[i]});t+=d5;
     });
     t+=0.2;
@@ -915,7 +915,7 @@ const CLASSICAL_PIECES=(function(){
     theme.forEach(function(f,i){
       orch(t,f,d6*0.8,0.6,'strings');orch(t,f,d6*0.8,0.45,'brass');
       orch(t,f/2,d6*0.8,0.4,'bass');
-      if(i%2===0)bg.push({t:t,f:A3/2,d:0.2,i:'timpani',v:0.55});
+      if(i%2===0)bg.push({t:t,f:B3/2,d:0.2,i:'timpani',v:0.55});
       mel.push({t:t,l:lanes[i]});t+=d6;
     });
     t+=0.15;
@@ -924,25 +924,25 @@ const CLASSICAL_PIECES=(function(){
     theme.forEach(function(f,i){
       orch(t,f,d7*0.8,0.65,'strings');orch(t,f,d7*0.8,0.5,'brass');
       orch(t,f/2,d7*0.8,0.45,'bass');
-      bg.push({t:t,f:A3/2,d:0.15,i:'timpani',v:0.6});
+      bg.push({t:t,f:B3/2,d:0.15,i:'timpani',v:0.6});
       mel.push({t:t,l:lanes[i]});t+=d7;
     });
     // Big finale: repeated chords
     t+=0.15;
     for(var ci=0;ci<4;ci++){
       var t2=t+ci*0.4;
-      [A3,C4,E4,A4].forEach(function(f){
+      [B3,D4,Gb4,B4].forEach(function(f){
         orch(t2,f,0.35,0.65,'brass');orch(t2,f,0.35,0.55,'strings');
       });
-      bg.push({t:t2,f:A3/2,d:0.4,i:'timpani',v:0.65});
+      bg.push({t:t2,f:B3/2,d:0.4,i:'timpani',v:0.65});
       mel.push({t:t2,l:4});
     }
     // Final long chord
     t=t+1.8;
-    [A3,C4,E4,A4].forEach(function(f){
+    [B3,D4,Gb4,B4].forEach(function(f){
       orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5,'strings');
     });
-    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.7});
+    bg.push({t:t,f:B3/2,d:1.5,i:'timpani',v:0.7});
     mel.push({t:t,l:4});
     return {n:"Hall of the Mountain King",composer:"Grieg",bpm:120,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
@@ -2282,28 +2282,95 @@ const CLASSICAL_PIECES=(function(){
     // Big chord
     [D3,A3,D4,F4,A4].forEach(function(f){org(t,f,1.5,0.6);});
     bg.push({t:t,f:D3/2,d:1.2,i:'timpani',v:0.55});mel.push({t:t,l:4});t+=1.8;
-    // Fugue: 6 entries accelerating
+
+    // === Toccata continuation: dramatic recitative-like passages ===
+    // Rapid ascending arpeggios (organ virtuosity)
+    var arp1=[D4,F4,A4,D5,F5,D5,A4,F4];
+    var a1Ln=[0,2,0,1,2,1,0,2];
+    [0.18,0.16,0.14].forEach(function(spd,si){
+      var av=0.4+si*0.06;
+      arp1.forEach(function(f,i){org(t,f,spd*0.8,av);mel.push({t:t,l:a1Ln[i]});t+=spd;});
+      t+=0.2;
+    });
+    // Sustained D minor chord with pedal point
+    [D3,A3,D4,F4,A4].forEach(function(f){org(t,f,2.5,0.6);});
+    bg.push({t:t,f:D3/2,d:2.0,i:'timpani',v:0.55});mel.push({t:t,l:4});t+=3.0;
+
+    // === Second toccata section: sequence descending through keys ===
+    // D minor → C major → Bb major → A major (dominant)
+    var seqKeys=[[D4,F4,A4,D5],[C4,E4,G4,C5],[Bb3,D4,F4,Bb4],[A3,Db4,E4,A4]];
+    seqKeys.forEach(function(ch,ki){
+      var sv=0.45+ki*0.04;
+      // Rapid broken chord
+      ch.forEach(function(f,i){org(t,f,0.15,sv);mel.push({t:t,l:[0,1,2,3][i]});t+=0.16;});
+      // Sustained chord
+      ch.forEach(function(f){org(t,f,1.2,sv);});
+      mel.push({t:t,l:4});t+=1.5;
+    });
+    t+=0.5;
+
+    // === Dramatic ascending chromatic passage ===
+    [D4,Eb4,E4,F4,Gb4,G4,Ab4,A4,Bb4,B4,C5,Db5,D5].forEach(function(f,i){
+      org(t,f,0.14,0.5+i*0.01);
+      bg.push({t:t,f:f/2,d:0.14,i:'bass',v:0.3});
+      mel.push({t:t,l:[0,1,2,3][i%4]});t+=0.15;
+    });
+    // Massive Neapolitan chord → V → i cadence
+    [Eb4,G4,Bb4,Eb5].forEach(function(f){org(t,f,1.5,0.6);});mel.push({t:t,l:4});t+=1.8;
+    [A3,Db4,E4,A4].forEach(function(f){org(t,f,1.2,0.6);});mel.push({t:t,l:4});t+=1.5;
+
+    // === Fugue: subject entries building in intensity ===
     var subj=[D4,E4,F4,G4,A4,Bb4,A4,G4,F4,E4,D4,A3,D4];
     var sLn=[0,1,2,3,0,2,0,3,2,1,0,4,0];
-    var speeds=[0.30,0.26,0.23,0.20,0.17,0.14];
-    var vols=[0.3,0.35,0.4,0.48,0.55,0.62];
+    // 8 entries from slow to fast, quiet to loud
+    var speeds=[0.32,0.28,0.25,0.22,0.20,0.18,0.16,0.14];
+    var vols=[0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.62];
     speeds.forEach(function(spd,si){
       subj.forEach(function(f,i){
         org(t,f,spd*0.85,vols[si]);
         if(si>1)bg.push({t:t,f:f/2,d:spd*0.85,i:'bass',v:vols[si]*0.5});
-        if(si>3)bg.push({t:t,f:f,d:spd*0.85,i:'strings',v:vols[si]*0.4});
-        if(si>3&&i%3===0)bg.push({t:t,f:D3,d:0.3,i:'timpani',v:vols[si]*0.6});
+        if(si>3){
+          bg.push({t:t,f:f,d:spd*0.85,i:'strings',v:vols[si]*0.4});
+          if(i%3===0)bg.push({t:t,f:D3,d:0.3,i:'timpani',v:vols[si]*0.6});
+        }
         mel.push({t:t,l:sLn[i]});t+=spd;
       });
-      t+=0.4;
+      t+=0.35;
     });
-    // Final cascade
+
+    // === Stretto: subject entries overlapping, maximum intensity ===
+    // Two interleaved subjects at breakneck speed
+    var strSpd=0.12;
+    subj.forEach(function(f,i){
+      org(t,f,strSpd*0.85,0.65);org(t,f*2,strSpd*0.85,0.4);
+      bg.push({t:t,f:f/2,d:strSpd*0.85,i:'bass',v:0.5});
+      bg.push({t:t,f:f,d:strSpd*0.85,i:'strings',v:0.45});
+      if(i%2===0)bg.push({t:t,f:D3,d:0.2,i:'timpani',v:0.6});
+      mel.push({t:t,l:sLn[i]});t+=strSpd;
+    });
+    t+=0.3;
+
+    // === Grand finale: cascading scales and massive chords ===
+    // Descending cascade
     [D5,C5,Bb4,A4,G4,F4,E4,D4,C4,Bb3,A3,G3].forEach(function(f,i){
-      org(t,f,0.13,0.6);bg.push({t:t,f:f,d:0.13,i:'strings',v:0.4});mel.push({t:t,l:[0,2,3,1][i%4]});t+=0.14;
+      org(t,f,0.12,0.6);bg.push({t:t,f:f,d:0.12,i:'strings',v:0.4});mel.push({t:t,l:[0,2,3,1][i%4]});t+=0.13;
     });
-    t+=0.2;
-    [D3,A3,D4,F4,A4,D5].forEach(function(f){org(t,f,3.0,0.7);});
-    bg.push({t:t,f:D3/2,d:2.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+    t+=0.15;
+    // Ascending cascade
+    [D3,E3,F3,G3,A3,Bb3,C4,D4,E4,F4,G4,A4,Bb4,C5,D5].forEach(function(f,i){
+      org(t,f,0.11,0.6);bg.push({t:t,f:f,d:0.11,i:'strings',v:0.45});mel.push({t:t,l:[0,1,2,3][i%4]});t+=0.12;
+    });
+    t+=0.3;
+
+    // Final massive chords: iv-V-i (plagal approach)
+    for(var fc=0;fc<3;fc++){
+      var fch=[[G3,Bb3,D4,G4],[A3,Db4,E4,A4],[D3,A3,D4,F4,A4,D5]][fc];
+      fch.forEach(function(f){org(t,f,0.8,0.65);bg.push({t:t,f:f,d:0.8,i:'strings',v:0.5});});
+      bg.push({t:t,f:D3/2,d:0.7,i:'timpani',v:0.6});mel.push({t:t,l:4});t+=1.0;
+    }
+    // Sustained final D minor
+    [D3,A3,D4,F4,A4,D5].forEach(function(f){org(t,f,4.0,0.7);bg.push({t:t,f:f,d:4.0,i:'strings',v:0.5});});
+    bg.push({t:t,f:D3/2,d:3.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
     return {n:"Toccata & Fugue in D Minor",composer:"Bach",bpm:100,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -2503,8 +2570,8 @@ const CLASSICAL_PIECES=(function(){
   // ── Swan Lake (Theme) ──
   var swan=(function(){
     var bg=[],mel=[],t=0,q=0.55;
-    var theme=[A4,B4,C5,B4,A4,E4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,B3,A3,B3,C4,D4,E4,A4];
-    var tLn=[0,1,2,1,0,2,0,3,2,1,0,1,2,1,0,2,1,0,1,2,0,2,0];
+    var theme=[B4,Db5,D5,Db5,B4,B4,Db5,D5,E5,D5,Db5,B4,A4,Gb4,B4,A4,G4,Gb4,E4,Gb4,G4,Gb4,B4];
+    var tLn=[1,0,0,0,1,1,0,0,0,0,0,1,2,3,1,2,2,3,3,3,2,3,1];
     for(var rep=0;rep<3;rep++){
       var v=0.25+rep*0.12;
       var inst=rep===0?'woodwind':rep===1?'strings':'brass';
@@ -2512,17 +2579,17 @@ const CLASSICAL_PIECES=(function(){
         bg.push({t:t,f:f,d:q*0.85,i:inst,v:v});
         if(rep>0)bg.push({t:t,f:f/2,d:q*0.85,i:'bass',v:v*0.4});
         if(rep>1)bg.push({t:t,f:f,d:q*0.85,i:'strings',v:v*0.5});
-        if(i%3===0){bg.push({t:t,f:A3,d:q*2,i:'bass',v:v*0.3});}
+        if(i%3===0){bg.push({t:t,f:B3,d:q*2,i:'bass',v:v*0.3});}
         mel.push({t:t,l:tLn[i]});t+=q;
       });
       t+=0.5;
     }
     for(var c=0;c<3;c++){
-      [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:q*2.5,i:'strings',v:0.55});bg.push({t:t,f:f,d:q*2.5,i:'brass',v:0.45});});
+      [B3,D4,Gb4,B4].forEach(function(f){bg.push({t:t,f:f,d:q*2.5,i:'strings',v:0.55});bg.push({t:t,f:f,d:q*2.5,i:'brass',v:0.45});});
       mel.push({t:t,l:4});t+=q*3;
     }
-    [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'strings',v:0.55});});
-    bg.push({t:t,f:A3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
+    [B3,D4,Gb4,B4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'strings',v:0.55});});
+    bg.push({t:t,f:B3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
     return {n:"Swan Lake (Theme)",composer:"Tchaikovsky",bpm:110,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -2647,10 +2714,11 @@ const CLASSICAL_PIECES=(function(){
   // ── Dance of the Sugar Plum Fairy ──
   var sugarplum=(function(){
     var bg=[],mel=[],t=0,q=0.4;
-    var theme=[E4,Eb4,E4,B3,D4,C4,A3,C4,E4,A4,B3,E4,Ab4,B4,A4];
-    var tLn=[2,1,2,3,0,2,0,2,2,1,3,2,1,0,1];
-    var ans=[E4,Eb4,E4,B3,D4,C4,A3];
-    var aLn=[2,1,2,3,0,2,0];
+    // Celesta melody from The Nutcracker — staccato descending/ascending pattern in E minor
+    var theme=[B4,A4,Ab4,A4,C5,B4,A4,Ab4,E4,Ab4,B4,E5,D5,C5,B4];
+    var tLn=[3,0,1,0,2,3,0,1,2,1,3,2,1,0,3];
+    var ans=[B4,A4,Ab4,A4,C5,B4,A4];
+    var aLn=[3,0,1,0,2,3,0];
     for(var rep=0;rep<5;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<2?'woodwind':rep<4?'strings':'brass';
@@ -2983,7 +3051,7 @@ const CLASSICAL_PIECES=(function(){
   var canon=(function(){
     var bg=[],mel=[],t=0,q=0.55;
     var bassLine=[D3,A3,B3,Gb3,G3,D3,G3,A3];
-    // Real Pachelbel violin melody: F#-E-D-C#-B-A-B-C# (var 1) then D-C#-B-A-G-F#-G-A (var 2)
+    // Real Pachelbel violin melody: F#5-E5-D5-C#5-B4-A4-B4-C#5 (var 1) then D5-C#5-B4-A4-G4-F#4-G4-A4 (var 2)
     var melody2=[Gb4,E4,D4,Db4,B3,A3,B3,Db4,D4,Db4,B3,A3,G3,Gb3,G3,A3];
     var m2Ln=[2,1,0,1,3,0,3,1,0,1,3,0,3,2,3,0];
     for(var rep=0;rep<4;rep++){
@@ -3013,10 +3081,10 @@ const CLASSICAL_PIECES=(function(){
   var hungarian=(function(){
     var bg=[],mel=[],t=0;
     function orch(t,f,d,v,i){bg.push({t:t,f:f,d:d,i:i||'strings',v:v||0.4});}
-    var fast=[A4,G4,A4,E4,A4,G4,A4,E4,F4,E4,D4,C4,B3,A3,B3,C4,D4,E4,F4,E4];
-    var fLn=[0,3,0,2,0,3,0,2,1,2,0,1,3,0,3,1,0,2,1,2];
-    var slow=[A4,A4,G4,F4,E4,D4,E4,F4,G4,A4];
-    var sLn=[0,0,3,1,2,0,2,1,3,0];
+    var fast=[A4,A4,A4,A4,Bb4,A4,G4,F4,F4,E4,F4,G4,A4,A4,Bb4,A4,G4,F4,E4,D4];
+    var fLn=[0,0,0,0,2,0,3,1,1,2,1,3,0,0,2,0,3,1,2,0];
+    var slow=[D4,D4,E4,F4,F4,E4,D4,E4,F4,A4];
+    var sLn=[0,0,2,1,1,2,0,2,1,0];
     // Fast section 1
     [0.20,0.18].forEach(function(qf,qi){
       var v=0.35+qi*0.1;
@@ -3051,11 +3119,11 @@ const CLASSICAL_PIECES=(function(){
       t+=0.3;
     });
     for(var c=0;c<4;c++){
-      [A3,C4,E4,A4].forEach(function(f){orch(t,f,0.35,0.65,'brass');});
-      bg.push({t:t,f:A3/2,d:0.35,i:'timpani',v:0.65});mel.push({t:t,l:4});t+=0.45;
+      [D3,A3,D4,F4].forEach(function(f){orch(t,f,0.35,0.65,'brass');});
+      bg.push({t:t,f:D3/2,d:0.35,i:'timpani',v:0.65});mel.push({t:t,l:4});t+=0.45;
     }
-    [A3,C4,E4,A4].forEach(function(f){orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5);});
-    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+    [D3,A3,D4,F4,A4].forEach(function(f){orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5);});
+    bg.push({t:t,f:D3/2,d:1.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
     return {n:"Hungarian Dance No. 5",composer:"Brahms",bpm:140,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -3252,7 +3320,7 @@ const VIDEOGAME_PIECES=(function(){
 
   // ── Turkish March (Mozart) ──
   var turkish=(function(){
-    var bg=[],mel=[],t=0,q=0.18;
+    var bg=[],mel=[],t=0,q=0.227;
     var theme=[B3,A3,Ab3,A3,C4,D4,C4,B3,A3,B3,C4,D4,E4,D4,C4,B3,A3,B3,A3,A3];
     var tLn= [3,0,1,0,2,1,2,3,0,3,0,1,2,1,0,3,0,3,0,0];
     for(var rep=0;rep<6;rep++){
@@ -3314,7 +3382,7 @@ const VIDEOGAME_PIECES=(function(){
 
   // ── Can-Can (Offenbach) ──
   var cancan=(function(){
-    var bg=[],mel=[],t=0,q=0.16;
+    var bg=[],mel=[],t=0,q=0.197;
     var theme=[C4,D4,E4,C4,E4,C4,E4,D4,E4,F4,E4,D4,C4,D4,E4,F4,G4,A4,G4,E4,C4,D4,E4,C4];
     var tLn=  [0,1,2,0,2,0,2,1,2,3,2,1,0,1,2,3,0,1,0,2,0,1,2,0];
     for(var rep=0;rep<6;rep++){
@@ -3446,7 +3514,7 @@ const FOLK_PIECES=(function(){
 
   // Folk piece helper
   function folk(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -3469,56 +3537,56 @@ const FOLK_PIECES=(function(){
   var ohsusanna=folk("Oh! Susanna","Stephen Foster (1848)",120,
     [C4,D4,E4,G4,G4,A4,G4,E4,C4,D4,E4,E4,D4,C4,D4,C4,D4,E4,G4,G4,A4,G4,E4,C4,D4,E4,E4,D4,D4,C4],
     [0,1,2,3,3,0,3,2,0,1,2,2,1,0,1,0,1,2,3,3,0,3,2,0,1,2,2,1,1,0],
-    [1,1,2,2,1,1,2,2,1,1,2,1,1,2,2,1,1,2,2,1,1,2,2,1,1,2,1,1,1,3],
+    [2,2,4,4,2,2,4,4,2,2,4,2,2,4,4,2,2,4,4,2,2,4,4,2,2,4,2,2,2,6],
     5,C4);
 
   // ── Greensleeves ──
   var greensleeves=folk("Greensleeves","English Traditional (1580)",100,
     [A3,C4,D4,E4,F4,E4,D4,B3,G3,A3,B3,C4,A3,A3,Ab3,A3,B3,Ab3,A3,C4,D4,E4,F4,E4,D4,B3,G3,A3,B3,C4,B3,A3],
     [0,1,0,2,1,2,0,3,3,0,3,1,0,0,1,0,3,3,0,1,0,2,1,2,0,3,3,0,3,1,3,0],
-    [2,1,2,2,1,2,2,1,2,1,1,2,2,1,1,1,2,2,2,1,2,2,1,2,2,1,2,1,1,1,1,3],
+    [2,3,1,2,3,1,2,3,1,2,1,2,6,2,1,2,3,6,2,3,1,2,3,1,2,3,1,2,1,2,2,6],
     4,A3);
 
   // ── Camptown Races ──
   var camptown=folk("Camptown Races","Stephen Foster (1850)",140,
     [G4,G4,E4,G4,A4,G4,E4,C4,D4,D4,E4,E4,F4,E4,D4,C4,C4,E4,G4,G4,G4,E4,G4,A4,G4,E4,C4,G4,A4,B4,A4,G4,E4,D4,D4,C4],
     [3,3,2,3,0,3,2,0,1,1,2,2,1,2,1,0,0,2,3,3,3,2,3,0,3,2,0,3,0,3,0,3,2,1,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
     3,C4);
 
   // ── Red River Valley ──
   var redriver=folk("Red River Valley","American Traditional (1870s)",85,
     [C4,D4,E4,G4,G4,E4,D4,C4,D4,E4,F4,E4,D4,C4,E4,G4,A4,G4,E4,D4,C4,D4,E4,C4],
     [0,1,2,3,3,2,1,0,1,2,1,2,1,0,2,3,0,3,2,1,0,1,2,0],
-    [2,1,1,3,1,1,1,2,1,1,1,2,1,2,1,2,2,1,1,1,2,1,2,3],
+    [2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4],
     4,C4);
 
   // ── Home on the Range ──
   var homerange=folk("Home on the Range","American Traditional (1870s)",95,
     [C4,E4,G4,A4,G4,E4,C4,D4,F4,A4,G4,F4,E4,D4,C4,E4,G4,C5,A4,G4,E4,D4,C4,C4],
     [0,2,3,0,3,2,0,1,1,0,3,1,2,1,0,2,3,0,0,3,2,1,0,0],
-    [2,1,2,2,1,1,2,1,1,2,1,1,2,1,2,1,2,2,1,1,1,1,2,3],
+    [2,2,4,2,2,2,4,2,2,4,2,2,2,4,2,2,4,2,2,2,4,2,4,6],
     4,C4);
 
   // ── Yankee Doodle ──
   var yankee=folk("Yankee Doodle","American Traditional (1770s)",130,
     [C4,C4,D4,E4,C4,E4,D4,G3,C4,C4,D4,E4,C4,B3,C4,C4,D4,E4,F4,E4,D4,C4,B3,G3,A3,B3,C4,C4],
     [0,0,1,2,0,2,1,3,0,0,1,2,0,3,0,0,1,2,1,2,1,0,3,3,0,3,0,0],
-    [1,1,1,1,1,1,2,2,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,3],
+    [2,2,2,2,2,2,4,4,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,4,6],
     5,C4);
 
   // ── Turkey in the Straw ──
   var turkey=folk("Turkey in the Straw","American Traditional (1820s)",145,
     [G4,A4,B4,G4,E4,G4,A4,B4,C5,B4,A4,G4,E4,D4,E4,G4,A4,B4,C5,D5,C5,B4,A4,G4],
     [0,1,3,0,2,0,1,3,0,3,1,0,2,1,2,0,1,3,0,1,0,3,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
     5,G4);
 
   // ── Danny Boy ──
   var dannyboy=folk("Danny Boy","Irish Traditional (1910s)",72,
     [C4,E4,F4,G4,A4,G4,A4,C5,B4,A4,G4,F4,G4,C4,E4,F4,G4,A4,G4,A4,C5,D5,C5,A4,G4,A4,A4,C5,D5,E5,D5,C5,A4,C5,B4,A4,G4,A4,G4,E4,C4,E4,F4,G4,A4,G4,F4,E4,C4],
     [0,2,1,3,0,3,0,0,3,0,3,1,3,0,2,1,3,0,3,0,0,1,0,0,3,0,0,0,1,2,1,0,0,0,3,0,3,0,3,2,0,2,1,3,0,3,1,2,0],
-    [2,1,1,2,1,1,1,2,1,1,1,2,3,2,1,1,2,1,1,1,2,1,1,1,2,3,1,1,2,2,1,1,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4],
     3,C4);
 
   return [ohsusanna,greensleeves,camptown,redriver,homerange,yankee,turkey,dannyboy];
@@ -3528,10 +3596,10 @@ const FOLK_PIECES=(function(){
 // ── CHRISTMAS (public domain carols) ──
 const CHRISTMAS_PIECES=(function(){
   var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,A3=NT.A3,B3=NT.B3,
-    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,Gb4=NT.Gb4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
   function carol(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -3553,121 +3621,121 @@ const CHRISTMAS_PIECES=(function(){
   var jingle=carol("Jingle Bells","J. Pierpont (1857)",140,
     [E4,E4,E4,E4,E4,E4,E4,G4,C4,D4,E4,F4,F4,F4,F4,F4,E4,E4,E4,E4,D4,D4,E4,D4,G4,E4,E4,E4,E4,E4,E4,E4,G4,C4,D4,E4,F4,F4,F4,F4,F4,E4,E4,G4,G4,F4,D4,C4],
     [2,2,2,2,2,2,2,3,0,1,2,1,1,1,1,1,2,2,2,2,1,1,2,1,3,2,2,2,2,2,2,2,3,0,1,2,1,1,1,1,1,2,2,3,3,1,1,0],
-    [1,1,2,1,1,2,1,1,1,1,4,1,1,1,1,1,1,1,1,1,1,1,1,1,4,1,1,2,1,1,2,1,1,1,1,4,1,1,1,1,1,1,1,1,1,1,1,4],
-    4,C4);
+    [1,1,2,1,1,2,1,1,1,1,6,2,2,2,1,1,2,2,1,1,2,2,2,2,6,1,1,2,1,1,2,1,1,1,1,6,2,1,1,1,2,1,1,2,2,2,2,6],
+    3,C4);
   var silent=carol("Silent Night","F. Gruber (1818)",72,
     [G4,A4,G4,E4,G4,A4,G4,E4,D5,D5,B4,C5,C5,G4,A4,A4,C5,B4,A4,G4,A4,G4,E4,A4,A4,C5,B4,A4,G4,A4,G4,E4,D5,D5,F5,D5,B4,C5,E5,C5,G4,E4,G4,F4,D4,C4],
     [3,0,3,2,3,0,3,2,0,0,3,0,0,3,0,0,0,3,0,3,0,3,2,0,0,0,3,0,3,0,3,2,0,0,1,0,3,0,2,0,3,2,3,1,1,0],
-    [2,1,2,3,2,1,2,3,2,1,3,2,1,3,2,1,2,1,2,2,1,2,3,2,1,2,1,2,2,1,2,3,2,1,2,1,3,2,2,2,2,1,1,1,1,4],
+    [3,1,2,6,3,1,2,6,2,2,6,2,2,6,2,2,3,1,2,3,1,2,6,2,2,3,1,2,3,1,2,6,2,2,3,1,6,2,2,2,2,2,3,1,2,6],
     3,C4);
   var deck=carol("Deck the Halls","Welsh (1862)",130,
     [C5,Bb4,A4,G4,F4,G4,A4,F4,G4,A4,Bb4,G4,A4,G4,F4,E4,D4,E4,F4,G4,A4,G4,F4,E4,F4,G4,A4,Bb4,C5,A4,G4,F4],
     [0,3,0,3,1,3,0,1,3,0,2,3,0,3,1,2,1,2,1,3,0,3,1,2,1,3,0,2,0,0,3,1],
-    [2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,4],
+    [3,1,2,2,3,1,2,2,2,2,2,2,3,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,1,2,4],
     4,F4);
   var wish=carol("We Wish You a Merry Christmas","English (1500s)",140,
     [G4,C5,C5,D5,C5,B4,A4,A4,D5,D5,E5,D5,C5,B4,G4,E5,E5,F5,E5,D5,C5,A4,G4,G4,A4,D5,B4,C5],
     [3,0,0,1,0,3,0,0,1,1,2,1,0,3,3,2,2,1,2,1,0,0,3,3,0,1,3,0],
-    [1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,10],
     5,C4);
   var ocometree=carol("O Christmas Tree","German (1824)",100,
     [F4,Bb4,Bb4,Bb4,C5,D5,D5,D5,D5,Eb5,C5,A4,Bb4,F4,Bb4,Bb4,Bb4,C5,D5,D5,D5,D5,Eb5,C5,A4,Bb4],
     [1,2,2,2,0,1,1,1,1,2,0,0,2,1,2,2,2,0,1,1,1,1,2,0,0,2],
-    [1,2,1,1,1,2,1,1,1,1,1,1,3,1,2,1,1,1,2,1,1,1,1,1,1,4],
+    [2,4,2,2,2,4,2,2,2,2,2,2,6,2,4,2,2,2,4,2,2,2,2,2,2,6],
     4,Bb4);
   var firstnoel=carol("The First Noel","English (1823)",95,
     [E4,D4,C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,A4,B4,C5,B4,A4,G4,A4,B4,C5,G4,F4,E4,D4,C4,D4,C4],
     [2,1,0,1,2,1,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,1,2,1,0,1,0],
-    [1,1,2,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,4],
+    [2,2,4,2,2,2,4,2,2,4,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,4,2,6],
     4,C4);
   var joy=carol("Joy to the World","G.F. Handel (1719)",120,
     [C5,B4,A4,G4,F4,E4,D4,C4,G4,A4,A4,B4,B4,C5,C5,C5,B4,A4,G4,G4,F4,E4,C5,C5,B4,A4,G4,G4,F4,E4,D4,C4],
     [0,3,0,3,1,2,1,0,3,0,0,3,3,0,0,0,3,0,3,3,1,2,0,0,3,0,3,3,1,2,1,0],
-    [2,1,1,2,1,1,1,3,2,1,2,1,2,1,2,1,1,1,2,1,1,3,2,1,1,1,2,1,1,1,1,4],
+    [3,1,2,6,2,2,2,8,4,2,4,2,4,2,2,1,1,2,4,2,2,6,2,1,1,2,4,2,2,2,2,8],
     4,C4);
   var away=carol("Away in a Manger","J.Murray (1885)",80,
     [C4,F4,F4,F4,G4,A4,F4,F4,A4,G4,F4,G4,F4,D4,C4,C4,F4,F4,F4,G4,A4,F4,F4,A4,G4,F4,G4,F4,D4,C4,Bb4,A4,F4],
     [0,1,1,1,3,0,1,1,0,3,1,3,1,1,0,0,1,1,1,3,0,1,1,0,3,1,3,1,1,0,2,0,1],
-    [1,2,1,1,1,2,1,1,2,1,1,1,2,1,3,1,2,1,1,1,2,1,1,2,1,1,1,2,1,2,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     4,F4);
   var twelve=carol("12 Days of Christmas","English (1780)",110,
     [C4,F4,F4,F4,F4,E4,F4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,C5,A4,Bb4,G4,A4,F4],
     [0,1,1,1,1,2,1,3,0,2,0,3,1,3,0,2,0,3,1,3,0,2,0,0,2,3,0,1],
-    [1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,8],
     5,F4);
   var hark=carol("Hark the Herald Angels Sing","Mendelssohn (1840)",115,
     [C4,F4,F4,E4,F4,A4,A4,G4,C5,A4,A4,G4,C5,A4,A4,G4,A4,Bb4,G4,A4,Bb4,C5,A4,F4,G4,Bb4,A4,G4,F4],
     [0,1,1,2,1,0,0,3,0,0,0,3,0,0,0,3,0,2,3,0,2,0,0,1,3,2,0,3,1],
-    [1,2,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,4],
+    [2,4,2,2,4,2,2,4,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,8],
     4,F4);
   // ── O Come All Ye Faithful (G major → transposed to C) ──
   var ocome=carol("O Come All Ye Faithful","J.F. Wade (1743)",100,
     [C4,C4,G4,C4,D4,G4,E4,D4,E4,F4,E4,D4,C4,B4,A4,B4,C5,B4,A4,G4,A4,E4,F4,E4,D4,E4,F4,D4,C4,D4,C4,Bb4,A4,G4,F4,E4,F4,E4,D4,C4],
     [0,0,3,0,1,3,2,1,2,1,2,1,0,3,0,3,0,3,0,3,0,2,1,2,1,2,1,1,0,1,0,2,0,3,1,2,1,2,1,0],
-    [2,1,2,1,2,3,1,1,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,4],
+    [4,2,4,2,4,6,2,2,2,2,2,2,4,2,2,2,4,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,6],
     3,C4);
 
   // ── God Rest Ye Merry Gentlemen (E minor / A minor) ──
   var godrest=carol("God Rest Ye Merry Gentlemen","English (1500s)",120,
-    [E4,E4,E4,D4,C4,D4,E4,F4,G4,A4,Bb4,A4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,B3,C4,G4,G4,F4,E4,F4,G4,A4,Bb4,A4,G4,F4,E4],
+    [E4,E4,E4,D4,C4,D4,E4,Gb4,G4,A4,B4,A4,G4,Gb4,E4,D4,C4,D4,E4,Gb4,E4,D4,C4,B3,C4,G4,G4,Gb4,E4,Gb4,G4,A4,B4,A4,G4,Gb4,E4],
     [2,2,2,1,0,1,2,1,3,0,2,0,3,1,2,1,0,1,2,1,2,1,0,3,0,3,3,1,2,1,3,0,2,0,3,1,2],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,6,2,2,2,2,2,2,2,2,2,2,2,8],
     4,E4);
 
   // ── What Child Is This (Greensleeves melody as a carol) ──
   var whatchild=carol("What Child Is This","English (1865)",95,
     [E4,A4,B4,C5,B4,A4,G4,E4,D4,E4,F4,E4,D4,C4,E4,A4,B4,C5,B4,A4,Ab4,B4,C5,A4,A4],
     [2,0,3,0,3,0,3,2,1,2,1,2,1,0,2,0,3,0,3,0,1,3,0,0,0],
-    [2,2,2,1,2,2,2,1,2,1,2,1,2,3,2,2,2,1,2,1,1,1,2,1,4],
+    [2,3,1,2,3,1,2,3,1,3,1,2,6,2,3,1,2,3,1,2,3,1,6,2,6],
     4,A4);
 
   // ── Angels We Have Heard on High ──
   var angels=carol("Angels We Have Heard on High","French (1862)",110,
-    [E4,E4,E4,E4,F4,D4,E4,F4,E4,E4,F4,D4,E4,F4,G4,F4,E4,D4,E4,C4,D4,E4,F4,D4,E4,F4,G4,F4,E4,D4,E4,C4,C4],
-    [2,2,2,2,1,1,2,1,2,2,1,1,2,1,3,1,2,1,2,0,1,2,1,1,2,1,3,1,2,1,2,0,0],
-    [1,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,1,2,4],
-    4,C4);
+    [F4,F4,F4,F4,A4,G4,F4,F4,G4,A4,F4,D4,C4,D4,F4,G4,A4,G4,F4,E4,F4,G4,A4,G4,F4,E4,F4,G4,A4,G4,F4,G4,F4],
+    [1,1,1,1,0,3,1,1,3,0,1,1,0,1,1,3,0,3,1,2,1,3,0,3,1,2,1,3,0,3,1,3,1],
+    [2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,2,2,2,4,8],
+    4,F4);
 
   // ── O Holy Night (in C major) ──
   var oholynight=carol("O Holy Night","A. Adam (1847)",72,
     [C4,F4,F4,F4,E4,F4,A4,A4,G4,F4,F4,Bb4,A4,G4,F4,G4,A4,G4,F4,E4,F4,C5,C5,Bb4,A4,G4,A4,Bb4,A4,G4,F4],
     [0,1,1,1,2,1,0,0,3,1,1,2,0,3,1,3,0,3,1,2,1,0,0,2,0,3,0,2,0,3,1],
-    [2,2,1,1,1,1,2,1,1,2,1,2,1,1,1,1,2,1,1,1,3,2,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4],
     3,F4);
 
   // ── Rudolph the Red-Nosed Reindeer (in C major) ──
   var rudolph=carol("Rudolph the Red-Nosed Reindeer","J. Marks (1949)",130,
     [G4,A4,G4,E4,C5,A4,G4,G4,A4,G4,A4,G4,C5,B4,F4,A4,G4,F4,D4,E4,F4,D4,G4,A4,G4,E4,C5,A4,G4,G4,A4,G4,A4,G4,A4,D5,C5],
     [3,0,3,2,0,0,3,3,0,3,0,3,0,3,1,0,3,1,1,2,1,1,3,0,3,2,0,0,3,3,0,3,0,3,0,1,0],
-    [1,1,1,1,2,1,2,1,1,1,1,1,2,3,1,1,1,1,1,1,1,3,1,1,1,1,2,1,2,1,1,1,1,1,1,1,4],
+    [2,2,2,2,4,2,4,2,2,2,2,2,4,6,2,2,2,2,2,2,2,6,2,2,2,2,4,2,4,2,2,2,2,2,2,2,8],
     3,C4);
 
   // ── Frosty the Snowman (in C major) ──
   var frosty=carol("Frosty the Snowman","S. Nelson (1950)",125,
     [G4,E4,F4,G4,C5,B4,A4,G4,A4,G4,F4,E4,F4,A4,G4,F4,E4,D4,C4,C4,G4,E4,F4,G4,C5,B4,A4,G4,A4,G4,F4,E4,D4,C4],
     [3,2,1,3,0,3,0,3,0,3,1,2,1,0,3,1,2,1,0,0,3,2,1,3,0,3,0,3,0,3,1,2,1,0],
-    [1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,2,2,2,8],
     3,C4);
 
   // ── Winter Wonderland (in C major) ──
   var winter=carol("Winter Wonderland","F. Bernard (1934)",120,
     [E4,F4,G4,G4,A4,G4,F4,E4,D4,E4,F4,F4,G4,F4,E4,D4,C4,E4,F4,G4,G4,A4,G4,F4,E4,D4,E4,F4,F4,G4,F4,E4,D4,C4],
     [2,1,3,3,0,3,1,2,1,2,1,1,3,1,2,1,0,2,1,3,3,0,3,1,2,1,2,1,1,3,1,2,1,0],
-    [1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,4],
+    [2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,6,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,8],
     3,C4);
 
   // ── Good King Wenceslas (in F major) ──
   var wenceslas=carol("Good King Wenceslas","Finnish (1582)",110,
     [F4,F4,F4,G4,F4,F4,C4,D4,E4,F4,F4,G4,F4,F4,C4,C5,Bb4,A4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,C5,Bb4,A4,G4,F4],
     [1,1,1,3,1,1,0,1,2,1,1,3,1,1,0,0,2,0,3,0,2,0,3,1,3,0,2,0,2,0,3,1],
-    [1,1,1,1,1,1,2,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,2,1,1,1,2,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,2,6,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,8],
     4,F4);
 
   // ── We Three Kings (E minor) ──
   var threekings=carol("We Three Kings","J.H. Hopkins Jr. (1857)",105,
     [B4,A4,G4,A4,B4,B4,B4,A4,G4,A4,B4,A4,G4,F4,E4,E4,B4,B4,C5,D5,D5,C5,B4,A4,B4,C5,B4,A4,G4,A4,G4,E4],
     [3,0,3,0,3,3,3,0,3,0,3,0,3,1,2,2,3,3,0,1,1,0,3,0,3,0,3,0,3,0,3,2],
-    [2,1,2,1,1,1,2,1,2,1,1,1,1,1,2,3,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,4],
+    [4,2,4,2,2,2,4,2,4,2,2,2,2,2,4,6,4,2,2,4,2,2,4,2,2,2,2,2,2,2,2,8],
     4,E4);
 
   return [jingle,silent,deck,wish,ocometree,firstnoel,joy,away,twelve,hark,ocome,godrest,whatchild,angels,oholynight,rudolph,frosty,winter,wenceslas,threekings];
@@ -3679,7 +3747,7 @@ const SINGALONG_PIECES=(function(){
     C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
   function pub(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.22+rep*0.07;
       var inst=rep<Math.floor(passes*0.4)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -3700,52 +3768,52 @@ const SINGALONG_PIECES=(function(){
   var drunken=pub("Drunken Sailor","Sea Shanty (Trad.)",140,
     [D4,D4,D4,D4,E4,F4,D4,D4,D4,D4,E4,D4,C4,D4,D4,D4,E4,F4,D4,D4,F4,E4,C4,A3,D4,D4,D4,D4,F4,A4,A4,G4,F4,E4,D4,C4,D4],
     [0,0,0,0,2,1,0,0,0,0,2,0,1,0,0,0,2,1,0,0,1,2,1,0,0,0,0,0,1,0,0,3,1,2,0,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,8],
     4,D4);
   var molly=pub("Molly Malone","Irish (1880s)",100,
     [C4,E4,E4,E4,F4,G4,G4,G4,A4,G4,F4,E4,D4,E4,F4,G4,A4,C5,C5,B4,A4,G4,F4,E4,D4,C4,E4,G4,C5,C5,B4,A4,G4,F4,E4,D4,C4],
     [0,2,2,2,1,3,3,3,0,3,1,2,1,2,1,3,0,0,0,3,0,3,1,2,1,0,2,3,0,0,3,0,3,1,2,1,0],
-    [1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,4,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,2,2,6],
     4,C4);
   var whiskey=pub("Whiskey in the Jar","Irish (Trad.)",125,
     [G4,G4,A4,B4,B4,A4,G4,E4,D4,E4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,E4,G4,A4,B4,A4,G4,E4,D4,E4,G4],
     [3,3,0,3,3,0,3,2,1,2,3,3,0,3,1,3,0,3,2,1,2,3,0,3,0,3,2,1,2,3],
-    [1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,3],
+    [2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,6],
     5,G4);
   var parting=pub("The Parting Glass","Irish/Scots (Trad.)",80,
     [E4,G4,A4,B4,A4,G4,E4,D4,E4,G4,A4,B4,D5,B4,A4,G4,E4,G4,A4,B4,A4,G4,E4,D4,E4,G4,A4,B4,D5,B4,A4,G4],
     [2,3,0,3,0,3,2,1,2,3,0,3,1,3,0,3,2,3,0,3,0,3,2,1,2,3,0,3,1,3,0,3],
-    [1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4],
     4,E4);
   var amazing=pub("Amazing Grace","J. Newton (1779)",80,
-    [G4,C5,E5,C5,E5,D5,C5,A4,G4,G4,C5,E5,C5,E5,D5,G5,G5,E5,C5,C5,A4,G4,G4,C5,E5,C5,E5,D5,C5],
-    [3,0,2,0,2,1,0,0,3,3,0,2,0,2,1,3,3,2,0,0,0,3,3,0,2,0,2,1,0],
-    [1,2,1,1,2,2,1,2,2,1,2,1,1,2,4,2,1,2,1,2,1,2,1,2,1,1,2,2,4],
+    [G4,C5,E5,C5,E5,D5,C5,A4,G4,G4,C5,E5,C5,E5,D5,E5,E5,C5,A4,A4,G4,E4,G4,C5,E5,C5,E5,D5,C5],
+    [3,0,2,0,2,1,0,0,3,3,0,2,0,2,1,2,2,0,0,0,3,2,3,0,2,0,2,1,0],
+    [2,4,3,1,2,2,2,4,4,2,4,3,1,2,2,4,4,3,1,2,2,4,2,4,3,1,2,2,6],
     4,C4);
   var auld=pub("Auld Lang Syne","R. Burns (1788)",95,
     [C4,F4,F4,F4,A4,G4,F4,G4,A4,F4,F4,A4,C5,D5,D5,D5,C5,A4,F4,F4,G4,A4,G4,F4,D4,C4],
     [0,1,1,1,0,3,1,3,0,1,1,0,0,1,1,1,0,0,1,1,3,0,3,1,1,0],
-    [1,2,1,1,1,2,1,1,1,2,1,1,1,4,1,1,1,2,1,1,1,2,1,2,1,4],
+    [2,3,1,2,3,1,2,2,3,1,2,2,2,6,2,3,1,2,3,1,2,3,1,2,2,6],
     4,F4);
   var saints=pub("When the Saints Go Marching In","Spiritual (Trad.)",120,
     [C4,E4,F4,G4,C4,E4,F4,G4,C4,E4,F4,G4,E4,C4,E4,D4,E4,E4,D4,C4,C4,E4,G4,G4,F4,E4,F4,G4,E4,C4,D4,C4],
     [0,2,1,3,0,2,1,3,0,2,1,3,2,0,2,1,2,2,1,0,0,2,3,3,1,2,1,3,2,0,1,0],
-    [1,1,1,3,1,1,1,3,1,1,1,2,1,1,1,2,1,1,1,2,1,1,2,1,2,1,1,2,1,1,1,4],
+    [2,2,2,6,2,2,2,6,2,2,2,4,2,2,2,4,2,2,2,4,2,2,4,2,4,2,2,4,2,2,2,8],
     4,C4);
   var clementine=pub("Oh My Darling, Clementine","P. Montrose (1884)",110,
     [C4,C4,C4,G3,E4,E4,E4,C4,C4,E4,G4,G4,F4,E4,F4,G4,G4,F4,E4,F4,E4,D4,C4,D4,E4,F4,F4,E4,D4,E4,C4],
     [0,0,0,3,2,2,2,0,0,2,3,3,1,2,1,3,3,1,2,1,2,1,0,1,2,1,1,2,1,2,0],
-    [1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,4],
+    [2,2,2,4,2,2,2,4,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,8],
     4,C4);
   var scarborough=pub("Scarborough Fair","English (Medieval)",85,
     [D4,D4,A4,A4,D5,D5,C5,D5,E5,D5,C5,A4,B4,A4,G4,B4,A4,G4,F4,F4,G4,A4,F4,E4,D4,E4,F4,D4,D4,F4,G4,A4,G4,F4,E4,D4],
     [0,0,0,0,1,1,0,1,2,1,0,0,3,0,3,3,0,3,1,1,3,0,1,2,0,2,1,0,0,1,3,0,3,1,2,0],
-    [3,3,2,1,3,1,1,1,3,2,1,1,1,1,2,1,3,3,1,2,1,1,1,1,2,1,3,3,1,1,1,3,1,1,1,4],
+    [4,4,2,2,4,2,2,2,4,2,2,2,2,2,2,2,4,4,2,2,2,2,2,2,2,2,4,4,2,2,2,4,2,2,2,6],
     4,D4);
   var bonnie=pub("My Bonnie Lies Over the Ocean","Scottish (1881)",120,
-    [G4,C5,C5,D5,E5,E5,D5,C5,A4,G4,C5,C5,D5,E5,G5,E5,D5,G4,C5,C5,D5,E5,E5,D5,C5,A4,A4,G4,F4,E4,F4,G4,E4,C4,E5,G5,G5,G5,E5,C5,C5,D5,E5,G5,G5,G5,F5,E5,D5,C5],
-    [3,0,0,1,2,2,1,0,0,3,0,0,1,2,3,2,1,3,0,0,1,2,2,1,0,0,0,3,1,2,1,3,2,0,2,3,3,3,2,0,0,1,2,3,3,3,1,2,1,0],
-    [1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,4,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,4],
+    [G4,C5,C5,D5,E5,E5,D5,C5,A4,G4,C5,C5,D5,E5,E5,D5,C5,G4,C5,C5,D5,E5,E5,D5,C5,A4,A4,G4,F4,E4,F4,G4,E4,C4,E5,E5,E5,E5,D5,C5,C5,D5,E5,E5,E5,E5,D5,C5,A4,C5],
+    [3,0,0,1,2,2,1,0,0,3,0,0,1,2,2,1,0,3,0,0,1,2,2,1,0,0,0,3,1,2,1,3,2,0,2,2,2,2,1,0,0,1,2,2,2,2,1,0,0,0],
+    [2,2,2,2,2,4,2,2,4,2,2,2,2,2,4,2,4,2,2,2,2,2,4,2,2,4,2,2,2,2,2,4,2,8,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,8],
     4,C4);
   // ── Wellerman (accurate melody with driving stomp beat) ──
   var wellerman=(function(){
@@ -3818,55 +3886,55 @@ const SINGALONG_PIECES=(function(){
   var leavejohnny=pub("Leave Her Johnny","Sea Shanty (Trad.)",105,
     [A3,A3,C4,D4,E4,E4,D4,C4,A3,G3,A3,C4,D4,E4,G4,E4,D4,C4,A3,G3,A3,C4,E4,D4,C4,A3],
     [0,0,1,0,2,2,0,1,0,3,0,1,0,2,3,2,0,1,0,3,0,1,2,0,1,0],
-    [1,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,3],
+    [2,2,2,2,4,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,6],
     5,A3);
   // ── Blow the Man Down ──
   var blowman=pub("Blow the Man Down","Sea Shanty (Trad.)",120,
     [C4,E4,G4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,C5,B4,A4,G4,F4,E4,D4,C4],
     [0,2,3,3,1,2,1,0,1,2,1,2,1,0,0,2,3,0,3,0,3,1,2,1,0],
-    [1,1,2,1,1,1,1,2,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,4],
+    [2,2,4,2,2,2,2,4,2,2,2,2,2,6,2,2,4,2,2,2,2,2,2,2,8],
     5,C4);
   // ── Randy Dandy Oh ──
   var randy=pub("Randy Dandy Oh","Sea Shanty (Trad.)",130,
     [G4,G4,A4,B4,B4,A4,G4,E4,D4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,G4,A4,B4,D5,B4,G4],
     [3,3,0,3,3,0,3,2,1,3,3,0,3,1,3,0,3,2,1,3,0,3,1,3,3],
-    [1,1,1,2,1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,4],
+    [2,2,2,4,2,2,2,2,4,2,2,2,4,2,2,2,2,2,4,2,2,4,2,2,8],
     5,G4);
   // ── South Australia ──
   var southaus=pub("South Australia","Sea Shanty (Trad.)",115,
     [C4,C4,D4,E4,G4,G4,E4,D4,C4,E4,G4,A4,G4,E4,C4,D4,E4,G4,E4,D4,C4,C4,E4,G4,E4,C4],
     [0,0,1,2,3,3,2,1,0,2,3,0,3,2,0,1,2,3,2,1,0,0,2,3,2,0],
-    [1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,4,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,8],
     5,C4);
   // ── Roll the Old Chariot ──
   var chariot=pub("Roll the Old Chariot Along","Sea Shanty (Trad.)",120,
     [C4,E4,G4,G4,G4,A4,G4,E4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,C5,A4,G4,E4,D4,C4],
     [0,2,3,3,3,0,3,2,0,1,2,1,2,1,0,0,2,3,0,0,3,2,1,0],
-    [1,1,1,1,1,1,1,1,2,1,1,1,1,1,3,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,4,2,2,2,2,2,6,2,2,2,4,2,2,2,2,8],
     5,C4);
   // ── Haul Away Joe ──
   var hauljoe=pub("Haul Away Joe","Sea Shanty (Trad.)",115,
     [D4,D4,F4,A4,A4,G4,F4,D4,D4,F4,A4,C5,A4,G4,F4,D4,F4,A4,G4,F4,D4,C4,D4],
     [0,0,1,0,0,3,1,0,0,1,0,0,0,3,1,0,1,0,3,1,0,1,0],
-    [1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,2,1,4],
+    [2,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,4,2,8],
     5,D4);
   // ── Spanish Ladies ──
   var spanish=pub("Spanish Ladies","Royal Navy Shanty (1790s)",110,
     [E4,E4,D4,C4,D4,E4,F4,G4,A4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,B3,A3,G3,A3,B3,C4,D4,E4],
     [2,2,1,0,1,2,1,3,0,3,1,2,1,0,1,2,1,2,1,0,3,0,3,0,3,0,1,2],
-    [1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,8],
     5,C4);
   // ── The Skye Boat Song ──
   var skye=pub("The Skye Boat Song","Scottish (1884)",85,
     [C4,F4,A4,G4,F4,E4,F4,G4,A4,C5,A4,G4,F4,E4,D4,C4,F4,A4,G4,F4,E4,F4,G4,A4,F4,D4,C4],
     [0,1,0,3,1,2,1,3,0,0,0,3,1,2,1,0,1,0,3,1,2,1,3,0,1,1,0],
-    [1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,2,2,1,1,1,1,1,2,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     4,F4);
   // ── Bella Ciao ──
   var bella=pub("Bella Ciao","Italian Partisan Folk (1900s)",120,
     [A3,B3,C4,D4,D4,C4,D4,E4,A3,B3,C4,D4,D4,C4,B3,A3,E4,E4,D4,E4,F4,F4,E4,D4,C4,B3,A3,C4,B3,A3],
     [0,3,0,1,1,0,1,2,0,3,0,1,1,0,3,0,2,2,1,2,1,1,2,1,0,3,0,1,3,0],
-    [1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,4],
+    [2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,2,4,2,2,2,2,2,4,2,2,8],
     5,A3);
   return [drunken,wellerman,molly,whiskey,parting,leavejohnny,blowman,randy,southaus,chariot,hauljoe,spanish,skye,bella,amazing,auld,saints,clementine,scarborough,bonnie];
 })();
@@ -3877,7 +3945,7 @@ const SPIRITUAL_PIECES=(function(){
     C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5;
   function spirit(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.6)?'strings':'choir';
@@ -3899,42 +3967,42 @@ const SPIRITUAL_PIECES=(function(){
   var swing=spirit("Swing Low, Sweet Chariot","Spiritual (1862)",80,
     [E4,C4,D4,E4,G4,G4,F4,E4,D4,C4,E4,C4,D4,E4,G4,G4,F4,E4,D4,C4,C4,C4,E4,G4,A4,G4,E4,C4,G4,F4,E4,D4,C4,C4,E4,G4,A4,G4,E4,C4,G4,F4,E4,D4,C4],
     [2,0,1,2,3,3,1,2,1,0,2,0,1,2,3,3,1,2,1,0,0,0,2,3,0,3,2,0,3,1,2,1,0,0,2,3,0,3,2,0,3,1,2,1,0],
-    [2,2,1,1,2,1,1,1,1,3,2,2,1,1,2,1,1,1,1,3,1,1,1,2,1,1,1,2,1,1,1,1,3,1,1,1,2,1,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   var godown=spirit("Go Down Moses","Spiritual (Trad.)",90,
     [A3,C4,C4,D4,E4,E4,D4,C4,A3,C4,D4,E4,G4,E4,D4,C4,A3,C4,E4,G4,A4,G4,E4,D4,C4,A3],
     [0,0,0,1,2,2,1,0,0,0,1,2,3,2,1,0,0,0,2,3,0,3,2,1,0,0],
-    [1,2,1,1,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,2,4],
+    [2,4,2,2,4,2,2,4,2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,2,4,6],
     5,A3);
   var wade=spirit("Wade in the Water","Spiritual (Trad.)",100,
     [E4,E4,G4,A4,B4,A4,G4,E4,D4,E4,G4,A4,B4,D5,B4,A4,G4,E4,D4,E4,G4,B4,A4,G4,E4],
     [2,2,3,0,3,0,3,2,1,2,3,0,3,1,3,0,3,2,1,2,3,3,0,3,2],
-    [1,1,1,1,2,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,4],
+    [2,2,2,2,4,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,6],
     5,E4);
   var kumbaya=spirit("Kumbaya","Spiritual (Trad.)",75,
     [C4,E4,F4,G4,G4,F4,E4,C4,C4,E4,F4,G4,A4,G4,E4,C4,E4,F4,G4,G4,F4,E4,D4,C4],
     [0,2,1,3,3,1,2,0,0,2,1,3,0,3,2,0,2,1,3,3,1,2,1,0],
-    [1,1,1,2,1,1,2,2,1,1,1,2,1,2,1,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     5,C4);
   var michael=spirit("Michael Row the Boat Ashore","Spiritual (1860s)",90,
     [C4,E4,F4,G4,A4,A4,G4,E4,C4,C4,E4,F4,G4,A4,A4,G4,E4,C4,D4,E4,F4,E4,D4,C4,D4,C4],
     [0,2,1,3,0,0,3,2,0,0,2,1,3,0,0,3,2,0,1,2,1,2,1,0,1,0],
-    [1,1,1,2,2,1,1,1,2,3,1,1,1,2,2,1,1,2,1,1,1,1,1,2,1,4],
+    [2,2,2,4,4,2,2,2,4,4,2,2,2,4,4,2,2,4,2,2,2,2,2,4,2,6],
     5,C4);
   var wholeworld=spirit("He's Got the Whole World","Spiritual (Trad.)",110,
     [C4,C4,E4,G4,G4,E4,G4,A4,G4,E4,C4,E4,G4,C5,A4,G4,E4,C4,E4,G4,E4,C4],
     [0,0,2,3,3,2,3,0,3,2,0,2,3,0,0,3,2,0,2,3,2,0],
-    [1,1,1,2,1,1,1,1,1,1,2,1,1,2,1,1,1,2,1,1,1,4],
+    [2,2,2,4,2,2,2,2,2,2,4,2,2,4,2,2,2,4,2,2,2,8],
     5,C4);
   var nobody=spirit("Nobody Knows the Trouble I've Seen","Spiritual (Trad.)",75,
     [C4,E4,G4,A4,G4,E4,C4,D4,E4,G4,C5,A4,G4,E4,D4,C4,E4,G4,A4,C5,A4,G4,E4,D4,C4],
     [0,2,3,0,3,2,0,1,2,3,0,0,3,2,1,0,2,3,0,0,0,3,2,1,0],
-    [1,1,2,1,1,2,2,1,1,2,1,1,1,2,1,2,1,2,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     4,C4);
   var battle=spirit("Battle Hymn of the Republic","J.W. Howe (1861)",115,
     [C4,C4,C4,E4,E4,D4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,G4,F4,E4,F4,G4,A4,G4,E4,C4,E4,D4,C4],
     [0,0,0,2,2,1,0,1,2,1,2,1,0,0,2,3,3,1,2,1,3,0,3,2,0,2,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,2,2,2,4,2,2,8],
     4,C4);
   return [swing,godown,wade,kumbaya,michael,wholeworld,nobody,battle];
 })();
@@ -3945,7 +4013,7 @@ const WORLD_PIECES=(function(){
     C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,Gb4=NT.Gb4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5;
   function world(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -3966,42 +4034,42 @@ const WORLD_PIECES=(function(){
   var hava=world("Hava Nagila","Jewish/Israeli (1918)",130,
     [E4,E4,F4,E4,D4,E4,E4,F4,Ab4,A4,B4,B4,A4,Ab4,F4,E4,E4,F4,Ab4,A4,B4,A4,Ab4,A4,B4,C5,D5,C5,B4,A4,Ab4,A4,B4,C5,D5,C5,B4,A4,Ab4,E4],
     [2,2,1,2,1,2,2,1,0,0,3,3,0,0,1,2,2,1,0,0,3,0,0,0,3,0,1,0,3,0,0,0,3,0,1,0,3,0,0,2],
-    [1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
     4,E4);
   var cucaracha=world("La Cucaracha","Mexican (Trad.)",135,
     [C4,C4,C4,F4,A4,C4,C4,C4,F4,A4,F4,F4,E4,E4,D4,D4,C4,C4,C4,G4,Bb4,C4,C4,C4,G4,Bb4,A4,G4,F4,E4,D4,C4],
     [0,0,0,1,0,0,0,0,1,0,1,1,2,2,1,1,0,0,0,3,2,0,0,0,3,2,0,3,1,2,1,0],
-    [1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,1,4],
+    [2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,4,2,2,2,2,2,10],
     4,F4);
   var frere=world("Fr\u00e8re Jacques","French (1780s)",110,
     [C4,D4,E4,C4,C4,D4,E4,C4,E4,F4,G4,E4,F4,G4,G4,A4,G4,F4,E4,C4,G4,A4,G4,F4,E4,C4,C4,G3,C4,C4,G3,C4],
     [0,1,2,0,0,1,2,0,2,1,3,2,1,3,3,0,3,1,2,0,3,0,3,1,2,0,0,3,0,0,3,0],
-    [1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,4,2,2,2,2,2,4,2,2,4,2,2,8],
     4,C4);
   var cielito=world("Cielito Lindo","Mexican (1882)",120,
     [E4,E4,F4,G4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,E4,G4,C5,C5,B4,A4,G4,F4,E4,D4,C4,E4,G4,C5],
     [2,2,1,3,0,3,1,2,1,2,1,2,1,0,2,3,0,0,3,0,3,1,2,1,0,2,3,0],
-    [1,1,1,1,2,1,1,1,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,2,1,1,4],
+    [2,2,2,2,4,2,2,2,2,2,2,2,2,6,2,2,4,2,2,2,2,2,2,2,4,2,2,8],
     4,C4);
   var waltzing=world("Waltzing Matilda","Australian (1895)",110,
     [G4,G4,A4,B4,D5,B4,A4,G4,E4,G4,A4,B4,A4,G4,E4,D4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,G4],
     [3,3,0,3,1,3,0,3,2,3,0,3,0,3,2,1,3,3,0,3,1,3,0,3,2,1,3],
-    [1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,2,1,1,1,1,1,1,4],
+    [2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,2,2,8],
     5,G4);
   var osole=world("'O Sole Mio","Italian (1898)",90,
     [C4,E4,E4,F4,E4,D4,C4,D4,E4,E4,F4,G4,A4,G4,F4,E4,E4,F4,G4,A4,Bb4,A4,G4,C5,C5,Bb4,A4,G4,F4,E4,F4,G4,A4,G4,F4,E4,D4,C4],
     [0,2,2,1,2,1,0,1,2,2,1,3,0,3,1,2,2,1,3,0,2,0,3,0,0,2,0,3,1,2,1,3,0,3,1,2,1,0],
-    [2,1,1,1,1,1,2,1,1,1,1,2,1,1,1,2,1,1,1,2,1,1,2,2,1,1,1,1,2,1,1,1,1,1,1,1,1,4],
+    [4,2,2,2,2,2,4,2,2,2,2,4,2,2,2,4,2,2,2,4,2,2,4,4,2,2,2,2,4,2,2,2,2,2,2,2,2,6],
     3,C4);
   var ballgame=world("Take Me Out to the Ball Game","American (1908)",125,
     [C4,C4,A4,G4,E4,G4,D4,C4,C4,A4,G4,E4,G4,C4,C4,A4,G4,F4,E4,D4,E4,F4,D4,C4,A4,G4,E4,C4],
     [0,0,0,3,2,3,1,0,0,0,3,2,3,0,0,0,3,1,2,1,2,1,1,0,0,3,2,0],
-    [1,1,2,1,1,2,1,2,1,2,1,1,3,1,1,2,1,1,1,1,1,1,2,1,1,1,1,4],
+    [2,2,4,2,2,4,2,4,2,4,2,2,6,2,2,4,2,2,2,2,2,2,4,2,2,2,2,8],
     4,C4);
   var mountain=world("She'll Be Coming Round the Mountain","American (1890s)",130,
     [G4,G4,B4,B4,D5,D5,B4,G4,A4,B4,C5,C5,A4,A4,G4,B4,D5,D5,B4,G4,A4,C5,B4,A4,G4],
     [3,3,3,3,1,1,3,3,0,3,0,0,0,0,3,3,1,1,3,3,0,0,3,0,3],
-    [1,1,2,1,2,1,1,2,1,1,2,1,2,1,2,1,2,1,1,2,1,1,1,1,4],
+    [1,1,2,2,2,2,2,4,1,1,2,2,2,4,2,2,2,2,2,4,1,1,2,2,6],
     5,G4);
   return [hava,cucaracha,frere,cielito,waltzing,osole,ballgame,mountain];
 })();
@@ -4011,7 +4079,7 @@ const NURSERY_PIECES=(function(){
   var C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5,G3=NT.G3,A3=NT.A3,B3=NT.B3;
   function rhyme(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.3;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.25+rep*0.08;
       var inst=rep<1?'woodwind':'strings';
@@ -4032,128 +4100,128 @@ const NURSERY_PIECES=(function(){
   var twinkle=rhyme("Twinkle Twinkle Little Star","Traditional (1760s)",75,
     [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
     [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
-    [1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,6],
     3,C4);
   // ── Mary Had a Little Lamb ──
   var mary=rhyme("Mary Had a Little Lamb","S.J. Hale (1830)",80,
     [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,D4,D4,E4,D4,C4],
     [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,1,1,2,1,0],
-    [1,1,1,1,1,1,3,1,1,3,1,1,3,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   // ── Happy Birthday ──
   var birthday=rhyme("Happy Birthday","P.S. Hill (1893)",75,
     [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
     [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
-    [1,1,2,2,2,3,1,1,2,2,2,3,1,1,2,1,1,1,2,1,1,1,1,2,4],
+    [1,1,2,2,2,4,1,1,2,2,2,4,1,1,2,2,2,2,4,1,1,2,2,2,6],
     3,C4);
   // ── Chopsticks ──
   var chopsticks=rhyme("Chopsticks","Euphemia Allen (1877)",95,
     [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4,F4,G4,F4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4],
     [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,0,2,0,2,1,3,1,3,2,3,2,3,1,1,1,1,0,2,0,2],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
     3,C4);
   // ── Lavender's Blue ──
   var lavender=rhyme("Lavender's Blue","English Traditional (1670s)",80,
     [E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,F4,E4,D4,E4,E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,E4],
     [2,2,1,2,1,3,3,0,3,1,1,2,1,2,2,2,1,2,1,3,3,0,3,1,2],
-    [1,1,1,1,1,1,1,1,1,2,1,1,1,3,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   // ── Shortnin' Bread ──
   var shortnin=rhyme("Shortnin' Bread","Traditional (1900s)",95,
     [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
     [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
-    [1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,8],
     3,C4);
   // ── London Bridge ──
   var london=rhyme("London Bridge Is Falling Down","English (1744)",75,
     [G4,A4,G4,F4,E4,F4,G4,D4,E4,F4,E4,F4,G4,G4,A4,G4,F4,E4,F4,G4,D4,G4,E4,C4],
     [3,0,3,1,2,1,3,1,2,1,2,1,3,3,0,3,1,2,1,3,1,3,2,0],
-    [1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,2,2,1,1,4],
+    [2,2,2,2,2,2,4,2,2,4,2,2,4,2,2,2,2,2,2,4,4,2,2,6],
     3,C4);
   // ── Old MacDonald ──
   var macdonald=rhyme("Old MacDonald Had a Farm","English (1706)",80,
     [C4,C4,C4,G4,A4,A4,G4,E4,E4,D4,D4,C4,G4,C4,C4,C4,G4,A4,A4,G4,E4,E4,D4,D4,C4],
     [0,0,0,3,0,0,3,2,2,1,1,0,3,0,0,0,3,0,0,3,2,2,1,1,0],
-    [1,1,1,1,1,1,2,1,1,1,1,3,2,1,1,1,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,4,4,2,2,2,2,2,2,4,2,2,2,2,6],
     3,C4);
   // ── Row Row Row Your Boat ──
   var row=rhyme("Row Row Row Your Boat","English (1852)",70,
     [C4,C4,C4,D4,E4,E4,D4,E4,F4,G4,C5,C5,C5,G4,G4,G4,E4,E4,E4,C4,C4,C4,G4,F4,E4,D4,C4],
     [0,0,0,1,2,2,1,2,1,3,0,0,0,3,3,3,2,2,2,0,0,0,3,1,2,1,0],
-    [1,1,1,1,2,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   // ── Three Blind Mice ──
   var mice=rhyme("Three Blind Mice","English (1609)",75,
     [E4,D4,C4,E4,D4,C4,G4,F4,E4,G4,F4,E4,G4,A4,G4,F4,E4,D4,G4,A4,G4,F4,E4,D4,C4],
     [2,1,0,2,1,0,3,1,2,3,1,2,3,0,3,1,2,1,3,0,3,1,2,1,0],
-    [1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,4],
+    [2,2,4,2,2,4,2,2,4,2,2,4,2,2,2,2,2,4,2,2,2,2,2,2,6],
     3,C4);
   // ── Itsy Bitsy Spider ──
   var spider=rhyme("Itsy Bitsy Spider","English (1910s)",75,
     [G4,C5,C5,C5,D5,E5,E5,D5,C5,D5,E5,C5,E5,E5,D5,D5,C5,G4,C5,C5,C5,D5,E5,E5,D5,C5,D5,E5,C5],
     [3,0,0,0,1,2,2,1,0,1,2,0,2,2,1,1,0,3,0,0,0,1,2,2,1,0,1,2,0],
-    [1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,4],
+    [2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,6],
     3,C4);
   // ── Pop Goes the Weasel ──
   var weasel=rhyme("Pop Goes the Weasel","English (1850s)",85,
     [C4,E4,E4,F4,G4,G4,C4,E4,E4,D4,F4,A4,A4,G4,C4,E4,E4,F4,G4,G4,E4,C4,D4,F4,E4,C4],
     [0,2,2,1,3,3,0,2,2,1,1,0,0,3,0,2,2,1,3,3,2,0,1,1,2,0],
-    [1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   // ── Hot Cross Buns ──
   var hotcross=rhyme("Hot Cross Buns","English (1798)",65,
     [E4,D4,C4,E4,D4,C4,C4,C4,C4,C4,D4,D4,D4,D4,E4,D4,C4],
     [2,1,0,2,1,0,0,0,0,0,1,1,1,1,2,1,0],
-    [1,1,3,1,1,3,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,2,6],
     4,C4);
   // ── Jack and Jill ──
   var jack=rhyme("Jack and Jill","English (1765)",80,
     [C4,C4,D4,E4,E4,F4,G4,G4,F4,E4,F4,G4,A4,A4,G4,F4,E4,D4,C4],
     [0,0,1,2,2,1,3,3,1,2,1,3,0,0,3,1,2,1,0],
-    [1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,6],
     3,C4);
   // ── Humpty Dumpty ──
   var humpty=rhyme("Humpty Dumpty","English (1797)",75,
     [E4,G4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,E4,G4,A4,G4,F4,E4,D4,C4],
     [2,3,0,3,1,2,1,2,1,2,1,0,2,3,0,3,1,2,1,0],
-    [1,1,2,1,1,1,2,1,1,1,1,2,1,1,2,1,1,1,1,4],
+    [2,2,4,2,2,2,4,2,2,2,2,4,2,2,4,2,2,2,2,6],
     3,C4);
   // ── Baa Baa Black Sheep (same melody as Twinkle Twinkle) ──
   var baa=rhyme("Baa Baa Black Sheep","English (1731)",80,
     [C4,C4,G4,G4,A4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,G4,F4,F4,F4,E4,E4,E4,D4,D4,D4,C4],
     [0,0,3,3,0,0,0,3,1,1,2,2,1,1,0,3,3,3,1,1,1,2,2,2,1,1,1,0],
-    [1,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   // ── Classics (from Prime, simple versions) ──
   var twinkle=rhyme("Twinkle Twinkle Little Star","Traditional (1760s)",75,
     [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
     [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
-    [1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,6],
     3,C4);
   var mary=rhyme("Mary Had a Little Lamb","S.J. Hale (1830)",80,
     [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,D4,D4,E4,D4,C4],
     [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,1,1,2,1,0],
-    [1,1,1,1,1,1,3,1,1,3,1,1,3,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   var birthday=rhyme("Happy Birthday","P.S. Hill (1893)",75,
     [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
     [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
-    [1,1,2,2,2,3,1,1,2,2,2,3,1,1,2,1,1,1,2,1,1,1,1,2,4],
+    [1,1,2,2,2,4,1,1,2,2,2,4,1,1,2,2,2,2,4,1,1,2,2,2,6],
     3,C4);
   var chopsticks=rhyme("Chopsticks","Euphemia Allen (1877)",95,
     [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4,F4,G4,F4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4],
     [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,0,2,0,2,1,3,1,3,2,3,2,3,1,1,1,1,0,2,0,2],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
     3,C4);
   var lavender=rhyme("Lavender's Blue","English Traditional (1670s)",80,
     [E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,F4,E4,D4,E4,E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,E4],
     [2,2,1,2,1,3,3,0,3,1,1,2,1,2,2,2,1,2,1,3,3,0,3,1,2],
-    [1,1,1,1,1,1,1,1,1,2,1,1,1,3,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,2,2,2,2,2,2,6],
     3,C4);
   var shortnin=rhyme("Shortnin' Bread","Traditional (1900s)",95,
     [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
     [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
-    [1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,8],
     3,C4);
   return [baa,london,macdonald,row,mice,spider,weasel,hotcross,jack,humpty,twinkle,mary,birthday,chopsticks,lavender,shortnin];
 })();
@@ -4164,7 +4232,7 @@ const RAGTIME_PIECES=(function(){
     C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
   function rag(name,composer,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.2;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       // Ragtime uses piano-like timbres: strings for right hand, bass for left
@@ -4189,56 +4257,56 @@ const RAGTIME_PIECES=(function(){
   var entertainer=rag("The Entertainer","Scott Joplin (1902)",130,
     [D4,Eb4,E4,C5,E4,C5,E4,C5,C5,D5,Eb5,E5,C5,D5,E5,C5,D5,Eb5,E5,C5,E4,C5,E4,C5,A4,G4,A4,B4,C5],
     [1,2,2,0,2,0,2,0,0,1,2,2,0,1,2,0,1,2,2,0,2,0,2,0,0,3,0,3,0],
-    [1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,1,4],
+    [2,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,2,2,6],
     4,C4);
 
   // ── Maple Leaf Rag — A section ──
   var maple=rag("Maple Leaf Rag","Scott Joplin (1899)",140,
     [Ab4,A4,C5,E5,C5,A4,C5,A4,Ab4,A4,C5,E5,D5,C5,A4,G4,Ab4,A4,C5,E5,C5,A4,C5,A4,G4,A4,G4,E4,C4],
     [0,0,0,2,0,0,0,0,0,0,0,2,1,0,0,3,0,0,0,2,0,0,0,0,3,0,3,2,0],
-    [1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,8],
     4,A4);
 
   // ── The Easy Winners — A section ──
   var easyw=rag("The Easy Winners","Scott Joplin (1901)",125,
     [G4,B4,D5,B4,A4,G4,E4,G4,A4,B4,C5,D5,E5,D5,C5,B4,A4,G4,B4,D5,B4,A4,G4,E4,D4,E4,G4],
     [3,3,1,3,0,3,2,3,0,3,0,1,2,1,0,3,0,3,3,1,3,0,3,2,1,2,3],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,6],
     4,G4);
 
   // ── Elite Syncopations — A section ──
   var elite=rag("Elite Syncopations","Scott Joplin (1902)",130,
     [E4,G4,A4,B4,C5,D5,E5,D5,C5,B4,A4,G4,E4,G4,A4,B4,C5,E5,D5,C5,B4,A4,G4,E4,D4,C4],
     [2,3,0,3,0,1,2,1,0,3,0,3,2,3,0,3,0,2,1,0,3,0,3,2,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,6],
     4,C4);
 
   // ── Solace — A section (a Mexican serenade, slower ragtime) ──
   var solace=rag("Solace","Scott Joplin (1909)",95,
     [A4,G4,A4,C5,B4,A4,G4,E4,D4,E4,G4,A4,B4,A4,G4,E4,A4,G4,A4,C5,D5,C5,B4,A4,G4,E4,D4,C4],
     [0,3,0,0,3,0,3,2,1,2,3,0,3,0,3,2,0,3,0,0,1,0,3,0,3,2,1,0],
-    [1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     4,A4);
 
   // ── Peacherine Rag — A section ──
   var peacherine=rag("Peacherine Rag","Scott Joplin (1901)",135,
     [C5,C5,B4,C5,E5,D5,C5,A4,C5,C5,B4,C5,G4,A4,B4,C5,C5,B4,C5,E5,D5,C5,B4,A4,G4],
     [0,0,3,0,2,1,0,0,0,0,3,0,3,0,3,0,0,3,0,2,1,0,3,0,3],
-    [1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,4],
+    [2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,8],
     4,C4);
 
   // ── The Cascades — A section ──
   var cascades=rag("The Cascades","Scott Joplin (1904)",125,
     [C5,B4,C5,E5,G5,E5,C5,D5,C5,B4,A4,G4,C5,B4,C5,E5,G5,E5,C5,D5,E5,D5,C5,B4,C5],
     [0,3,0,2,3,2,0,1,0,3,0,3,0,3,0,2,3,2,0,1,2,1,0,3,0],
-    [1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    [2,2,4,2,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,6],
     4,C4);
 
   // ── Pineapple Rag — A section ──
   var pineapple=rag("Pineapple Rag","Scott Joplin (1908)",130,
     [C4,E4,G4,C5,E5,C5,G4,E4,C4,E4,G4,B4,D5,B4,G4,E4,C4,E4,G4,C5,E5,D5,C5,B4,A4,G4,C5],
     [0,2,3,0,2,0,3,2,0,2,3,3,1,3,3,2,0,2,3,0,2,1,0,3,0,3,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     4,C4);
 
   return [entertainer,maple,easyw,elite,solace,peacherine,cascades,pineapple];
