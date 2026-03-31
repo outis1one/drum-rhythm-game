@@ -849,8 +849,8 @@ const CLASSICAL_PIECES=(function(){
   var hmk=(function(){
     var bg=[],mel=[];
     function orch(t,freq,dur,v,inst){bg.push({t:t,f:freq,d:dur,i:inst||'strings',v:v||0.3});}
-    var theme=[A3,B3,C4,D4,E4,C4,E4,Eb4,E4,Eb4,E4,D4,C4,B3];
-    var lanes=[0,1,2,0,1,2,1,3,1,3,1,0,2,1];
+    var theme=[A3,B3,C4,D4,E4,C4,E4,D4,B3,D4,Db4,A3,Db4,A3];
+    var lanes=[0,1,2,0,1,2,1,0,3,0,1,3,1,3];
     var t=0;
     // Pass 1: Very slow, barely audible (creeping start)
     var d0=0.55;
@@ -2094,18 +2094,18 @@ const CLASSICAL_PIECES=(function(){
   })();
 
   // ── Morning Mood ──
-  // Grieg's Peer Gynt — gentle sunrise in F major, ~80s
-  // Famous flute melody rising like dawn, builds to full orchestra
+  // Grieg's Peer Gynt — gentle sunrise in E major, ~80s
+  // Famous flute melody: G#-A-B-C#-B-A, then G#-A-B-C#-E-D#-C#-B-A-G#
   var morning=(function(){
     var bg=[],mel=[],t=0,q=60/60; // slow, pastoral tempo
     function ww(t,f,d,v){bg.push({t:t,f:f,d:d,i:'woodwind',v:v||0.25});}
     function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.3});}
     function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.35});}
 
-    // Gentle harmonic bed — sustained strings simulating dawn
+    // Gentle harmonic bed — E major sustained strings
     var harm=[
-      [0,18,[F3,A3,C4],0.06],[18,36,[F3,A3,C4],0.1],[36,54,[F3,A3,C4],0.15],
-      [54,70,[Bb3,D4,F4],0.14],[70,85,[F3,A3,C4],0.18]
+      [0,18,[E3,Ab3,B3],0.06],[18,36,[E3,Ab3,B3],0.1],[36,54,[E3,Ab3,B3],0.15],
+      [54,70,[A3,Db4,E4],0.14],[70,85,[E3,Ab3,B3],0.18]
     ];
     harm.forEach(function(h){
       for(var ht=h[0];ht<h[1];ht+=3.0){
@@ -2114,16 +2114,14 @@ const CLASSICAL_PIECES=(function(){
       }
     });
 
-    // === SECTION 1 (0-18s): The famous flute melody (first statement) ===
-    // E-G#-B-... wait, Morning Mood is actually in E major starting on G#
-    // Actually the real melody: G#-A#-B-C#-B-A#-G#-A#-B-C#-E-D#-C#-B-A#-G#
-    // But we're in F major for this arrangement:
-    // A-B-C-D-C-B | A-B-C-D-F-E-D-C-B-A
-    var fluteMel1=[[E4,q*0.75,2],[G4,q*0.75,3],[A4,q*0.75,1],[B4,q*0.75,0],
-                   [A4,q*0.75,1],[G4,q*0.75,3]];
-    var fluteMel2=[[E4,q*0.75,2],[G4,q*0.75,3],[A4,q*0.75,1],[B4,q*0.75,0],
-                   [D5,q*0.75,1],[C5,q*0.75,2],[B4,q*0.75,0],[A4,q*0.75,1],
-                   [G4,q*0.75,3],[E4,q*1.5,2]];
+    // === The actual Grieg melody in E major ===
+    // G#(Ab4)-A-B-C#(Db5)-B-A | first phrase (ascending then descending)
+    var fluteMel1=[[Ab4,q*0.75,1],[A4,q*0.75,0],[B4,q*0.75,3],[Db5,q*0.75,2],
+                   [B4,q*0.75,3],[A4,q*0.75,0]];
+    // G#-A-B-C#-E-D#(Eb5)-C#-B-A-G# | second phrase (up higher then back)
+    var fluteMel2=[[Ab4,q*0.75,1],[A4,q*0.75,0],[B4,q*0.75,3],[Db5,q*0.75,2],
+                   [E5,q*0.75,0],[Eb5,q*0.75,1],[Db5,q*0.75,2],[B4,q*0.75,3],
+                   [A4,q*0.75,0],[Ab4,q*1.5,1]];
 
     // First statement — solo flute, very quiet
     fluteMel1.forEach(function(n){ww(t,n[0],n[1]*0.9,0.2);mel.push({t:t,l:n[2]});t+=n[1];});
@@ -2137,7 +2135,7 @@ const CLASSICAL_PIECES=(function(){
     fluteMel2.forEach(function(n){ww(t,n[0],n[1]*0.9,0.28);str(t,n[0],n[1]*0.9,0.12);mel.push({t:t,l:n[2]});t+=n[1];});
     t+=q;
 
-    // === SECTION 2 (18-36s): Melody grows — oboe joins, then strings take over ===
+    // === SECTION 2 (18-36s): Melody grows — oboe joins, then strings ===
     // Third statement — woodwind + strings
     fluteMel1.forEach(function(n){
       ww(t,n[0],n[1]*0.9,0.3);str(t,n[0],n[1]*0.9,0.2);
@@ -2165,11 +2163,11 @@ const CLASSICAL_PIECES=(function(){
     t+=q;
 
     // === SECTION 3 (36-54s): Full sunrise — brass enters, melody soars ===
-    // Expanded melody with higher notes
-    var soarMel=[[E4,q*0.65,2],[G4,q*0.65,3],[A4,q*0.65,1],[B4,q*0.65,0],
-                 [D5,q*0.65,1],[E5,q*0.65,2],[D5,q*0.65,1],[B4,q*0.65,0],
-                 [A4,q*0.65,1],[G4,q*0.65,3],[E4,q*0.65,2],[G4,q*0.65,3],
-                 [A4,q*0.65,1],[B4,q*0.65,0],[E5,q*1.3,2]];
+    // Expanded melody reaching up to high E
+    var soarMel=[[Ab4,q*0.65,1],[A4,q*0.65,0],[B4,q*0.65,3],[Db5,q*0.65,2],
+                 [E5,q*0.65,0],[Db5,q*0.65,2],[B4,q*0.65,3],[A4,q*0.65,0],
+                 [Ab4,q*0.65,1],[A4,q*0.65,0],[B4,q*0.65,3],[Db5,q*0.65,2],
+                 [E5,q*0.65,0],[Eb5,q*0.65,1],[Db5,q*1.3,2]];
     for(var sr=0;sr<2;sr++){
       var sv=0.4+sr*0.08;
       soarMel.forEach(function(n){
@@ -2182,10 +2180,10 @@ const CLASSICAL_PIECES=(function(){
     }
 
     // === SECTION 4 (54-70s): Warm development — horns + full strings ===
-    // Broader phrasing
-    var warmMel=[[B4,q*1.3,0],[A4,q*0.65,1],[G4,q*0.65,3],[E4,q*1.3,2],
-                 [G4,q*0.65,3],[A4,q*0.65,1],[B4,q*1.3,0],[D5,q*1.3,1],
-                 [B4,q*0.65,0],[A4,q*0.65,1],[G4,q*0.65,3],[E4,q*2,2]];
+    // Broader phrasing with E major harmonies
+    var warmMel=[[Db5,q*1.3,2],[B4,q*0.65,3],[A4,q*0.65,0],[Ab4,q*1.3,1],
+                 [A4,q*0.65,0],[B4,q*0.65,3],[Db5,q*1.3,2],[E5,q*1.3,0],
+                 [Db5,q*0.65,2],[B4,q*0.65,3],[A4,q*0.65,0],[Ab4,q*2,1]];
     for(var wr=0;wr<2;wr++){
       var wv=0.48+wr*0.06;
       warmMel.forEach(function(n){
@@ -2212,7 +2210,7 @@ const CLASSICAL_PIECES=(function(){
     t+=q;
 
     // Gentle ending — sustained E major chord fading
-    [E3,B3,E4,G4,B4,E5].forEach(function(f){
+    [E3,Ab3,B3,E4,Ab4,B4,E5].forEach(function(f){
       str(t,f,4.0,0.4);ww(t,f,4.0,0.25);
     });
     bg.push({t:t,f:E3/2,d:3.0,i:'bass',v:0.2});mel.push({t:t,l:4});
@@ -2249,14 +2247,14 @@ const CLASSICAL_PIECES=(function(){
   var toccata=(function(){
     var bg=[],mel=[],t=0;
     function org(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.4});bg.push({t:t,f:f,d:d,i:'woodwind',v:(v||0.4)*0.5});}
-    // Opening trill: A-Ab-A
-    org(0,A4,0.12,0.55);org(0.15,Ab4,0.12,0.55);org(0.3,A4,0.9,0.6);
-    mel.push({t:0,l:0},{t:0.15,l:1},{t:0.3,l:0});
+    // Opening mordent: A-G-A (whole step, per standard editions)
+    org(0,A4,0.12,0.55);org(0.15,G4,0.12,0.55);org(0.3,A4,0.9,0.6);
+    mel.push({t:0,l:0},{t:0.15,l:3},{t:0.3,l:0});
     // Descending: G-F-E-D
     [G4,F4,E4,D4].forEach(function(f,i){org(1.3+i*0.4,f,0.35,0.55);mel.push({t:1.3+i*0.4,l:[3,2,1,0][i]});});
     // Lower octave statement
-    org(3.2,A3,0.12,0.55);org(3.35,Ab3,0.12,0.55);org(3.5,A3,0.9,0.6);
-    mel.push({t:3.2,l:0},{t:3.35,l:1},{t:3.5,l:0});
+    org(3.2,A3,0.12,0.55);org(3.35,G3,0.12,0.55);org(3.5,A3,0.9,0.6);
+    mel.push({t:3.2,l:0},{t:3.35,l:3},{t:3.5,l:0});
     [G3,F3,E3,D3].forEach(function(f,i){org(4.5+i*0.4,f,0.35,0.55);bg.push({t:4.5+i*0.4,f:f,d:0.35,i:'bass',v:0.45});mel.push({t:4.5+i*0.4,l:[3,2,1,4][i]});});
     // D minor chord
     t=6.2;
@@ -2346,45 +2344,107 @@ const CLASSICAL_PIECES=(function(){
   })();
 
   // ── The Blue Danube ──
+  // J. Strauss II waltz in D major (arr. C major), ~75s
+  // The most famous waltz: ascending thirds C-E-G, G-B-D with oom-pah-pah bass
   var danube=(function(){
-    var bg=[],mel=[],t=0,q=0.5;
-    // Intro: gentle ascending
-    [C4,E4,G4,C5,E5,C5,G4,E4].forEach(function(f,i){
-      bg.push({t:t,f:f,d:q*2,i:'strings',v:0.25});mel.push({t:t,l:[0,2,3,0,2,0,3,2][i]});t+=q*1.5;
-    });
-    t+=0.5;
-    // Theme 1: the famous waltz melody
-    var th1=[[E4,q,2],[E4,q*2,2],[G4,q,3],[G4,q*2,3],[F4,q,1],[F4,q,1],[E4,q,2],[D4,q*2,0],[C4,q,0],[E4,q,2],[G4,q*2,3],[C5,q*3,0]];
-    for(var r1=0;r1<2;r1++){
-      var v1=0.3+r1*0.1;
-      th1.forEach(function(n){bg.push({t:t,f:n[0],d:n[1]*0.9,i:r1<1?'strings':'brass',v:v1});mel.push({t:t,l:n[2]});t+=n[1];});
-      t+=0.4;
+    var bg=[],mel=[],t=0,q=60/180; // waltz tempo, q = one beat of 3/4
+
+    // Waltz oom-pah-pah accompaniment helper
+    function waltz(time,root,third,v){
+      bg.push({t:time,f:root,d:q*0.8,i:'bass',v:v*0.5}); // oom
+      bg.push({t:time+q,f:third,d:q*0.6,i:'strings',v:v*0.25}); // pah
+      bg.push({t:time+q*2,f:third,d:q*0.6,i:'strings',v:v*0.2}); // pah
     }
-    // Theme 2: contrasting phrase
-    var th2=[[G4,q,3],[A4,q,1],[G4,q,3],[E4,q*2,2],[C4,q,0],[D4,q,0],[E4,q,2],[F4,q,1],[E4,q*2,2],[D4,q,0],[C4,q*3,0]];
-    for(var r2=0;r2<2;r2++){
-      var v2=0.4+r2*0.1;
-      th2.forEach(function(n){
-        bg.push({t:t,f:n[0],d:n[1]*0.9,i:'strings',v:v2});
-        if(r2>0)bg.push({t:t,f:n[0],d:n[1]*0.9,i:'brass',v:v2*0.5});
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.35});}
+
+    // Harmonic bed
+    var harm=[
+      [0,12,[C3,E3,G3],0.06],[12,30,[C3,E3,G3],0.1],[30,50,[C3,E3,G3],0.14],
+      [50,65,[G3,B3,D4],0.12],[65,80,[C3,E3,G3],0.18]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=3.0){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:2.8,i:'strings',v:h[3]});});
+      }
+    });
+
+    // === SECTION 1 (0-12s): Tremolo intro + rising anticipation ===
+    // Soft tremolo strings, then the famous ascending pickup
+    for(var tr=0;tr<8;tr++){
+      bg.push({t:tr*q*3,f:C4,d:q*2.5,i:'strings',v:0.12+tr*0.01});
+      bg.push({t:tr*q*3,f:E4,d:q*2.5,i:'strings',v:0.1+tr*0.01});
+    }
+    t=6;
+    // Pickup notes before the waltz: ascending B-C
+    str(t,B3,q*0.8,0.25);mel.push({t:t,l:3});t+=q;
+
+    // === SECTION 2 (7-30s): First waltz — the famous melody ===
+    // Real melody (transposed to C): C-C-(rest) | C-E-G | G-G-(rest) | G-B-D5
+    // Pattern: note on beat 1, sustained or leap on beat 1 of next bar
+    var waltz1=[
+      [C4,q*3,0],[C4,q*3,0],[C4,q,0],[E4,q,2],[G4,q,3],
+      [G4,q*3,3],[G4,q*3,3],[G4,q,3],[B4,q,0],[D5,q,1],
+      [D5,q*3,1],[C5,q*3,2],[C5,q,2],[E4,q,2],[G4,q,3],
+      [G4,q*2,3],[E4,q,2],[C4,q*3,0]
+    ];
+    for(var w1=0;w1<2;w1++){
+      var wv=0.3+w1*0.08;
+      var bi=0;
+      waltz1.forEach(function(n){
+        str(t,n[0],n[1]*0.9,wv);
+        if(w1>0)brs(t,n[0],n[1]*0.9,wv*0.4);
+        // Add waltz bass on beat 1 of each 3-beat group
+        if(n[1]>=q*2)waltz(t,C3,E3,wv);
+        mel.push({t:t,l:n[2]});t+=n[1];bi++;
+      });
+      t+=q;
+    }
+
+    // === SECTION 3 (30-50s): Second waltz — contrasting theme ===
+    // More lyrical flowing melody
+    var waltz2=[
+      [E4,q*2,2],[D4,q,1],[C4,q*3,0],[E4,q*2,2],[G4,q,3],
+      [G4,q*2,3],[F4,q,1],[E4,q*3,2],[D4,q*2,1],[E4,q,2],
+      [F4,q*2,1],[E4,q,2],[D4,q*3,1],[C4,q*3,0]
+    ];
+    for(var w2=0;w2<2;w2++){
+      var wv2=0.38+w2*0.08;
+      waltz2.forEach(function(n){
+        str(t,n[0],n[1]*0.9,wv2);
+        if(w2>0)brs(t,n[0],n[1]*0.9,wv2*0.4);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:wv2*0.3});
+        if(n[1]>=q*2)waltz(t,C3,E3,wv2);
         mel.push({t:t,l:n[2]});t+=n[1];
       });
-      t+=0.4;
+      t+=q;
     }
-    // Recap theme 1 with full orchestra
-    th1.forEach(function(n){
-      bg.push({t:t,f:n[0],d:n[1]*0.9,i:'brass',v:0.55});bg.push({t:t,f:n[0],d:n[1]*0.9,i:'strings',v:0.45});
-      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.35});
+
+    // === SECTION 4 (50-65s): Waltz 1 returns — full orchestra ===
+    waltz1.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.52);brs(t,n[0],n[1]*0.9,0.4);
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.3});
+      if(n[1]>=q*2)waltz(t,C3,E3,0.5);
       mel.push({t:t,l:n[2]});t+=n[1];
     });
-    t+=0.4;
-    // Finale waltz chords
-    for(var c=0;c<4;c++){
-      [C4,E4,G4,C5].forEach(function(f){bg.push({t:t,f:f,d:q*2.5,i:'brass',v:0.6});bg.push({t:t,f:f,d:q*2.5,i:'strings',v:0.5});});
+    t+=q;
+    // Faster, more energetic repeat
+    waltz1.forEach(function(n){
+      str(t,n[0],n[1]*0.85,0.55);brs(t,n[0],n[1]*0.85,0.45);
+      bg.push({t:t,f:n[0],d:n[1]*0.85,i:'choir',v:0.2});
+      mel.push({t:t,l:n[2]});t+=n[1]*0.9;
+    });
+
+    // === FINALE: Big waltz chords ===
+    t+=q;
+    for(var c=0;c<6;c++){
+      [C4,E4,G4,C5].forEach(function(f){brs(t,f,q*2.5,0.6);str(t,f,q*2.5,0.5);});
+      bg.push({t:t,f:C3,d:q*2,i:'timpani',v:0.5});
       mel.push({t:t,l:4});t+=q*3;
     }
-    [C4,E4,G4,C5].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'brass',v:0.6});bg.push({t:t,f:f,d:2.5,i:'strings',v:0.5});});
+    [C4,E4,G4,C5].forEach(function(f){brs(t,f,2.5,0.65);str(t,f,2.5,0.55);});
     bg.push({t:t,f:C3,d:2.0,i:'timpani',v:0.65});mel.push({t:t,l:4});
+
     return {n:"The Blue Danube",composer:"J. Strauss II",bpm:180,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -2573,10 +2633,10 @@ const CLASSICAL_PIECES=(function(){
   // ── Dance of the Sugar Plum Fairy ──
   var sugarplum=(function(){
     var bg=[],mel=[],t=0,q=0.4;
-    var theme=[E4,Eb4,E4,B3,E4,Eb4,E4,B3,E4,F4,E4,D4,C4,B3,A3,B3];
-    var tLn=[2,1,2,3,2,1,2,3,2,1,2,0,1,3,0,3];
-    var ans=[E4,G4,B4,E5,B4,G4,E4,B3];
-    var aLn=[2,3,0,2,0,3,2,3];
+    var theme=[E4,Eb4,E4,B3,D4,C4,A3,C4,E4,A4,B3,E4,Ab4,B4,A4];
+    var tLn=[2,1,2,3,0,2,0,2,2,1,3,2,1,0,1];
+    var ans=[E4,Eb4,E4,B3,D4,C4,A3];
+    var aLn=[2,1,2,3,0,2,0];
     for(var rep=0;rep<5;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<2?'woodwind':rep<4?'strings':'brass';
@@ -2593,8 +2653,8 @@ const CLASSICAL_PIECES=(function(){
       });
       t+=0.4;
     }
-    [E4,G4,B4,E5].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.5});});
-    bg.push({t:t,f:E3,d:1.5,i:'bass',v:0.4});mel.push({t:t,l:4});
+    [E3,B3,E4,Ab4,B4].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.5});});
+    bg.push({t:t,f:E3/2,d:1.5,i:'bass',v:0.4});mel.push({t:t,l:4});
     return {n:"Dance of the Sugar Plum Fairy",composer:"Tchaikovsky",bpm:120,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -2876,8 +2936,8 @@ const CLASSICAL_PIECES=(function(){
     var bg=[],mel=[],t=0,q=0.35;
     var motif=[E4,Eb4,E4,Eb4,E4,B3,D4,C4,A3];
     var mLn=[2,1,2,1,2,3,0,2,0];
-    var ph2=[C4,E4,A4,B4,E4,C5,B4,A4];
-    var p2Ln=[1,2,0,3,2,0,3,0];
+    var ph2=[C4,E4,A4,B4,E4,Ab4,B4,A4];
+    var p2Ln=[1,2,0,3,2,1,3,0];
     for(var rep=0;rep<5;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<2?'woodwind':rep<3?'strings':'brass';
@@ -2909,8 +2969,9 @@ const CLASSICAL_PIECES=(function(){
   var canon=(function(){
     var bg=[],mel=[],t=0,q=0.55;
     var bassLine=[D3,A3,B3,Gb3,G3,D3,G3,A3];
-    var melody2=[A4,Gb4,G4,A4,Gb4,D4,Gb4,G4,A4,B4,G4,A4,Gb4,D4,E4,Gb4];
-    var m2Ln=[1,2,3,1,2,0,2,3,1,0,3,1,2,0,1,2];
+    // Real Pachelbel violin melody: F#-E-D-C#-B-A-B-C# (var 1) then D-C#-B-A-G-F#-G-A (var 2)
+    var melody2=[Gb4,E4,D4,Db4,B3,A3,B3,Db4,D4,Db4,B3,A3,G3,Gb3,G3,A3];
+    var m2Ln=[2,1,0,1,3,0,3,1,0,1,3,0,3,2,3,0];
     for(var rep=0;rep<4;rep++){
       var v=0.2+rep*0.08;
       bassLine.forEach(function(f,i){
@@ -3640,14 +3701,14 @@ const SINGALONG_PIECES=(function(){
     [1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,3],
     4,E4);
   var amazing=pub("Amazing Grace","J. Newton (1779)",80,
-    [G4,C5,E5,E5,D5,C5,A4,G4,G4,C5,E5,E5,D5,E5,E5,G5,G5,E5,C5,C5,A4,G4,G4,C5,E5,E5,D5,C5],
-    [3,0,2,2,1,0,0,3,3,0,2,2,1,2,2,3,3,2,0,0,0,3,3,0,2,2,1,0],
-    [1,2,1,2,1,2,1,2,1,2,1,2,1,3,1,2,1,2,1,2,1,2,1,2,1,2,1,4],
+    [G4,C5,E5,C5,E5,D5,C5,A4,G4,G4,C5,E5,C5,E5,D5,G5,G5,E5,C5,C5,A4,G4,G4,C5,E5,C5,E5,D5,C5],
+    [3,0,2,0,2,1,0,0,3,3,0,2,0,2,1,3,3,2,0,0,0,3,3,0,2,0,2,1,0],
+    [1,2,1,1,2,2,1,2,2,1,2,1,1,2,4,2,1,2,1,2,1,2,1,2,1,1,2,2,4],
     4,C4);
   var auld=pub("Auld Lang Syne","R. Burns (1788)",95,
-    [C4,F4,F4,F4,A4,G4,F4,G4,A4,F4,F4,A4,C5,D5,C5,D5,C5,D5,C5,A4,F4,G4,A4,G4,F4,G4],
-    [0,1,1,1,0,3,1,3,0,1,1,0,0,1,0,1,0,1,0,0,1,3,0,3,1,3],
-    [1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,1,2,1,4],
+    [C4,F4,F4,F4,A4,G4,F4,G4,A4,F4,F4,A4,C5,D5,D5,D5,C5,A4,F4,F4,G4,A4,G4,F4,D4,C4],
+    [0,1,1,1,0,3,1,3,0,1,1,0,0,1,1,1,0,0,1,1,3,0,3,1,1,0],
+    [1,2,1,1,1,2,1,1,1,2,1,1,1,4,1,1,1,2,1,1,1,2,1,2,1,4],
     4,F4);
   var saints=pub("When the Saints Go Marching In","Spiritual (Trad.)",120,
     [C4,E4,F4,G4,C4,E4,F4,G4,C4,E4,F4,G4,E4,C4,E4,D4,E4,E4,D4,C4,C4,E4,G4,G4,F4,E4,F4,G4,E4,C4,D4,C4],
@@ -3660,15 +3721,15 @@ const SINGALONG_PIECES=(function(){
     [1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,4],
     4,C4);
   var scarborough=pub("Scarborough Fair","English (Medieval)",85,
-    [D4,D4,A4,A4,D5,D5,C5,D5,E5,D5,C5,A4,Bb4,A4,G4,B4,A4,G4,F4,F4,G4,A4,F4,E4,D4,E4,F4,D4,D4,F4,G4,A4,G4,F4,E4,D4],
-    [0,0,0,0,1,1,0,1,2,1,0,0,2,0,3,3,0,3,1,1,3,0,1,2,0,2,1,0,0,1,3,0,3,1,2,0],
+    [D4,D4,A4,A4,D5,D5,C5,D5,E5,D5,C5,A4,B4,A4,G4,B4,A4,G4,F4,F4,G4,A4,F4,E4,D4,E4,F4,D4,D4,F4,G4,A4,G4,F4,E4,D4],
+    [0,0,0,0,1,1,0,1,2,1,0,0,3,0,3,3,0,3,1,1,3,0,1,2,0,2,1,0,0,1,3,0,3,1,2,0],
     [3,3,2,1,3,1,1,1,3,2,1,1,1,1,2,1,3,3,1,2,1,1,1,1,2,1,3,3,1,1,1,3,1,1,1,4],
     4,D4);
   var bonnie=pub("My Bonnie Lies Over the Ocean","Scottish (1881)",120,
-    [G4,F4,E4,F4,G4,A4,G4,F4,E4,C4,D4,E4,F4,G4,F4,E4,F4,G4,A4,G4,F4,E4,D4,C4,E4,G4,E4,C4],
-    [3,1,2,1,3,0,3,1,2,0,1,2,1,3,1,2,1,3,0,3,1,2,1,0,2,3,2,0],
-    [1,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,2,1,4],
-    5,C4);
+    [G4,C5,C5,D5,E5,E5,D5,C5,A4,G4,C5,C5,D5,E5,G5,E5,D5,G4,C5,C5,D5,E5,E5,D5,C5,A4,A4,G4,F4,E4,F4,G4,E4,C4,E5,G5,G5,G5,E5,C5,C5,D5,E5,G5,G5,G5,F5,E5,D5,C5],
+    [3,0,0,1,2,2,1,0,0,3,0,0,1,2,3,2,1,3,0,0,1,2,2,1,0,0,0,3,1,2,1,3,2,0,2,3,3,3,2,0,0,1,2,3,3,3,1,2,1,0],
+    [1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,4,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,4],
+    4,C4);
   // ── Wellerman (accurate melody with driving stomp beat) ──
   var wellerman=(function(){
     var bg=[],mel=[],t=0,q=0.32;
