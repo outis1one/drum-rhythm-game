@@ -193,10 +193,13 @@ const LANES=[
   {label:"Blue",  color:"#3182ce",key:"h", type:"hihat"},
   {label:"Green", color:"#38a169",key:"j", type:"tom2"},
   {label:"Kick",  color:"#805ad5",key:" ", type:"kick"},
+  {label:"Crash", color:"#ed8936",key:"d", type:"crash"},
+  {label:"Ride",  color:"#4fd1c5",key:"k", type:"ride"},
+  {label:"Tom 3", color:"#d53f8c",key:"l", type:"tom3"},
 ];
 
 // which pads are active (show notes) — all on by default
-let activePads=[true,true,true,true,true];
+let activePads=[true,true,true,true,true,false,false,false];
 // Simple mode — thins out notes, keeping only strong beats
 let simpleMode=false;
 
@@ -4252,9 +4255,9 @@ let gameAc=null,mp3Buffer=null,mp3Src=null;
 let notes=[],gameStartTime=null,gameEndTime=null,playing=false;
 let gamePlayers=[],activePIdx=0;
 let cScore=0,cStreak=0,cTotal=0,cGood=0,cMaxStreak=0;
-let laneFlash=[0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[],classicalHitMode='orchestra';
+let laneFlash=[0,0,0,0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[],classicalHitMode='orchestra';
 let paused=false,pauseTime=0;
-var gpMap=JSON.parse(localStorage.getItem("drgameGpMap")||"null")||{0:2,1:3,2:0,3:1,4:4,8:4};
+var gpMap=JSON.parse(localStorage.getItem("drgameGpMap")||"null")||{0:2,1:3,2:0,3:1,4:4,5:5,6:6,7:7,8:4};
 var remapping=false,remapStep=0,remapResult={};
 var _savedSettings=JSON.parse(localStorage.getItem("drgameSettings")||"{}");
 var gameSpeed=_savedSettings.speed||1.0,masterVolume=_savedSettings.volume||1.0;
@@ -4287,7 +4290,7 @@ function buildPadToggles(){
     const b=document.createElement("button");
     b.className="ptog"+(activePads[i]?" on":"");
     b.style.borderColor=lane.color;b.style.color=lane.color;
-    b.textContent=lane.label+(i===4?" (Kick)":"");
+    b.textContent=lane.label;
     b.onclick=()=>{activePads[i]=!activePads[i];buildPadToggles();};
     el.appendChild(b);
   });
@@ -4608,34 +4611,35 @@ function draw(){
   if(!W||!H)return;
   cx.clearRect(0,0,W,H);
 
-  // Active pad lanes (only those toggled on, excluding kick)
-  const activeLanes=LANES.slice(0,4).map((l,i)=>i).filter(i=>activePads[i]);
+  // Pad lanes (everything except kick) in columns; kick centered at bottom
+  const padLanes=LANES.map((l,i)=>i).filter(i=>i!==4&&activePads[i]);
   const hasKick=activePads[4];
   const PAD_H=hasKick?Math.floor(H*0.78):H;
   const KICK_H=H-PAD_H;
-  const nLanes=activeLanes.length;
-  const PAD_W=nLanes>0?W/nLanes:W;
+  const nLanes=padLanes.length;
+  const LANE_W=nLanes>0?W/nLanes:W;
   const HIT_Y=Math.floor(PAD_H*0.76);
   const KICK_HIT_Y=PAD_H+Math.floor(KICK_H*0.55);
   const now=(playing&&gameStartTime!=null)?getAc().currentTime-gameStartTime:-9999;
 
   // Lane positions map: lane index -> x center
   const laneX={};
-  activeLanes.forEach((li,col)=>{laneX[li]=col*PAD_W+PAD_W/2;});
+  padLanes.forEach((li,col)=>{laneX[li]=col*LANE_W+LANE_W/2;});
 
   // Draw pad lanes
-  activeLanes.forEach((li,col)=>{
-    const x=col*PAD_W;
+  padLanes.forEach((li,col)=>{
+    const x=col*LANE_W;
     cx.fillStyle=laneFlash[li]?LANES[li].color+"33":"#0d0d16";
-    cx.fillRect(x,0,PAD_W,PAD_H);
+    cx.fillRect(x,0,LANE_W,PAD_H);
     if(col>0){cx.strokeStyle="#1e1e2e";cx.lineWidth=1;cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,PAD_H);cx.stroke();}
     cx.fillStyle=LANES[li].color;cx.font="bold 12px sans-serif";cx.textAlign="center";
-    cx.fillText(LANES[li].label,x+PAD_W/2,PAD_H-20);
+    cx.fillText(LANES[li].label,x+LANE_W/2,PAD_H-20);
     cx.fillStyle="#999";cx.font="10px sans-serif";
-    cx.fillText(LANES[li].key.toUpperCase(),x+PAD_W/2,PAD_H-7);
+    var keyLabel=LANES[li].key===" "?"SPACE":LANES[li].key.toUpperCase();
+    cx.fillText(keyLabel,x+LANE_W/2,PAD_H-7);
   });
 
-  // Kick zone
+  // Kick zone — centered at bottom, notes fall from top of screen
   if(hasKick){
     cx.fillStyle=laneFlash[4]?LANES[4].color+"33":"#0a0a12";
     cx.fillRect(0,PAD_H,W,KICK_H);
@@ -4648,7 +4652,7 @@ function draw(){
 
   if(nLanes===0&&!hasKick)return;
 
-  // Hit line
+  // Pad hit line
   if(nLanes>0){
     cx.strokeStyle="rgba(255,255,255,0.5)";cx.lineWidth=2;
     cx.beginPath();cx.moveTo(0,HIT_Y);cx.lineTo(W,HIT_Y);cx.stroke();
@@ -4662,9 +4666,9 @@ function draw(){
     cx.beginPath();cx.moveTo(W*0.15,KICK_HIT_Y);cx.lineTo(W*0.85,KICK_HIT_Y);cx.stroke();
   }
 
-  // Target rings — pads
-  activeLanes.forEach(li=>{
-    const x=laneX[li],r=Math.min(PAD_W*0.33,26);
+  // Target rings — pad lanes
+  padLanes.forEach(li=>{
+    const x=laneX[li],r=Math.min(LANE_W*0.33,26);
     cx.beginPath();cx.arc(x,HIT_Y,r,0,Math.PI*2);
     cx.strokeStyle=laneFlash[li]?LANES[li].color:LANES[li].color+"55";
     cx.lineWidth=laneFlash[li]?3:2;cx.stroke();
@@ -4684,30 +4688,16 @@ function draw(){
     if(notes.length===0||notes.every(n=>n.hit||n.missed))endTurn();
   }
 
-  // Notes
+  // Notes — pad lanes fall in columns, kick falls centered from top
   if(mode==="builtin"&&now>-9000){
     for(const n of notes){
       if(n.hit)continue;
       const dt=n.time-now;
-      if(n.lane<4){
-        if(!laneX.hasOwnProperty(n.lane))continue;
-        const ny=HIT_Y-dt*SPEED;
-        if(ny<-40||ny>PAD_H+40){
-          if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
-          continue;
-        }
-        const x=laneX[n.lane],r=Math.min(PAD_W*0.33,26);
-        cx.globalAlpha=n.missed?0.2:1;
-        const g=cx.createRadialGradient(x,ny,0,x,ny,r*2);
-        g.addColorStop(0,LANES[n.lane].color+"aa");g.addColorStop(1,LANES[n.lane].color+"00");
-        cx.fillStyle=g;cx.beginPath();cx.arc(x,ny,r*2,0,Math.PI*2);cx.fill();
-        cx.fillStyle=LANES[n.lane].color;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.fill();
-        cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.stroke();
-        cx.globalAlpha=1;
-        if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
-      } else if(hasKick){
-        const ky=KICK_HIT_Y-dt*SPEED*0.5;
-        if(ky<PAD_H-30||ky>H+30){
+      if(n.lane===4){
+        // Kick — falls from top of screen, centered, landing on KICK_HIT_Y
+        if(!hasKick)continue;
+        const ky=KICK_HIT_Y-dt*SPEED;
+        if(ky<-40||ky>H+40){
           if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
           continue;
         }
@@ -4715,6 +4705,23 @@ function draw(){
         cx.globalAlpha=n.missed?0.2:1;
         cx.fillStyle=LANES[4].color;cx.beginPath();cx.arc(W/2,ky,kr,0,Math.PI*2);cx.fill();
         cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(W/2,ky,kr,0,Math.PI*2);cx.stroke();
+        cx.globalAlpha=1;
+        if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+      } else {
+        // Pad lanes — fall in columns
+        if(!laneX.hasOwnProperty(n.lane))continue;
+        const ny=HIT_Y-dt*SPEED;
+        if(ny<-40||ny>PAD_H+40){
+          if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+          continue;
+        }
+        const x=laneX[n.lane],r=Math.min(LANE_W*0.33,26);
+        cx.globalAlpha=n.missed?0.2:1;
+        const g=cx.createRadialGradient(x,ny,0,x,ny,r*2);
+        g.addColorStop(0,LANES[n.lane].color+"aa");g.addColorStop(1,LANES[n.lane].color+"00");
+        cx.fillStyle=g;cx.beginPath();cx.arc(x,ny,r*2,0,Math.PI*2);cx.fill();
+        cx.fillStyle=LANES[n.lane].color;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.fill();
+        cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.stroke();
         cx.globalAlpha=1;
         if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
       }
@@ -4752,8 +4759,29 @@ function playDrumAt(ac,lane,t,vol,arr){
     f.type="highpass";f.frequency.value=7000;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
     g.gain.setValueAtTime(vol*.5,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
     s.start(t);s.stop(t+0.06);mk(s);
-  } else { // tom / tom2
-    const freq=type==="tom"?160:120;
+  } else if(type==="crash"){
+    // Crash cymbal — long noise burst with resonance
+    const sz=ac.sampleRate*0.4,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
+    const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+    f.type="bandpass";f.frequency.value=4000;f.Q.value=0.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(vol*.6,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+    s.start(t);s.stop(t+0.45);mk(s);
+  } else if(type==="ride"){
+    // Ride cymbal — shorter metallic ping
+    const sz=ac.sampleRate*0.15,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
+    const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+    f.type="bandpass";f.frequency.value=6000;f.Q.value=1.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(vol*.45,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+    s.start(t);s.stop(t+0.15);mk(s);
+    // Add a subtle pitched ping
+    const o=ac.createOscillator(),g2=ac.createGain();
+    o.type="triangle";o.connect(g2);g2.connect(ac.destination);o.frequency.value=800;
+    g2.gain.setValueAtTime(vol*.15,t);g2.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+    o.start(t);o.stop(t+0.1);mk(o);
+  } else { // tom / tom2 / tom3
+    const freq=type==="tom"?160:type==="tom2"?120:90;
     const o=ac.createOscillator(),g=ac.createGain();
     o.connect(g);g.connect(ac.destination);
     o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*0.4,t+0.2);
@@ -4778,7 +4806,7 @@ function togglePause(){
 }
 
 // ── REMAP ─────────────────────────────────────────────
-var remapLanes=[{l:0,name:"RED",color:"#e53e3e"},{l:1,name:"YELLOW",color:"#d69e2e"},{l:2,name:"BLUE",color:"#3182ce"},{l:3,name:"GREEN",color:"#38a169"},{l:4,name:"KICK",color:"#805ad5"}];
+var remapLanes=LANES.map(function(ln,i){return{l:i,name:ln.label.toUpperCase(),color:ln.color};});
 function startRemap(){
   remapping=true;remapStep=0;remapResult={};
   document.getElementById("remap-overlay").classList.add("show");
