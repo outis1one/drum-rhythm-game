@@ -98,6 +98,12 @@ canvas{display:block;}
     <h2>Active Pads</h2>
     <div class="pad-toggle" id="pad-toggles"></div>
     <p style="font-size:11px;opacity:.4;margin-top:8px">Toggle which pads show notes. Inactive pads still make sound when hit.</p>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid #222;">
+      <span style="font-size:11px;opacity:.5;margin-right:8px;">Note density:</span>
+      <button class="smbtn" id="density-full" onclick="setSimpleMode(false)">Full</button>
+      <button class="smbtn" id="density-simple" onclick="setSimpleMode(true)">Simple</button>
+      <span style="font-size:10px;opacity:.35;margin-left:6px;" id="density-hint">Fewer notes for beginners</span>
+    </div>
     <div id="hitmode-toggle" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid #222;">
       <span style="font-size:11px;opacity:.5;margin-right:8px;">Classical hit sound:</span>
       <button class="smbtn" id="hitmode-drums" onclick="setHitMode('drums')">🥁 Drums</button>
@@ -191,6 +197,8 @@ const LANES=[
 
 // which pads are active (show notes) — all on by default
 let activePads=[true,true,true,true,true];
+// Simple mode — thins out notes, keeping only strong beats
+let simpleMode=false;
 
 // ── RHYTHMS ───────────────────────────────────────────
 // Every pattern now uses ALL 5 lanes (0=Red/tom, 1=Yellow/snare, 2=Blue/hihat, 3=Green/tom2, 4=Kick)
@@ -4059,10 +4067,194 @@ const WORLD_PIECES=(function(){
   return [hava,cucaracha,frere,cielito,waltzing,osole,ballgame,mountain];
 })();
 
-var SYNTH_GENRES={"Prime":PRIME_PIECES,"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Spirituals":SPIRITUAL_PIECES,"World":WORLD_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
+// ── NURSERY RHYMES (very simple, beginner-friendly) ──
+const NURSERY_PIECES=(function(){
+  var C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5,G3=NT.G3,A3=NT.A3,B3=NT.B3;
+  function rhyme(name,origin,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=0.3;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.25+rep*0.08;
+      var inst=rep<1?'woodwind':'strings';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
+        if(rep>0)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.25});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.5;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.4});});
+    mel.push({t:t,l:4});
+    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  }
+  // ── Baa Baa Black Sheep (same melody as Twinkle but different words) ──
+  var baa=rhyme("Baa Baa Black Sheep","English (1731)",70,
+    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
+    [0,0,3,3,0,0,3,1,1,2,2,1,1,0],
+    [1,1,1,1,1,1,3,1,1,1,1,1,1,4],
+    3,C4);
+  // ── London Bridge ──
+  var london=rhyme("London Bridge Is Falling Down","English (1744)",75,
+    [G4,A4,G4,F4,E4,F4,G4,D4,E4,F4,E4,F4,G4,G4,A4,G4,F4,E4,F4,G4,D4,G4,E4,C4],
+    [3,0,3,1,2,1,3,1,2,1,2,1,3,3,0,3,1,2,1,3,1,3,2,0],
+    [1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,2,2,1,1,4],
+    3,C4);
+  // ── Old MacDonald ──
+  var macdonald=rhyme("Old MacDonald Had a Farm","English (1706)",80,
+    [C4,C4,C4,G4,A4,A4,G4,E4,E4,D4,D4,C4,G4,C4,C4,C4,G4,A4,A4,G4,E4,E4,D4,D4,C4],
+    [0,0,0,3,0,0,3,2,2,1,1,0,3,0,0,0,3,0,0,3,2,2,1,1,0],
+    [1,1,1,1,1,1,2,1,1,1,1,3,2,1,1,1,1,1,1,2,1,1,1,1,4],
+    3,C4);
+  // ── Row Row Row Your Boat ──
+  var row=rhyme("Row Row Row Your Boat","English (1852)",70,
+    [C4,C4,C4,D4,E4,E4,D4,E4,F4,G4,C5,C5,C5,G4,G4,G4,E4,E4,E4,C4,C4,C4,G4,F4,E4,D4,C4],
+    [0,0,0,1,2,2,1,2,1,3,0,0,0,3,3,3,2,2,2,0,0,0,3,1,2,1,0],
+    [1,1,1,1,2,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
+  // ── Three Blind Mice ──
+  var mice=rhyme("Three Blind Mice","English (1609)",75,
+    [E4,D4,C4,E4,D4,C4,G4,F4,E4,G4,F4,E4,G4,A4,G4,F4,E4,D4,G4,A4,G4,F4,E4,D4,C4],
+    [2,1,0,2,1,0,3,1,2,3,1,2,3,0,3,1,2,1,3,0,3,1,2,1,0],
+    [1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,4],
+    3,C4);
+  // ── Itsy Bitsy Spider ──
+  var spider=rhyme("Itsy Bitsy Spider","English (1910s)",75,
+    [G4,C5,C5,C5,D5,E5,E5,D5,C5,D5,E5,C5,E5,E5,D5,D5,C5,G4,C5,C5,C5,D5,E5,E5,D5,C5,D5,E5,C5],
+    [3,0,0,0,1,2,2,1,0,1,2,0,2,2,1,1,0,3,0,0,0,1,2,2,1,0,1,2,0],
+    [1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,4],
+    3,C4);
+  // ── Pop Goes the Weasel ──
+  var weasel=rhyme("Pop Goes the Weasel","English (1850s)",85,
+    [C4,E4,E4,F4,G4,G4,C4,E4,E4,D4,F4,A4,A4,G4,C4,E4,E4,F4,G4,G4,E4,C4,D4,F4,E4,C4],
+    [0,2,2,1,3,3,0,2,2,1,1,0,0,3,0,2,2,1,3,3,2,0,1,1,2,0],
+    [1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
+  // ── Hot Cross Buns ──
+  var hotcross=rhyme("Hot Cross Buns","English (1798)",65,
+    [E4,D4,C4,E4,D4,C4,C4,C4,C4,C4,D4,D4,D4,D4,E4,D4,C4],
+    [2,1,0,2,1,0,0,0,0,0,1,1,1,1,2,1,0],
+    [1,1,3,1,1,3,1,1,1,1,1,1,1,1,1,1,4],
+    4,C4);
+  // ── Jack and Jill ──
+  var jack=rhyme("Jack and Jill","English (1765)",80,
+    [C4,C4,D4,E4,E4,F4,G4,G4,F4,E4,F4,G4,A4,A4,G4,F4,E4,D4,C4],
+    [0,0,1,2,2,1,3,3,1,2,1,3,0,0,3,1,2,1,0],
+    [1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,4],
+    3,C4);
+  // ── Humpty Dumpty ──
+  var humpty=rhyme("Humpty Dumpty","English (1797)",75,
+    [E4,G4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,E4,G4,A4,G4,F4,E4,D4,C4],
+    [2,3,0,3,1,2,1,2,1,2,1,0,2,3,0,3,1,2,1,0],
+    [1,1,2,1,1,1,2,1,1,1,1,2,1,1,2,1,1,1,1,4],
+    3,C4);
+  return [baa,london,macdonald,row,mice,spider,weasel,hotcross,jack,humpty];
+})();
 
+// ── RAGTIME (Scott Joplin & contemporaries, all public domain) ──
+const RAGTIME_PIECES=(function(){
+  var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,A3=NT.A3,Bb3=NT.Bb3,B3=NT.B3,
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
+  function rag(name,composer,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=0.2;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.2+rep*0.08;
+      // Ragtime uses piano-like timbres: strings for right hand, bass for left
+      var inst=rep%2===0?'strings':'woodwind';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.8,i:inst,v:v});
+        // Stride bass pattern: root on beats, fifth on off-beats
+        if(i%4===0)bg.push({t:t,f:(root||theme[0])/2,d:d*0.6,i:'bass',v:v*0.5});
+        if(i%4===2)bg.push({t:t,f:(root||theme[0])*3/4,d:d*0.6,i:'bass',v:v*0.4});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.3;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.5});});
+    bg.push({t:t,f:r/2,d:1.5,i:'bass',v:0.5});mel.push({t:t,l:4});
+    return {n:name,composer:composer,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  }
+
+  // ── The Entertainer — A section (most famous part) ──
+  var entertainer=rag("The Entertainer","Scott Joplin (1902)",130,
+    [D4,Eb4,E4,C5,E4,C5,E4,C5,C5,D5,Eb5,E5,C5,D5,E5,C5,D5,Eb5,E5,C5,E4,C5,E4,C5,A4,G4,A4,B4,C5],
+    [1,2,2,0,2,0,2,0,0,1,2,2,0,1,2,0,1,2,2,0,2,0,2,0,0,3,0,3,0],
+    [1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,1,4],
+    4,C4);
+
+  // ── Maple Leaf Rag — A section ──
+  var maple=rag("Maple Leaf Rag","Scott Joplin (1899)",140,
+    [Ab4,A4,C5,E5,C5,A4,C5,A4,Ab4,A4,C5,E5,D5,C5,A4,G4,Ab4,A4,C5,E5,C5,A4,C5,A4,G4,A4,G4,E4,C4],
+    [0,0,0,2,0,0,0,0,0,0,0,2,1,0,0,3,0,0,0,2,0,0,0,0,3,0,3,2,0],
+    [1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,4],
+    4,A4);
+
+  // ── The Easy Winners — A section ──
+  var easyw=rag("The Easy Winners","Scott Joplin (1901)",125,
+    [G4,B4,D5,B4,A4,G4,E4,G4,A4,B4,C5,D5,E5,D5,C5,B4,A4,G4,B4,D5,B4,A4,G4,E4,D4,E4,G4],
+    [3,3,1,3,0,3,2,3,0,3,0,1,2,1,0,3,0,3,3,1,3,0,3,2,1,2,3],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    4,G4);
+
+  // ── Elite Syncopations — A section ──
+  var elite=rag("Elite Syncopations","Scott Joplin (1902)",130,
+    [E4,G4,A4,B4,C5,D5,E5,D5,C5,B4,A4,G4,E4,G4,A4,B4,C5,E5,D5,C5,B4,A4,G4,E4,D4,C4],
+    [2,3,0,3,0,1,2,1,0,3,0,3,2,3,0,3,0,2,1,0,3,0,3,2,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    4,C4);
+
+  // ── Solace — A section (a Mexican serenade, slower ragtime) ──
+  var solace=rag("Solace","Scott Joplin (1909)",95,
+    [A4,G4,A4,C5,B4,A4,G4,E4,D4,E4,G4,A4,B4,A4,G4,E4,A4,G4,A4,C5,D5,C5,B4,A4,G4,E4,D4,C4],
+    [0,3,0,0,3,0,3,2,1,2,3,0,3,0,3,2,0,3,0,0,1,0,3,0,3,2,1,0],
+    [1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,4],
+    4,A4);
+
+  // ── Peacherine Rag — A section ──
+  var peacherine=rag("Peacherine Rag","Scott Joplin (1901)",135,
+    [C5,C5,B4,C5,E5,D5,C5,A4,C5,C5,B4,C5,G4,A4,B4,C5,C5,B4,C5,E5,D5,C5,B4,A4,G4],
+    [0,0,3,0,2,1,0,0,0,0,3,0,3,0,3,0,0,3,0,2,1,0,3,0,3],
+    [1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,4],
+    4,C4);
+
+  // ── The Cascades — A section ──
+  var cascades=rag("The Cascades","Scott Joplin (1904)",125,
+    [C5,B4,C5,E5,G5,E5,C5,D5,C5,B4,A4,G4,C5,B4,C5,E5,G5,E5,C5,D5,E5,D5,C5,B4,C5],
+    [0,3,0,2,3,2,0,1,0,3,0,3,0,3,0,2,3,2,0,1,2,1,0,3,0],
+    [1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    4,C4);
+
+  // ── Pineapple Rag — A section ──
+  var pineapple=rag("Pineapple Rag","Scott Joplin (1908)",130,
+    [C4,E4,G4,C5,E5,C5,G4,E4,C4,E4,G4,B4,D5,B4,G4,E4,C4,E4,G4,C5,E5,D5,C5,B4,A4,G4,C5],
+    [0,2,3,0,2,0,3,2,0,2,3,3,1,3,3,2,0,2,3,0,2,1,0,3,0,3,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    4,C4);
+
+  return [entertainer,maple,easyw,elite,solace,peacherine,cascades,pineapple];
+})();
+
+var SYNTH_GENRES={"Prime":PRIME_PIECES,"Nursery Rhymes":NURSERY_PIECES,"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Spirituals":SPIRITUAL_PIECES,"World":WORLD_PIECES,"Ragtime":RAGTIME_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
+
+function simplifyNotes(notes){
+  if(!simpleMode||notes.length<2)return notes;
+  // Keep roughly half the notes — enforce a minimum gap between consecutive notes
+  var sorted=notes.slice().sort(function(a,b){return a.time-b.time;});
+  var minGap=0.35/gameSpeed; // ~350ms minimum between notes in simple mode
+  var result=[sorted[0]];
+  for(var i=1;i<sorted.length;i++){
+    if(sorted[i].time-result[result.length-1].time>=minGap){
+      result.push(sorted[i]);
+    }
+  }
+  return result;
+}
 function buildClassicalNotes(piece){
-  return piece.melody.filter(function(m){return activePads[m.l];})
+  var raw=piece.melody.filter(function(m){return activePads[m.l];})
     .map(function(m){
       var freq=261.63;
       for(var i=0;i<piece.bg.length;i++){
@@ -4072,6 +4264,7 @@ function buildClassicalNotes(piece){
       return{time:m.t/gameSpeed,lane:m.l,freq:freq,hit:false,missed:false};
     })
     .sort(function(a,b){return a.time-b.time;});
+  return simplifyNotes(raw);
 }
 
 function beginClassical(){
@@ -4137,6 +4330,13 @@ function buildPadToggles(){
   });
 }
 buildPadToggles();
+function setSimpleMode(on){
+  simpleMode=on;
+  var full=document.getElementById("density-full"),simple=document.getElementById("density-simple");
+  if(full){full.className="smbtn"+(on?"":" purple");}
+  if(simple){simple.className="smbtn"+(on?" purple":"");}
+}
+setSimpleMode(false);
 function saveSettings(){localStorage.setItem("drgameSettings",JSON.stringify({speed:gameSpeed,volume:masterVolume}));}
 function syncSliders(){
   var sv=Math.round(gameSpeed*100),vv=Math.round(masterVolume*100);
@@ -4331,7 +4531,8 @@ function buildNotes(r){
     for(const p of r.p)
       if(activePads[p.l])
         res.push({time:(bar*4+p.t)*bs,lane:p.l,hit:false,missed:false});
-  return res.sort((a,b)=>a.time-b.time);
+  var sorted=res.sort((a,b)=>a.time-b.time);
+  return simplifyNotes(sorted);
 }
 
 function countdown(cb){
