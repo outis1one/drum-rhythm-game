@@ -222,3 +222,7 @@ All sounds are generated in real-time using the Web Audio API — no audio files
 ## License
 
 [MIT](LICENSE)
+
+## Disclaimer
+
+Rock Band is a trademark of Harmonix Music Systems. Guitar Hero is a trademark of Activision Publishing. Wii is a trademark of Nintendo. Xbox is a trademark of Microsoft. PlayStation is a trademark of Sony Interactive Entertainment. This project is not affiliated with, endorsed by, or connected to any of these companies. All trademarks are the property of their respective owners and are used here solely for hardware compatibility reference.
