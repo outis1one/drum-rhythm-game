@@ -1273,11 +1273,273 @@ const CLASSICAL_PIECES=(function(){
   }
 
   // ── Ride of the Valkyries ──
-  var valk=tp("Ride of the Valkyries","Wagner",140,
-    [Bb3,Bb3,D4,D4,D4,F4,F4,F4,Bb4,Bb4,F4,D4,Bb3,D4,F4,Bb4,F4,D4,Bb3,F3],
-    [0,0,1,1,1,2,2,2,3,3,2,1,0,1,2,3,2,1,0,4],
-    [{d:0.30,v:0.25,i:'woodwind'},{d:0.27,v:0.3,i:'strings'},{d:0.24,v:0.38,i:'strings'},{d:0.21,v:0.45,i:'brass'},{d:0.18,v:0.52,i:'brass'},{d:0.15,v:0.6,i:'brass'}],
-    [Bb3,D4,F4,Bb4]);
+  // Conductor-style: ~85s, Bb major, 9/8 galloping compound meter
+  // Famous ascending brass arpeggio Bb-D-F as hittable melody
+  var valk=(function(){
+    var bg=[],mel=[];
+    function tutti(time,freq,dur,v){
+      bg.push({t:time,f:freq,d:dur,i:'strings',v:v});
+      bg.push({t:time,f:freq,d:dur,i:'brass',v:v*0.6});
+      bg.push({t:time,f:freq*0.75,d:dur,i:'strings',v:v*0.35});
+      if(freq>200)bg.push({t:time,f:freq/2,d:dur,i:'bass',v:v*0.5});
+    }
+    function timp(time,v){bg.push({t:time,f:Bb3,d:0.5,i:'timpani',v:v||0.5});}
+
+    // Galloping rhythm constants (9/8 compound: groups of 3 eighths)
+    var e8=0.22,q=0.44,dq=0.66; // eighth, quarter, dotted-quarter
+
+    // === CONTINUOUS HARMONIC BED ===
+    var harmony=[
+      [0,5,[Bb3,D4,F4],0.06],           // Bb - intro tremolo
+      [5,17,[Bb3,D4,F4],0.12],          // Bb - first horn call
+      [17,29,[Bb3,D4,F4],0.16],         // Bb - second statement
+      [29,41,[Bb3,Eb4,G4],0.14],        // Eb - development
+      [41,53,[Bb3,D4,F4],0.2],          // Bb - recapitulation
+      [53,65,[Bb3,D4,F4],0.25],         // Bb - climax
+      [65,78,[Bb3,D4,F4],0.18],         // Bb - final
+      [78,88,[Bb3,D4,F4],0.12]          // Bb - coda
+    ];
+    harmony.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=1.8){
+        h[2].forEach(function(f){
+          bg.push({t:ht,f:f,d:1.7,i:'strings',v:h[3]});
+        });
+        bg.push({t:ht,f:h[2][0]/2,d:1.7,i:'bass',v:h[3]*0.5});
+        if(h[3]>0.15)bg.push({t:ht,f:h[2][1],d:1.7,i:'brass',v:h[3]*0.35});
+      }
+    });
+
+    // Helper: play the galloping arpeggio (ascending Bb-D-F-Bb)
+    // notes/lanes/mode control what plays and how loud
+    function gallop(t0,notes,lanes,v,withTutti){
+      var gt=t0;
+      notes.forEach(function(n,i){
+        var d=(i===notes.length-1)?dq:((i%3===0)?q:e8);
+        if(withTutti){
+          tutti(gt,n,d*0.85,v);
+          bg.push({t:gt,f:n,d:d*0.85,i:'brass',v:v*0.7});
+        }else{
+          bg.push({t:gt,f:n,d:d*0.85,i:'brass',v:v});
+          bg.push({t:gt,f:n,d:d*0.85,i:'strings',v:v*0.5});
+        }
+        mel.push({t:gt,l:lanes[i]});
+        gt+=d;
+      });
+      return gt;
+    }
+
+    // === SECTION 1 (0-5s): INTRODUCTION — string tremolo building ===
+    var t=0;
+    // Low string tremolo (background, not hittable)
+    for(var ri=0;ri<40;ri++){
+      var rf=[Bb3,F3,D3,F3,Bb3,F3,D3,F3][ri%8];
+      bg.push({t:ri*0.12,f:rf,d:0.11,i:'strings',v:0.06+ri*0.003});
+    }
+    // Low brass pedal tones
+    for(var bi=0;bi<3;bi++){
+      bg.push({t:bi*1.8,f:Bb3,d:1.6,i:'brass',v:0.06+bi*0.02});
+    }
+    // Timpani roll building
+    for(bi=0;bi<6;bi++){
+      timp(0.5+bi*0.7,0.15+bi*0.04);
+    }
+    // Sparse hittable timpani hits — building anticipation
+    mel.push({t:1.5,l:4});mel.push({t:3.0,l:4});mel.push({t:4.2,l:4});
+    t=5.0;
+
+    // === SECTION 2 (5-17s): FIRST HORN CALL — p to mf ===
+    // The famous galloping ascending arpeggio: Bb-Bb-D, D-D-F, F
+    // String tremolo continues underneath
+    var s2s=t;
+    for(ri=0;ri<55;ri++){
+      rf=[Bb3,D4,Bb3,F3,Bb3,D4,F4,D4][ri%8];
+      bg.push({t:s2s+ri*e8,f:rf,d:e8*0.8,i:'strings',v:0.1});
+    }
+
+    // First statement: ascending Bb-D-F (soft, horns entering)
+    // Bb(q) Bb(e8) D(e8) | D(q) D(e8) F(e8) | F(dq)
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.3,false);
+    t+=0.3;
+    // Descending: Bb(q) F(e8) D(e8) | Bb(q) D(e8) F(e8) | Bb(dq)
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.32,false);
+    t+=0.4;
+
+    // Second statement: louder, with woodwind doubling
+    var s2b=t;
+    for(ri=0;ri<55;ri++){
+      rf=[F4,D4,Bb3,D4,F4,Bb4,F4,D4][ri%8];
+      bg.push({t:s2b+ri*e8,f:rf,d:e8*0.8,i:'woodwind',v:0.08});
+    }
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.38,false);
+    t+=0.3;
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.4,false);
+    t+=0.5;
+
+    // === SECTION 3 (17-29s): SECOND STATEMENT — mf to f, full brass ===
+    var s3s=t;
+    for(ri=0;ri<55;ri++){
+      rf=[Bb3,F4,D4,Bb3,F3,Bb3,D4,F4][ri%8];
+      bg.push({t:s3s+ri*e8,f:rf,d:e8*0.8,i:'strings',v:0.14});
+    }
+    // Woodwind sustained chords (background)
+    for(bi=0;bi<6;bi++){
+      [Bb3,D4,F4].forEach(function(f){
+        bg.push({t:s3s+bi*2.0,f:f,d:1.8,i:'woodwind',v:0.12});
+      });
+    }
+
+    // Horn call with tutti orchestration now
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.45,true);
+    t+=0.3;
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.48,true);
+    t+=0.4;
+    // Repeat with kick accents on downbeats
+    timp(t,0.5);mel.push({t:t,l:4});t+=dq;
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.5,true);
+    t+=0.3;
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.52,true);
+    t+=0.5;
+
+    // === SECTION 4 (29-41s): DEVELOPMENT — new key, Eb major ===
+    // Modulation to Eb, secondary melodic material
+    var s4s=t;
+    for(ri=0;ri<55;ri++){
+      rf=[Eb4,G4,Bb4,G4,Eb4,Bb3,Eb4,G4][ri%8];
+      bg.push({t:s4s+ri*e8,f:rf,d:e8*0.8,i:'strings',v:0.14});
+    }
+    for(bi=0;bi<6;bi++){
+      [Eb4,G4,Bb4].forEach(function(f){
+        bg.push({t:s4s+bi*2.0,f:f,d:1.8,i:'brass',v:0.12});
+      });
+      bg.push({t:s4s+bi*2.0,f:Eb4/2,d:1.8,i:'bass',v:0.15});
+    }
+
+    // Eb major arpeggio: Eb-Eb-G, G-G-Bb, Bb
+    t=gallop(t,[Eb4,Eb4,G4, G4,G4,Bb4, Bb4],[2,2,3, 3,3,0, 0],0.45,true);
+    t+=0.3;
+    t=gallop(t,[Bb4,G4,Eb4, G4,Eb4,Bb3, Eb4],[0,3,2, 3,2,1, 2],0.48,true);
+    t+=0.4;
+    // Back to Bb major with added power
+    timp(t,0.55);mel.push({t:t,l:4});t+=dq;
+    t=gallop(t,[Bb3,D4,F4, Bb4,F4,D4, Bb3],[0,1,2, 3,2,1, 0],0.5,true);
+    t+=0.3;
+    // Chromatic passage — building tension
+    [[C4,0],[D4,1],[Eb4,2],[E4,2],[F4,3]].forEach(function(n){
+      tutti(t,n[0],q*0.85,0.48);
+      bg.push({t:t,f:n[0],d:q*0.85,i:'brass',v:0.45});
+      mel.push({t:t,l:n[1]});t+=q;
+    });
+    tutti(t,F4,dq*0.85,0.52);mel.push({t:t,l:4});timp(t,0.55);t+=dq+0.5;
+
+    // === SECTION 5 (41-53s): RECAPITULATION — ff, full orchestra ===
+    var s5s=t;
+    for(ri=0;ri<55;ri++){
+      rf=[Bb3,D4,F4,Bb4,F4,D4,Bb3,F3][ri%8];
+      bg.push({t:s5s+ri*e8,f:rf,d:e8*0.8,i:'strings',v:0.18});
+      if(ri%4===0)bg.push({t:s5s+ri*e8,f:rf*0.5,d:e8*2,i:'brass',v:0.1});
+    }
+    for(bi=0;bi<6;bi++){
+      bg.push({t:s5s+bi*2.0,f:Bb3/2,d:1.8,i:'bass',v:0.22});
+      timp(s5s+bi*2.0,0.4);
+    }
+
+    // Full fff horn call — massive tutti
+    timp(t,0.6);mel.push({t:t,l:4});t+=dq;
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.6,true);
+    t+=0.25;
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.62,true);
+    t+=0.35;
+    // Repeat — even louder
+    timp(t,0.65);mel.push({t:t,l:4});t+=dq;
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.65,true);
+    t+=0.25;
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.68,true);
+    t+=0.5;
+
+    // === SECTION 6 (53-65s): CLIMAX — fff, maximum intensity ===
+    var s6s=t;
+    // Massive tremolo
+    for(ri=0;ri<60;ri++){
+      rf=[Bb3,D4,F4,Bb4,D5,Bb4,F4,D4][ri%8];
+      bg.push({t:s6s+ri*e8,f:rf,d:e8*0.8,i:'strings',v:0.2});
+      if(ri%3===0)bg.push({t:s6s+ri*e8,f:rf*0.5,d:e8*1.5,i:'brass',v:0.15});
+    }
+    for(bi=0;bi<7;bi++){
+      bg.push({t:s6s+bi*1.6,f:Bb3/2,d:1.4,i:'bass',v:0.28});
+      timp(s6s+bi*1.6,0.5);
+    }
+
+    // Rapid repeated gallops — faster, more intense
+    var fe8=0.18,fq=0.36,fdq=0.54; // faster tempo
+    // Ascending blast
+    [Bb3,D4,F4,Bb4].forEach(function(f,i){
+      tutti(t,f,fq*0.85,0.7);
+      bg.push({t:t,f:f,d:fq*0.85,i:'brass',v:0.65});
+      mel.push({t:t,l:i});t+=fq;
+    });
+    timp(t,0.65);mel.push({t:t,l:4});t+=fdq;
+    // Descending
+    [Bb4,F4,D4,Bb3].forEach(function(f,i){
+      tutti(t,f,fq*0.85,0.7);
+      bg.push({t:t,f:f,d:fq*0.85,i:'brass',v:0.65});
+      mel.push({t:t,l:[3,2,1,0][i]});t+=fq;
+    });
+    timp(t,0.65);mel.push({t:t,l:4});t+=fdq;
+    // Full speed gallop x2
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.7,true);
+    t+=0.2;
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.72,true);
+    t+=0.3;
+    // One more ascending blast
+    [Bb3,D4,F4,Bb4,D5].forEach(function(f,i){
+      tutti(t,f,fe8*0.85,0.72);
+      bg.push({t:t,f:f,d:fe8*0.85,i:'brass',v:0.7});
+      mel.push({t:t,l:[0,1,2,3,4][i]});t+=fe8;
+    });
+    t+=0.5;
+
+    // === SECTION 7 (65-78s): SUSTAINED POWER — massive held chords ===
+    // Big chord hits with space between them
+    var chords=[[Bb3,D4,F4,Bb4],[Eb4,G4,Bb4,Eb5],[F4,A4,C5,F5],[Bb3,D4,F4,Bb4],
+                [Bb3,D4,F4,Bb4],[Eb4,G4,Bb4,Eb5],[F4,A4,C5,F5],[Bb3,D4,F4,D5]];
+    chords.forEach(function(ch,ci){
+      var ct=t+ci*1.5;
+      ch.forEach(function(f){
+        bg.push({t:ct,f:f,d:1.3,i:'brass',v:0.6});
+        bg.push({t:ct,f:f,d:1.3,i:'strings',v:0.5});
+      });
+      bg.push({t:ct,f:ch[0]/2,d:1.3,i:'bass',v:0.45});
+      timp(ct,0.6);
+      mel.push({t:ct,l:4});
+      // Add the gallop rhythm between chords
+      if(ci<7){
+        mel.push({t:ct+0.5,l:ci%2===0?0:2});
+        bg.push({t:ct+0.5,f:ch[1],d:0.3,i:'brass',v:0.4});
+        mel.push({t:ct+0.9,l:ci%2===0?1:3});
+        bg.push({t:ct+0.9,f:ch[2],d:0.3,i:'brass',v:0.4});
+      }
+    });
+    t+=chords.length*1.5+0.5;
+
+    // === SECTION 8 (78-88s): FINAL CODA ===
+    // Last galloping statement — triumphant
+    timp(t,0.7);mel.push({t:t,l:4});t+=dq;
+    t=gallop(t,[Bb3,Bb3,D4, D4,D4,F4, F4],[0,0,1, 1,1,2, 2],0.7,true);
+    t+=0.2;
+    t=gallop(t,[Bb4,F4,D4, Bb3,D4,F4, Bb4],[3,2,1, 0,1,2, 3],0.72,true);
+    t+=0.4;
+
+    // Final massive Bb major chord
+    [Bb3,D4,F4,Bb4,D5,F5].forEach(function(f){
+      bg.push({t:t,f:f,d:5.0,i:'brass',v:0.6});
+      bg.push({t:t,f:f,d:5.0,i:'strings',v:0.5});
+    });
+    bg.push({t:t,f:Bb3/2,d:4.0,i:'bass',v:0.55});
+    bg.push({t:t,f:Bb3,d:3.5,i:'timpani',v:0.65});
+    mel.push({t:t,l:4});
+
+    return {n:"Ride of the Valkyries",composer:"Wagner",bpm:140,duration:Math.ceil(t+5),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── William Tell Overture (Gallop) ──
   var tell=tp("William Tell Overture (Gallop)","Rossini",152,
