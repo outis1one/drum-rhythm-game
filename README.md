@@ -21,9 +21,10 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 
 ## Features
 
-- **17 Genres** across two modes: synth orchestra songs + drum beat patterns
-- **97 synth pieces** with full synthesized orchestra background
+- **19 Genres** across two modes: synth orchestra songs + drum beat patterns
+- **125 synth pieces** with full synthesized orchestra background
 - **120 drum patterns** across 8 genres
+- **Note density toggle** — switch between Full and Simple (fewer notes for beginners)
 - **Drums or Orchestra mode** — choose whether pad hits play drum sounds or the actual melody note
 - **Speed control** — slow down to 50% for practice or speed up to 150%
 - **Volume control** — adjustable master volume
@@ -47,6 +48,18 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 - Lavender's Blue (English Traditional, 1670s)
 - Shortnin' Bread (Traditional, 1900s)
 
+### Nursery Rhymes (10 songs)
+- Baa Baa Black Sheep (English, 1731)
+- London Bridge Is Falling Down (English, 1744)
+- Old MacDonald Had a Farm (English, 1706)
+- Row Row Row Your Boat (English, 1852)
+- Three Blind Mice (English, 1609)
+- Itsy Bitsy Spider (English, 1910s)
+- Pop Goes the Weasel (English, 1850s)
+- Hot Cross Buns (English, 1798)
+- Jack and Jill (English, 1765)
+- Humpty Dumpty (English, 1797)
+
 ### Singalong (20 songs)
 - Drunken Sailor (Sea Shanty)
 - Wellerman (NZ Sea Shanty, 1860s)
@@ -69,7 +82,7 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 - Scarborough Fair (English Medieval)
 - My Bonnie Lies Over the Ocean (Scottish, 1881)
 
-### Christmas (10 songs)
+### Christmas (20 songs)
 - Jingle Bells (1857)
 - Silent Night (1818)
 - Deck the Halls (1862)
@@ -80,6 +93,16 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 - Away in a Manger (1885)
 - 12 Days of Christmas (1780)
 - Hark the Herald Angels Sing (1840)
+- O Come All Ye Faithful (J.F. Wade, 1743)
+- God Rest Ye Merry Gentlemen (English, 1500s)
+- What Child Is This (English, 1865)
+- Angels We Have Heard on High (French, 1862)
+- O Holy Night (A. Adam, 1847)
+- Rudolph the Red-Nosed Reindeer (J. Marks, 1949)
+- Frosty the Snowman (S. Nelson, 1950)
+- Winter Wonderland (F. Bernard, 1934)
+- Good King Wenceslas (Finnish, 1582)
+- We Three Kings (J.H. Hopkins Jr., 1857)
 
 ### Folk (8 songs)
 - Oh! Susanna (Stephen Foster, 1848)
@@ -110,6 +133,16 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 - 'O Sole Mio (Italian, 1898)
 - Take Me Out to the Ball Game (American, 1908)
 - She'll Be Coming Round the Mountain (American, 1890s)
+
+### Ragtime (8 pieces)
+- The Entertainer (Scott Joplin, 1902)
+- Maple Leaf Rag (Scott Joplin, 1899)
+- The Easy Winners (Scott Joplin, 1901)
+- Elite Syncopations (Scott Joplin, 1902)
+- Solace (Scott Joplin, 1909)
+- Peacherine Rag (Scott Joplin, 1901)
+- The Cascades (Scott Joplin, 1904)
+- Pineapple Rag (Scott Joplin, 1908)
 
 ### Classical (26 pieces)
 - Beethoven's 5th (Opening)
@@ -212,7 +245,7 @@ All sounds are generated in real-time using the Web Audio API — no audio files
 ## Tech
 
 - Pure vanilla JavaScript — no libraries, no build step, no server
-- Single `index.html` file (~4500 lines)
+- Single `index.html` file (~4900 lines)
 - Web Audio API for all sound synthesis
 - Canvas 2D for the note highway
 - Gamepad API for drum kit input
