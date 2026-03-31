@@ -3664,7 +3664,9 @@ const CHRISTMAS_PIECES=(function(){
   var away=carol("Away in a Manger","J.Murray (1885)",80,
     [C4,F4,F4,F4,G4,A4,F4,F4,A4,G4,F4,G4,F4,D4,C4,C4,F4,F4,F4,G4,A4,F4,F4,A4,G4,F4,G4,F4,D4,C4,Bb4,A4,F4],
     [0,1,1,1,3,0,1,1,0,3,1,3,1,1,0,0,1,1,1,3,0,1,1,0,3,1,3,1,1,0,2,0,1],
-    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    // 3/4 waltz. "A-way in a man-ger no crib for a bed":
+    // beat 1 of each bar gets a longer note, phrase ends get dotted-half
+    [2,2,2,2,2,4, 2,2,2,2,6, 2,2,2,4, 2,2,2,2,2,4, 2,2,2,2,6, 2,2,2,4, 2,4,8],
     4,F4);
   var twelve=carol("12 Days of Christmas","English (1780)",110,
     [C4,F4,F4,F4,F4,E4,F4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,C5,A4,Bb4,G4,A4,F4],
@@ -3708,7 +3710,9 @@ const CHRISTMAS_PIECES=(function(){
   var oholynight=carol("O Holy Night","A. Adam (1847)",72,
     [C4,F4,F4,F4,E4,F4,A4,A4,G4,F4,F4,Bb4,A4,G4,F4,G4,A4,G4,F4,E4,F4,C5,C5,Bb4,A4,G4,A4,Bb4,A4,G4,F4],
     [0,1,1,1,2,1,0,0,3,1,1,2,0,3,1,3,0,3,1,2,1,0,0,2,0,3,0,2,0,3,1],
-    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4],
+    // 12/8 compound feel: "O ho-ly night! The stars are bright-ly shi-ning"
+    // Characteristic dotted-quarter+eighth pairs and long phrase-end notes
+    [2,3,1,4,1,3,1,3,1,3,1, 2,3,1,4,1,3,1,3,1,4, 2,3,1,3,1,2,2,3,1,4],
     3,F4);
 
   // ── Rudolph the Red-Nosed Reindeer (in C major) ──
@@ -3992,7 +3996,9 @@ const SPIRITUAL_PIECES=(function(){
   var kumbaya=spirit("Kumbaya","Spiritual (Trad.)",75,
     [C4,E4,F4,G4,G4,F4,E4,C4,C4,E4,F4,G4,A4,G4,E4,C4,E4,F4,G4,G4,F4,E4,D4,C4],
     [0,2,1,3,3,1,2,0,0,2,1,3,0,3,2,0,2,1,3,3,1,2,1,0],
-    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    // Slow meditative spiritual. "Kum-ba-ya my Lord Kum-ba-ya"
+    // Dotted-quarter+eighth for the 3-syllable "Kum-ba-ya" feel, half-note on "Lord"
+    [3,1,2,4, 3,1,2,4, 3,1,2,4, 3,1,2,4, 3,1,2,4, 3,1,2,8],
     5,C4);
   var michael=spirit("Michael Row the Boat Ashore","Spiritual (1860s)",90,
     [C4,E4,F4,G4,A4,A4,G4,E4,C4,C4,E4,F4,G4,A4,A4,G4,E4,C4,D4,E4,F4,E4,D4,C4,D4,C4],
@@ -4007,7 +4013,8 @@ const SPIRITUAL_PIECES=(function(){
   var nobody=spirit("Nobody Knows the Trouble I've Seen","Spiritual (Trad.)",75,
     [C4,E4,G4,A4,G4,E4,C4,D4,E4,G4,C5,A4,G4,E4,D4,C4,E4,G4,A4,C5,A4,G4,E4,D4,C4],
     [0,2,3,0,3,2,0,1,2,3,0,0,3,2,1,0,2,3,0,0,0,3,2,1,0],
-    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    // Slow gospel: "No-bo-dy knows the trou-ble I've seen" — dotted-feel on key words
+    [2,3,1,3,1,3,2,4, 3,1,4,2,2,2,2,6, 3,1,4,2,2,2,2,2,8],
     4,C4);
   var battle=spirit("Battle Hymn of the Republic","J.W. Howe (1861)",115,
     [C4,C4,C4,E4,E4,D4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,G4,F4,E4,F4,G4,A4,G4,E4,C4,E4,D4,C4],
