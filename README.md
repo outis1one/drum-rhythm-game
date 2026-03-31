@@ -21,8 +21,8 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 
 ## Features
 
-- **19 Genres** across two modes: synth orchestra songs + drum beat patterns
-- **125 synth pieces** with full synthesized orchestra background
+- **18 Genres** across two modes: synth orchestra songs + drum beat patterns
+- **124 synth pieces** with full synthesized orchestra background
 - **120 drum patterns** across 8 genres
 - **Note density toggle** — switch between Full and Simple (fewer notes for beginners)
 - **Drums or Orchestra mode** — choose whether pad hits play drum sounds or the actual melody note
@@ -40,23 +40,20 @@ Works with **keyboard**, **Wii Rock Band drums**, **Xbox/PS Rock Band drums**, *
 
 ## Song List
 
-### Prime (6 songs)
+### Nursery Rhymes (15 songs)
 - Twinkle Twinkle Little Star (Traditional, 1760s)
 - Mary Had a Little Lamb (S.J. Hale, 1830)
 - Happy Birthday (P.S. Hill, 1893)
-- Chopsticks (Euphemia Allen, 1877)
-- Lavender's Blue (English Traditional, 1670s)
-- Shortnin' Bread (Traditional, 1900s)
-
-### Nursery Rhymes (10 songs)
-- Baa Baa Black Sheep (English, 1731)
+- Hot Cross Buns (English, 1798)
 - London Bridge Is Falling Down (English, 1744)
 - Old MacDonald Had a Farm (English, 1706)
 - Row Row Row Your Boat (English, 1852)
 - Three Blind Mice (English, 1609)
 - Itsy Bitsy Spider (English, 1910s)
 - Pop Goes the Weasel (English, 1850s)
-- Hot Cross Buns (English, 1798)
+- Chopsticks (Euphemia Allen, 1877)
+- Lavender's Blue (English Traditional, 1670s)
+- Shortnin' Bread (Traditional, 1900s)
 - Jack and Jill (English, 1765)
 - Humpty Dumpty (English, 1797)
 
@@ -245,7 +242,7 @@ All sounds are generated in real-time using the Web Audio API — no audio files
 ## Tech
 
 - Pure vanilla JavaScript — no libraries, no build step, no server
-- Single `index.html` file (~4900 lines)
+- Single `index.html` file (~4850 lines)
 - Web Audio API for all sound synthesis
 - Canvas 2D for the note highway
 - Gamepad API for drum kit input
