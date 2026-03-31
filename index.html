@@ -3446,47 +3446,47 @@ const PRIME_PIECES=(function(){
     return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   }
 
-  // ── Twinkle Twinkle Little Star (C major, from lead sheet) ──
-  var twinkle=primer("Twinkle Twinkle Little Star","Traditional (1760s)",100,
-    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
-    [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
-    [1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,3],
+  // ── Twinkle Twinkle Little Star (C major, slow & simple) ──
+  var twinkle=primer("Twinkle Twinkle Little Star","Traditional (1760s)",75,
+    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
+    [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
+    [1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,4],
     3,C4);
 
-  // ── Mary Had a Little Lamb (C major, from lead sheet) ──
-  var mary=primer("Mary Had a Little Lamb","S.J. Hale (1830)",110,
-    [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,E4,D4,D4,E4,D4,C4],
-    [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,2,1,1,2,1,0],
-    [1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
+  // ── Mary Had a Little Lamb (C major, slow & simple) ──
+  var mary=primer("Mary Had a Little Lamb","S.J. Hale (1830)",80,
+    [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,D4,D4,E4,D4,C4],
+    [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,1,1,2,1,0],
+    [1,1,1,1,1,1,3,1,1,3,1,1,3,1,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
 
-  // ── Happy Birthday (C major, from lead sheet in D transposed) ──
-  var birthday=primer("Happy Birthday","P.S. Hill (1893)",100,
+  // ── Happy Birthday (C major, slow & simple) ──
+  var birthday=primer("Happy Birthday","P.S. Hill (1893)",75,
     [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
     [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
-    [1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
-
-  // ── Chopsticks (C major, from lead sheet — alternating dyad notes) ──
-  var chopsticks=primer("Chopsticks","Euphemia Allen (1877)",140,
-    [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,D4,F4,C4,E4,C4,E4,C4,E4,F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,D4,F4,C4,E4,C4,E4,C4,E4],
-    [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,1,1,0,2,0,2,0,2,1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,1,1,0,2,0,2,0,2],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    [1,1,2,2,2,3,1,1,2,2,2,3,1,1,2,1,1,1,2,1,1,1,1,2,4],
     3,C4);
 
-  // ── Lavender's Blue (C major, from lead sheet in D transposed) ──
-  var lavender=primer("Lavender's Blue","English Traditional (1670s)",110,
-    [E4,E4,E4,D4,E4,F4,G4,G4,G4,G4,A4,G4,F4,F4,F4,E4,D4,E4,F4,E4,E4,E4,D4,E4,F4,G4,G4,G4,A4,G4,F4,E4],
-    [2,2,2,1,2,1,3,3,3,3,0,3,1,1,1,2,1,2,1,2,2,2,1,2,1,3,3,3,0,3,1,2],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
+  // ── Chopsticks (C major, simplified alternating pattern) ──
+  var chopsticks=primer("Chopsticks","Euphemia Allen (1877)",95,
+    [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4,F4,G4,F4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4],
+    [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,0,2,0,2,1,3,1,3,2,3,2,3,1,1,1,1,0,2,0,2],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
 
-  // ── Shortnin' Bread (C major, from lead sheet in A transposed) ──
-  var shortnin=primer("Shortnin' Bread","Traditional (1900s)",130,
+  // ── Lavender's Blue (C major, gentle waltz feel) ──
+  var lavender=primer("Lavender's Blue","English Traditional (1670s)",80,
+    [E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,F4,E4,D4,E4,E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,E4],
+    [2,2,1,2,1,3,3,0,3,1,1,2,1,2,2,2,1,2,1,3,3,0,3,1,2],
+    [1,1,1,1,1,1,1,1,1,2,1,1,1,3,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
+
+  // ── Shortnin' Bread (C major, bouncy but approachable) ──
+  var shortnin=primer("Shortnin' Bread","Traditional (1900s)",95,
     [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
     [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
+    [1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,4],
+    3,C4);
 
   return [twinkle,mary,birthday,chopsticks,lavender,shortnin];
 })();
@@ -3653,7 +3653,77 @@ const CHRISTMAS_PIECES=(function(){
     [0,1,1,2,1,0,0,3,0,0,0,3,0,0,0,3,0,2,3,0,2,0,0,1,3,2,0,3,1],
     [1,2,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,4],
     4,F4);
-  return [jingle,silent,deck,wish,ocometree,firstnoel,joy,away,twelve,hark];
+  // ── O Come All Ye Faithful (G major → transposed to C) ──
+  var ocome=carol("O Come All Ye Faithful","J.F. Wade (1743)",100,
+    [C4,C4,G4,C4,D4,G4,E4,D4,E4,F4,E4,D4,C4,B4,A4,B4,C5,B4,A4,G4,A4,E4,F4,E4,D4,E4,F4,D4,C4,D4,C4,Bb4,A4,G4,F4,E4,F4,E4,D4,C4],
+    [0,0,3,0,1,3,2,1,2,1,2,1,0,3,0,3,0,3,0,3,0,2,1,2,1,2,1,1,0,1,0,2,0,3,1,2,1,2,1,0],
+    [2,1,2,1,2,3,1,1,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,4],
+    3,C4);
+
+  // ── God Rest Ye Merry Gentlemen (E minor / A minor) ──
+  var godrest=carol("God Rest Ye Merry Gentlemen","English (1500s)",120,
+    [E4,E4,E4,D4,C4,D4,E4,F4,G4,A4,Bb4,A4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,B3,C4,G4,G4,F4,E4,F4,G4,A4,Bb4,A4,G4,F4,E4],
+    [2,2,2,1,0,1,2,1,3,0,2,0,3,1,2,1,0,1,2,1,2,1,0,3,0,3,3,1,2,1,3,0,2,0,3,1,2],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,4],
+    4,E4);
+
+  // ── What Child Is This (Greensleeves melody as a carol) ──
+  var whatchild=carol("What Child Is This","English (1865)",95,
+    [E4,A4,B4,C5,B4,A4,G4,E4,D4,E4,F4,E4,D4,C4,E4,A4,B4,C5,B4,A4,Ab4,B4,C5,A4,A4],
+    [2,0,3,0,3,0,3,2,1,2,1,2,1,0,2,0,3,0,3,0,1,3,0,0,0],
+    [2,2,2,1,2,2,2,1,2,1,2,1,2,3,2,2,2,1,2,1,1,1,2,1,4],
+    4,A4);
+
+  // ── Angels We Have Heard on High ──
+  var angels=carol("Angels We Have Heard on High","French (1862)",110,
+    [E4,E4,E4,E4,F4,D4,E4,F4,E4,E4,F4,D4,E4,F4,G4,F4,E4,D4,E4,C4,D4,E4,F4,D4,E4,F4,G4,F4,E4,D4,E4,C4,C4],
+    [2,2,2,2,1,1,2,1,2,2,1,1,2,1,3,1,2,1,2,0,1,2,1,1,2,1,3,1,2,1,2,0,0],
+    [1,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,1,2,4],
+    4,C4);
+
+  // ── O Holy Night (in C major) ──
+  var oholynight=carol("O Holy Night","A. Adam (1847)",72,
+    [C4,F4,F4,F4,E4,F4,A4,A4,G4,F4,F4,Bb4,A4,G4,F4,G4,A4,G4,F4,E4,F4,C5,C5,Bb4,A4,G4,A4,Bb4,A4,G4,F4],
+    [0,1,1,1,2,1,0,0,3,1,1,2,0,3,1,3,0,3,1,2,1,0,0,2,0,3,0,2,0,3,1],
+    [2,2,1,1,1,1,2,1,1,2,1,2,1,1,1,1,2,1,1,1,3,2,1,1,1,1,1,1,1,1,4],
+    3,F4);
+
+  // ── Rudolph the Red-Nosed Reindeer (in C major) ──
+  var rudolph=carol("Rudolph the Red-Nosed Reindeer","J. Marks (1949)",130,
+    [G4,A4,G4,E4,C5,A4,G4,G4,A4,G4,A4,G4,C5,B4,F4,A4,G4,F4,D4,E4,F4,D4,G4,A4,G4,E4,C5,A4,G4,G4,A4,G4,A4,G4,A4,D5,C5],
+    [3,0,3,2,0,0,3,3,0,3,0,3,0,3,1,0,3,1,1,2,1,1,3,0,3,2,0,0,3,3,0,3,0,3,0,1,0],
+    [1,1,1,1,2,1,2,1,1,1,1,1,2,3,1,1,1,1,1,1,1,3,1,1,1,1,2,1,2,1,1,1,1,1,1,1,4],
+    3,C4);
+
+  // ── Frosty the Snowman (in C major) ──
+  var frosty=carol("Frosty the Snowman","S. Nelson (1950)",125,
+    [G4,E4,F4,G4,C5,B4,A4,G4,A4,G4,F4,E4,F4,A4,G4,F4,E4,D4,C4,C4,G4,E4,F4,G4,C5,B4,A4,G4,A4,G4,F4,E4,D4,C4],
+    [3,2,1,3,0,3,0,3,0,3,1,2,1,0,3,1,2,1,0,0,3,2,1,3,0,3,0,3,0,3,1,2,1,0],
+    [1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
+
+  // ── Winter Wonderland (in C major) ──
+  var winter=carol("Winter Wonderland","F. Bernard (1934)",120,
+    [E4,F4,G4,G4,A4,G4,F4,E4,D4,E4,F4,F4,G4,F4,E4,D4,C4,E4,F4,G4,G4,A4,G4,F4,E4,D4,E4,F4,F4,G4,F4,E4,D4,C4],
+    [2,1,3,3,0,3,1,2,1,2,1,1,3,1,2,1,0,2,1,3,3,0,3,1,2,1,2,1,1,3,1,2,1,0],
+    [1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,4],
+    3,C4);
+
+  // ── Good King Wenceslas (in F major) ──
+  var wenceslas=carol("Good King Wenceslas","Finnish (1582)",110,
+    [F4,F4,F4,G4,F4,F4,C4,D4,E4,F4,F4,G4,F4,F4,C4,C5,Bb4,A4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,C5,Bb4,A4,G4,F4],
+    [1,1,1,3,1,1,0,1,2,1,1,3,1,1,0,0,2,0,3,0,2,0,3,1,3,0,2,0,2,0,3,1],
+    [1,1,1,1,1,1,2,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,2,1,1,1,2,1,1,1,4],
+    4,F4);
+
+  // ── We Three Kings (E minor) ──
+  var threekings=carol("We Three Kings","J.H. Hopkins Jr. (1857)",105,
+    [B4,A4,G4,A4,B4,B4,B4,A4,G4,A4,B4,A4,G4,F4,E4,E4,B4,B4,C5,D5,D5,C5,B4,A4,B4,C5,B4,A4,G4,A4,G4,E4],
+    [3,0,3,0,3,3,3,0,3,0,3,0,3,1,2,2,3,3,0,1,1,0,3,0,3,0,3,0,3,0,3,2],
+    [2,1,2,1,1,1,2,1,2,1,1,1,1,1,2,3,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,4],
+    4,E4);
+
+  return [jingle,silent,deck,wish,ocometree,firstnoel,joy,away,twelve,hark,ocome,godrest,whatchild,angels,oholynight,rudolph,frosty,winter,wenceslas,threekings];
 })();
 
 // ── SINGALONG (campfire, sea shanties, pub songs) ──
