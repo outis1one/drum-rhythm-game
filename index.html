@@ -3437,6 +3437,7 @@ const CHIPTUNE_PIECES=(function(){
   return [platformer,spaceshooter,rpg,racing,dungeon,victory];
 })();
 
+
 // ── FOLK (public domain traditional songs) ──
 const FOLK_PIECES=(function(){
   var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,B3=NT.B3,
@@ -4027,11 +4028,41 @@ const NURSERY_PIECES=(function(){
     mel.push({t:t,l:4});
     return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   }
-  // ── Baa Baa Black Sheep (same melody as Twinkle but different words) ──
-  var baa=rhyme("Baa Baa Black Sheep","English (1731)",70,
-    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
-    [0,0,3,3,0,0,3,1,1,2,2,1,1,0],
-    [1,1,1,1,1,1,3,1,1,1,1,1,1,4],
+  // ── Twinkle Twinkle Little Star (same melody as Baa Baa Black Sheep) ──
+  var twinkle=rhyme("Twinkle Twinkle Little Star","Traditional (1760s)",75,
+    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
+    [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
+    [1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,1,1,1,1,1,1,4],
+    3,C4);
+  // ── Mary Had a Little Lamb ──
+  var mary=rhyme("Mary Had a Little Lamb","S.J. Hale (1830)",80,
+    [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,D4,D4,E4,D4,C4],
+    [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,1,1,2,1,0],
+    [1,1,1,1,1,1,3,1,1,3,1,1,3,1,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
+  // ── Happy Birthday ──
+  var birthday=rhyme("Happy Birthday","P.S. Hill (1893)",75,
+    [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
+    [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
+    [1,1,2,2,2,3,1,1,2,2,2,3,1,1,2,1,1,1,2,1,1,1,1,2,4],
+    3,C4);
+  // ── Chopsticks ──
+  var chopsticks=rhyme("Chopsticks","Euphemia Allen (1877)",95,
+    [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4,F4,G4,F4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4],
+    [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,0,2,0,2,1,3,1,3,2,3,2,3,1,1,1,1,0,2,0,2],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
+  // ── Lavender's Blue ──
+  var lavender=rhyme("Lavender's Blue","English Traditional (1670s)",80,
+    [E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,F4,E4,D4,E4,E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,E4],
+    [2,2,1,2,1,3,3,0,3,1,1,2,1,2,2,2,1,2,1,3,3,0,3,1,2],
+    [1,1,1,1,1,1,1,1,1,2,1,1,1,3,1,1,1,1,1,1,1,1,1,1,4],
+    3,C4);
+  // ── Shortnin' Bread ──
+  var shortnin=rhyme("Shortnin' Bread","Traditional (1900s)",95,
+    [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
+    [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
+    [1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,4],
     3,C4);
   // ── London Bridge ──
   var london=rhyme("London Bridge Is Falling Down","English (1744)",75,
