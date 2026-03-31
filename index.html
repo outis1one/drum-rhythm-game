@@ -55,10 +55,10 @@ canvas{display:block;}
 #pause-overlay{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:20;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
 #pause-overlay.show{display:flex;}
 #pause-overlay h2{font-size:28px;color:#fff;}
-#remap-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-#remap-overlay.show{display:flex;}
-#remap-prompt{font-size:20px;font-weight:bold;text-align:center;}
-#remap-status{font-size:13px;opacity:.5;text-align:center;}
+#remap-overlay,#keyremap-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+#remap-overlay.show,#keyremap-overlay.show{display:flex;}
+#remap-prompt,#keyremap-prompt{font-size:20px;font-weight:bold;text-align:center;}
+#remap-status,#keyremap-status{font-size:13px;opacity:.5;text-align:center;}
 </style>
 </head>
 <body>
@@ -137,6 +137,7 @@ canvas{display:block;}
 
   <div class="sticky-start">
     <button class="smbtn" onclick="startRemap()">🎮 Remap Pads</button>
+    <button class="smbtn" onclick="startKeyRemap()">⌨ Remap Keys</button>
     <button class="bigbtn" onclick="startGame()">▶ Start</button>
   </div>
 </div>
@@ -167,8 +168,10 @@ canvas{display:block;}
   </div>
 </div>
 
-<!-- REMAP -->
+<!-- REMAP (gamepad) -->
 <div id="remap-overlay"><div id="remap-prompt"></div><div id="remap-status"></div><button class="smbtn red" onclick="cancelRemap()">Cancel</button></div>
+<!-- REMAP (keyboard) -->
+<div id="keyremap-overlay"><div id="keyremap-prompt"></div><div id="keyremap-status"></div><button class="smbtn red" onclick="cancelKeyRemap()">Cancel</button></div>
 
 <!-- SCORES -->
 <div class="screen" id="ss" style="padding:16px;">
@@ -4359,8 +4362,9 @@ function confirmReset(){
   if(ans===null)return;
   if(parseInt(ans)===a+b){
     localStorage.removeItem("drgame5");localStorage.removeItem("drgameSettings");
-    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameHidden");localStorage.removeItem("drgameHiddenSongs");
-    savedScores=[];hiddenGenres=[];hiddenSongs={};gpMap={0:2,1:3,2:0,3:1,4:4,8:4};
+    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameKeyMap");localStorage.removeItem("drgameHidden");localStorage.removeItem("drgameHiddenSongs");
+    savedScores=[];hiddenGenres=[];hiddenSongs={};gpMap={0:2,1:3,2:0,3:1,4:4,5:5,6:6,7:7,8:4};customKeyMap=null;
+    LANES[0].key="f";LANES[1].key="g";LANES[2].key="h";LANES[3].key="j";LANES[4].key=" ";LANES[5].key="d";LANES[6].key="k";LANES[7].key="l";
     refreshMiniLB();resetSettings();buildMenu();
     alert("All data cleared!");
   } else {alert("Incorrect — data NOT cleared.");}
@@ -4878,19 +4882,87 @@ function handleRemapButton(bi){
   return true;
 }
 
+// ── KEYBOARD REMAP ────────────────────────────────────
+var keyRemapping=false,keyRemapStep=0,keyRemapResult={};
+var customKeyMap=JSON.parse(localStorage.getItem("drgameKeyMap")||"null");
+// Apply saved key mappings on load
+if(customKeyMap){
+  LANES.forEach(function(ln,i){if(customKeyMap[i]!==undefined)ln.key=customKeyMap[i];});
+}
+function startKeyRemap(){
+  keyRemapping=true;keyRemapStep=0;keyRemapResult={};
+  document.getElementById("keyremap-overlay").classList.add("show");
+  showKeyRemapStep();
+}
+function cancelKeyRemap(){
+  keyRemapping=false;document.getElementById("keyremap-overlay").classList.remove("show");
+}
+function showKeyRemapStep(){
+  if(keyRemapStep>=LANES.length){
+    // Done — apply and save
+    LANES.forEach(function(ln,i){if(keyRemapResult[i]!==undefined)ln.key=keyRemapResult[i];});
+    var map={};LANES.forEach(function(ln,i){map[i]=ln.key;});
+    localStorage.setItem("drgameKeyMap",JSON.stringify(map));
+    customKeyMap=map;
+    keyRemapping=false;
+    document.getElementById("keyremap-overlay").classList.remove("show");
+    buildPadToggles();
+    return;
+  }
+  var ln=LANES[keyRemapStep];
+  document.getElementById("keyremap-prompt").innerHTML="Press key for <span style='color:"+ln.color+";font-size:24px'>"+ln.label.toUpperCase()+"</span>";
+  document.getElementById("keyremap-status").textContent="Step "+(keyRemapStep+1)+" of "+LANES.length+" (press any key)";
+}
+var keyRemapCooldown=false;
+window.addEventListener("keydown",function(e){
+  if(keyRemapping){
+    if(e.key==="Escape"){cancelKeyRemap();e.preventDefault();return;}
+    if(keyRemapCooldown)return;
+    e.preventDefault();
+    keyRemapResult[keyRemapStep]=e.key===" "?" ":e.key.toLowerCase();
+    keyRemapStep++;
+    keyRemapCooldown=true;
+    setTimeout(function(){keyRemapCooldown=false;},300);
+    showKeyRemapStep();
+    return;
+  }
+},true);
+
 // ── INPUT ──────────────────────────────────────────────
 window.addEventListener("keydown",e=>{
+  if(keyRemapping)return;
   if(e.key==="Escape"){e.preventDefault();togglePause();return;}
   if(paused)return;
   const i=LANES.findIndex(l=>l.key===e.key.toLowerCase()||(l.key===" "&&e.key===" "));
   if(i>=0){e.preventDefault();triggerPad(i);}
 });
+
+// ── GAMEPAD AUTO-DETECT ──────────────────────────────
+var gpAutoDetected=false;
+function autoDetectGamepad(gp){
+  if(gpAutoDetected)return;
+  gpAutoDetected=true;
+  var nButtons=gp.buttons.length;
+  // Enable lanes based on detected button count (5 = standard Rock Band, more = extended kit)
+  var lanesToEnable=Math.min(nButtons,LANES.length);
+  // Always enable at least the first 5 (standard kit) if we have 5+ buttons
+  if(lanesToEnable>=5){
+    for(var i=0;i<5;i++)activePads[i]=true;
+    // Enable extra lanes for extended kits (6+ buttons)
+    for(var j=5;j<lanesToEnable;j++)activePads[j]=true;
+  }
+  buildPadToggles();
+  var gpd=document.getElementById("gpd");
+  if(gpd)gpd.textContent="🎮 "+gp.id.slice(0,25)+" ("+nButtons+" buttons)";
+}
+
 function pollGP(){
   const gps=navigator.getGamepads?navigator.getGamepads():[];
   let found=false;
   for(const gp of gps){
     if(!gp)continue;found=true;
-    document.getElementById("gpd").textContent="🎮 "+gp.id.slice(0,20);
+    if(!gpAutoDetected)autoDetectGamepad(gp);
+    else document.getElementById("gpd").textContent="🎮 "+gp.id.slice(0,20);
     var remapHandled=false;
     gp.buttons.forEach((btn,bi)=>{
       if(btn.pressed&&!prevBtns[bi]){
