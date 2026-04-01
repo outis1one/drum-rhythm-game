@@ -229,7 +229,7 @@ canvas{display:block;}
       <span id="ed-import-status" style="color:#888;font-size:11px;"></span>
     </div>
   </div>
-  <canvas id="ed-canvas" style="display:block;width:100%;cursor:crosshair;"></canvas>
+  <canvas id="ed-canvas" style="display:block;width:100%;flex:1;cursor:crosshair;align-self:stretch;"></canvas>
 </div>
 
 <script>
@@ -4844,16 +4844,17 @@ function openEditor(){
   document.getElementById("ed-code-panel").style.display="none";
   document.getElementById("ed-import-panel").style.display="none";
   show("sed");
-  setTimeout(edResize,50);
+  // Need multiple frames for flex layout to settle after display:none→flex
+  requestAnimationFrame(function(){requestAnimationFrame(function(){edResize();});});
 }
 function closeEditor(){stopPreview();edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";show("sm");}
 
 function edResize(){
   var cv=getEdCanvas();
-  var rect=cv.parentElement.getBoundingClientRect();
-  var toolH=document.getElementById("ed-toolbar").offsetHeight+document.getElementById("ed-help").offsetHeight;
-  cv.width=rect.width;
-  cv.height=window.innerHeight-toolH-cv.getBoundingClientRect().top+window.scrollY;
+  var cvRect=cv.getBoundingClientRect();
+  cv.width=cvRect.width||cv.parentElement.clientWidth||window.innerWidth;
+  // Height = remaining space from canvas top to window bottom
+  cv.height=Math.max(200, window.innerHeight-cvRect.top);
   ED_LANE_H=Math.floor((cv.height-ED_KICK_H)/4);
   edDraw();
 }
