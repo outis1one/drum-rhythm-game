@@ -190,11 +190,31 @@ canvas{display:block;}
     <button class="smbtn" onclick="edPreview()" id="ed-pv-btn">▶ Preview</button>
     <button class="smbtn" onclick="edSave()" style="background:#38a169;">💾 Save</button>
     <button class="smbtn" onclick="edExport()">📋 Copy JSON</button>
+    <button class="smbtn" onclick="edToggleCode()" id="ed-code-btn">{} Code</button>
+    <button class="smbtn" onclick="edToggleImport()">📥 Import</button>
     <button class="smbtn red" onclick="edReset()">↺ Reset</button>
     <span id="ed-status" style="color:#888;font-size:11px;margin-left:auto;"></span>
   </div>
   <div id="ed-help" style="padding:4px 12px;background:#0d0d18;color:#666;font-size:11px;border-bottom:1px solid #222;">
     Click = add note | Click note = select | Drag = move | Delete/Backspace = remove selected | Scroll = pan timeline
+    <span id="ed-mode-label" style="margin-left:12px;color:#805ad5;"></span>
+  </div>
+  <div id="ed-code-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;max-height:200px;overflow:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <span style="color:#888;font-size:11px;">JavaScript — edit and click "Apply Code" to update the timeline</span>
+      <button class="smbtn" onclick="edApplyCode()" style="font-size:11px;">Apply Code</button>
+    </div>
+    <textarea id="ed-code" style="width:100%;height:140px;background:#111;color:#8f8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" spellcheck="false"></textarea>
+  </div>
+  <div id="ed-import-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span style="color:#888;font-size:11px;">Paste JSON array of {t,l} notes or drag a .json file:</span>
+      <textarea id="ed-import-text" style="width:100%;height:60px;background:#111;color:#ff8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" placeholder='[{"t":0,"l":0},{"t":0.5,"l":1}]'></textarea>
+      <button class="smbtn" onclick="edDoImport()" style="background:#3182ce;">Import</button>
+      <button class="smbtn" onclick="edImportMIDI()">MIDI File</button>
+      <input type="file" id="ed-midi-file" accept=".mid,.midi,.json" style="display:none;" onchange="edHandleFile(event)">
+      <span id="ed-import-status" style="color:#888;font-size:11px;"></span>
+    </div>
   </div>
   <canvas id="ed-canvas" style="display:block;width:100%;cursor:crosshair;"></canvas>
 </div>
@@ -3352,16 +3372,16 @@ function renderScores(){
 refreshMiniLB();
 
 // ── MELODY EDITOR ─────────────────────────────────────
-var edPiece=null,edMelody=[],edBpm=120,edSelected=-1,edScrollX=0,edDragging=false,edDragNote=-1,edDragOffX=0,edDragOffY=0,edPreviewing=false;
+var edPiece=null,edMelody=[],edBpm=120,edBars=8,edSelected=-1,edScrollX=0,edDragging=false,edDragNote=-1,edDragOffX=0,edDragOffY=0,edPreviewing=false,edIsClassical=false,edGenre="";
 var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=0,ED_NOTE_W=14,ED_NOTE_H=16;
 var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
 var ED_NAMES=["Red","Yellow","Blue","Green","Kick"];
 
 function getEdCanvas(){return document.getElementById("ed-canvas");}
 function getEdCtx(){return getEdCanvas().getContext("2d");}
-function edPxPerSec(){return parseInt(document.getElementById("ed-zoom").value);}
-function edTimeToX(t){return t*edPxPerSec()-edScrollX;}
-function edXToTime(x){return(x+edScrollX)/edPxPerSec();}
+function edPxPerUnit(){return parseInt(document.getElementById("ed-zoom").value);}
+function edTimeToX(t){return t*edPxPerUnit()-edScrollX;}
+function edXToTime(x){return(x+edScrollX)/edPxPerUnit();}
 function edYToLane(y){
   if(y<ED_HEAD)return-1;
   var laneY=y-ED_HEAD;
@@ -3375,22 +3395,32 @@ function edLaneToY(l){
 }
 
 function openEditor(){
-  var pieces=SYNTH_GENRES[curGenre];
+  var pieces=SYNTH_GENRES[curGenre]||GENRES[curGenre];
   if(!pieces||!pieces[curIdx])return;
   edPiece=pieces[curIdx];
-  if(!edPiece.isClassical)return;
+  edGenre=curGenre;
+  edIsClassical=!!edPiece.isClassical;
   // Load saved edits or use original
   var saved=edLoadSaved(edPiece.n);
   if(saved){
     edMelody=saved.melody.map(function(m){return{t:m.t,l:m.l};});
     edBpm=saved.bpm||edPiece.bpm;
-  }else{
+    if(!edIsClassical)edBars=saved.bars||edPiece.bars||8;
+  }else if(edIsClassical){
     edMelody=edPiece.melody.map(function(m){return{t:m.t,l:m.l};});
     edBpm=edPiece.bpm;
+  }else{
+    // Regular rhythm: load the repeating pattern
+    edMelody=edPiece.p.map(function(m){return{t:m.t,l:m.l};});
+    edBpm=edPiece.bpm;
+    edBars=edPiece.bars||8;
   }
   edSelected=-1;edScrollX=0;
-  document.getElementById("ed-title").textContent="Editing: "+edPiece.n;
+  document.getElementById("ed-title").textContent="Editing: "+edPiece.n+(edPiece.composer?" ("+edPiece.composer+")":"");
   document.getElementById("ed-bpm").value=edBpm;
+  document.getElementById("ed-mode-label").textContent=edIsClassical?"Classical (full timeline)":"Pattern (4-beat cycle, repeats "+edBars+"x)";
+  document.getElementById("ed-code-panel").style.display="none";
+  document.getElementById("ed-import-panel").style.display="none";
   show("sed");
   setTimeout(edResize,50);
 }
@@ -3430,29 +3460,40 @@ function edDraw(){
   ctx.fillText("Kick",4,ED_HEAD+4*ED_LANE_H+15);
   ctx.globalAlpha=1;
 
-  // Grid lines (every beat and every second)
-  var beatSec=60/edBpm;
-  var startBeat=Math.floor(edXToTime(0)/beatSec);
-  var endBeat=Math.ceil(edXToTime(W)/beatSec);
-  for(var b=startBeat;b<=endBeat;b++){
-    var bx=edTimeToX(b*beatSec);
-    if(bx<0||bx>W)continue;
-    ctx.strokeStyle=b%4===0?"#444":"#222";
-    ctx.lineWidth=b%4===0?1.5:0.5;
-    ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
-    if(b%4===0){
-      ctx.fillStyle="#555";ctx.font="10px sans-serif";
-      ctx.fillText((b*beatSec).toFixed(1)+"s",bx+2,ED_HEAD+H-4);
+  // Grid lines
+  if(edIsClassical){
+    // Classical: grid by beats (seconds / (60/bpm))
+    var beatSec=60/edBpm;
+    var startBeat=Math.floor(edXToTime(0)/beatSec);
+    var endBeat=Math.ceil(edXToTime(W)/beatSec);
+    for(var b=startBeat;b<=endBeat;b++){
+      var bx=edTimeToX(b*beatSec);
+      if(bx<0||bx>W)continue;
+      ctx.strokeStyle=b%4===0?"#444":"#222";
+      ctx.lineWidth=b%4===0?1.5:0.5;
+      ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
+      if(b%4===0){
+        ctx.fillStyle="#555";ctx.font="10px sans-serif";
+        ctx.fillText((b*beatSec).toFixed(1)+"s",bx+2,H-4);
+      }
     }
-  }
-  // Second markers
-  var startSec=Math.floor(edXToTime(0));
-  var endSec=Math.ceil(edXToTime(W));
-  for(var s=startSec;s<=endSec;s++){
-    var sx=edTimeToX(s);
-    if(sx<0||sx>W)continue;
-    ctx.strokeStyle="#333";ctx.lineWidth=0.5;
-    ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx,ED_HEAD);ctx.stroke();
+  }else{
+    // Regular rhythm: grid by beat subdivisions (t=0 to 4)
+    // Draw 16th note grid (every 0.25 beats)
+    for(var sub=0;sub<=16;sub++){
+      var bt=sub*0.25;
+      var bx=edTimeToX(bt);
+      if(bx<0||bx>W)continue;
+      var isBeat=sub%4===0;
+      var isHalf=sub%2===0;
+      ctx.strokeStyle=isBeat?"#555":isHalf?"#333":"#1a1a2a";
+      ctx.lineWidth=isBeat?2:0.5;
+      ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
+      if(isBeat){
+        ctx.fillStyle="#888";ctx.font="bold 11px sans-serif";
+        ctx.fillText("Beat "+(sub/4+1),bx+3,H-4);
+      }
+    }
   }
 
   // Lane separator lines
@@ -3477,15 +3518,16 @@ function edDraw(){
     ctx.globalAlpha=1;
   });
 
-  // Duration marker
+  // Duration / pattern end marker
   if(edPiece){
-    var dx=edTimeToX(edPiece.duration);
+    var endTime=edIsClassical?(edPiece.duration||90):4; // 4 beats for pattern
+    var dx=edTimeToX(endTime);
     if(dx>0&&dx<W){
       ctx.strokeStyle="#e53e3e";ctx.lineWidth=2;ctx.setLineDash([4,4]);
       ctx.beginPath();ctx.moveTo(dx,0);ctx.lineTo(dx,H);ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle="#e53e3e";ctx.font="10px sans-serif";
-      ctx.fillText("END",dx+3,12);
+      ctx.fillText(edIsClassical?"END":"LOOP (4 beats)",dx+3,12);
     }
   }
 
@@ -3520,9 +3562,12 @@ function edMouseDown(e){
     var t=edXToTime(mx);
     var l=edYToLane(my);
     if(l>=0&&l<=4&&t>=0){
-      // Snap to nearest beat subdivision (1/4 beat)
-      var snap=60/edBpm/4;
+      // Snap to nearest subdivision
+      var snap=edIsClassical?(60/edBpm/4):0.25; // 1/4 beat in seconds or 1/16 note in beat units
       t=Math.round(t/snap)*snap;
+      t=parseFloat(t.toFixed(4));
+      // For regular rhythms, clamp to 0-4 range
+      if(!edIsClassical)t=Math.max(0,Math.min(3.99,t));
       edMelody.push({t:t,l:l});
       edMelody.sort(function(a,b){return a.t-b.t;});
       edSelected=edMelody.findIndex(function(m){return m.t===t&&m.l===l;});
@@ -3568,14 +3613,15 @@ function edKeyDown(e){
     e.preventDefault();
   }
   if(e.key==="ArrowLeft"&&edSelected>=0){
-    var snap=60/edBpm/4;
-    edMelody[edSelected].t=Math.max(0,edMelody[edSelected].t-snap);
+    var snap=edIsClassical?(60/edBpm/4):0.25;
+    edMelody[edSelected].t=Math.max(0,parseFloat((edMelody[edSelected].t-snap).toFixed(4)));
     edMelody.sort(function(a,b){return a.t-b.t;});
     edDraw();e.preventDefault();
   }
   if(e.key==="ArrowRight"&&edSelected>=0){
-    var snap2=60/edBpm/4;
-    edMelody[edSelected].t+=snap2;
+    var snap2=edIsClassical?(60/edBpm/4):0.25;
+    var maxT=edIsClassical?9999:3.99;
+    edMelody[edSelected].t=Math.min(maxT,parseFloat((edMelody[edSelected].t+snap2).toFixed(4)));
     edMelody.sort(function(a,b){return a.t-b.t;});
     edDraw();e.preventDefault();
   }
@@ -3604,23 +3650,39 @@ function edUpdateBpm(){edBpm=parseInt(document.getElementById("ed-bpm").value)||
 
 function edPreview(){
   if(edPreviewing){stopPreview();edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";return;}
-  // Play the piece with current edits
   var ac=getAc(true);ac.resume();
   var piece=edPiece;
-  for(var i=0;i<piece.bg.length;i++){
-    var n=piece.bg[i];
-    playSynth(ac,n.f,ac.currentTime+0.1+n.t,n.d,n.i,n.v*1.2,previewNodes);
+  if(edIsClassical){
+    // Play background orchestration
+    if(piece.bg)for(var i=0;i<piece.bg.length;i++){
+      var n=piece.bg[i];
+      playSynth(ac,n.f,ac.currentTime+0.1+n.t,n.d,n.i,n.v*1.2,previewNodes);
+    }
+    // Play melody notes as woodwind clicks
+    edMelody.forEach(function(m){
+      var freq=[329,392,440,349,220][m.l]||329;
+      playSynth(ac,freq,ac.currentTime+0.1+m.t,0.1,'woodwind',0.5,previewNodes);
+    });
+    var dur=piece.duration||90;
+    setTimeout(function(){if(edPreviewing){edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";}},dur*1000+500);
+  }else{
+    // Regular rhythm: play drum sounds for each note in pattern, looped over bars
+    var bs=60/edBpm;
+    var bars=edBars||8;
+    var drumFreqs=[329,392,440,349,220]; // red,yellow,blue,green,kick
+    var drumInst=['strings','woodwind','woodwind','strings','bass'];
+    for(var bar=0;bar<bars;bar++){
+      edMelody.forEach(function(m){
+        var t=ac.currentTime+0.1+(bar*4+m.t)*bs;
+        var freq=drumFreqs[m.l]||329;
+        playSynth(ac,freq,t,0.08,drumInst[m.l]||'woodwind',0.6,previewNodes);
+      });
+    }
+    var totalDur=bars*4*bs;
+    setTimeout(function(){if(edPreviewing){edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";}},totalDur*1000+500);
   }
-  // Also play a click/drum sound on each melody note so user hears the hits
-  edMelody.forEach(function(m){
-    var freq=[329,392,440,349,220][m.l]||329;
-    playSynth(ac,freq,ac.currentTime+0.1+m.t,0.1,'woodwind',0.5,previewNodes);
-  });
   edPreviewing=true;
   document.getElementById("ed-pv-btn").textContent="⏹ Stop";
-  // Auto-stop after duration
-  var dur=piece.duration||90;
-  setTimeout(function(){if(edPreviewing){edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";}},dur*1000+500);
 }
 
 // Save/load edits to localStorage
@@ -3629,38 +3691,134 @@ function edGetAllSaved(){try{return JSON.parse(localStorage.getItem(ED_STORAGE_K
 function edLoadSaved(name){var all=edGetAllSaved();return all[name]||null;}
 function edSave(){
   var all=edGetAllSaved();
-  all[edPiece.n]={melody:edMelody.map(function(m){return{t:m.t,l:m.l};}),bpm:edBpm};
+  var entry={melody:edMelody.map(function(m){return{t:m.t,l:m.l};}),bpm:edBpm,isClassical:edIsClassical};
+  if(!edIsClassical)entry.bars=edBars;
+  all[edPiece.n]=entry;
   try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
   document.getElementById("ed-status").textContent="Saved! ("+edMelody.length+" notes)";
 }
 function edReset(){
-  if(!confirm("Reset to original melody? This discards your edits."))return;
+  if(!confirm("Reset to original? This discards your edits."))return;
   var all=edGetAllSaved();delete all[edPiece.n];
   try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
-  edMelody=edPiece.melody.map(function(m){return{t:m.t,l:m.l};});
+  if(edIsClassical){
+    edMelody=edPiece.melody.map(function(m){return{t:m.t,l:m.l};});
+  }else{
+    edMelody=edPiece.p.map(function(m){return{t:m.t,l:m.l};});
+    edBars=edPiece.bars||8;
+  }
   edBpm=edPiece.bpm;
   document.getElementById("ed-bpm").value=edBpm;
   edSelected=-1;edDraw();
 }
 function edExport(){
-  var data=JSON.stringify({name:edPiece.n,bpm:edBpm,melody:edMelody},null,2);
+  var data=JSON.stringify({name:edPiece.n,bpm:edBpm,type:edIsClassical?"classical":"pattern",melody:edMelody},null,2);
   navigator.clipboard.writeText(data).then(function(){
     document.getElementById("ed-status").textContent="Copied to clipboard!";
   }).catch(function(){
-    // Fallback: show in prompt
     prompt("Copy this JSON:",data);
   });
 }
 
-// Show/hide edit button based on whether current genre has classical pieces
-function updateEditBtn(){
-  var pieces=SYNTH_GENRES[curGenre];
-  var btn=document.getElementById("edit-btn");
-  if(pieces&&pieces[curIdx]&&pieces[curIdx].isClassical){
-    btn.style.display="";
+// Code view toggle — shows JS representation of current notes
+function edToggleCode(){
+  var panel=document.getElementById("ed-code-panel");
+  if(panel.style.display==="none"){
+    panel.style.display="block";
+    edUpdateCode();
   }else{
-    btn.style.display="none";
+    panel.style.display="none";
   }
+  setTimeout(edResize,50);
+}
+function edUpdateCode(){
+  var ta=document.getElementById("ed-code");
+  if(edIsClassical){
+    // Show melody array as JS
+    var lines=edMelody.map(function(m){
+      return"  {t:"+m.t.toFixed(3)+", l:"+m.l+"}";
+    });
+    ta.value="// "+edPiece.n+" — melody ("+edMelody.length+" notes)\n"+
+      "// BPM: "+edBpm+", Duration: "+(edPiece.duration||"?")+"s\n"+
+      "// Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick\n"+
+      "melody: [\n"+lines.join(",\n")+"\n]";
+  }else{
+    // Show pattern array as JS
+    var lines2=edMelody.map(function(m){
+      return"  {t:"+m.t+", l:"+m.l+"}";
+    });
+    ta.value="// "+edPiece.n+" — pattern ("+edMelody.length+" notes, repeats "+edBars+"x)\n"+
+      "// BPM: "+edBpm+", Bars: "+edBars+"\n"+
+      "// t = beat offset (0-4), Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick\n"+
+      "p: [\n"+lines2.join(",\n")+"\n]";
+  }
+}
+function edApplyCode(){
+  var ta=document.getElementById("ed-code");
+  var code=ta.value;
+  // Extract the array from the code text
+  var match=code.match(/\[\s*([\s\S]*)\s*\]/);
+  if(!match){document.getElementById("ed-status").textContent="Could not find [...] array in code";return;}
+  try{
+    // Parse the array — handle JS object notation {t:1, l:2} as JSON
+    var arrStr="["+match[1].replace(/(\w+)\s*:/g,'"$1":')+"]";
+    var arr=JSON.parse(arrStr);
+    edMelody=arr.filter(function(m){return typeof m.t==="number"&&typeof m.l==="number";})
+      .map(function(m){return{t:m.t,l:m.l};});
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    edSelected=-1;edDraw();
+    document.getElementById("ed-status").textContent="Applied! "+edMelody.length+" notes loaded from code.";
+  }catch(e){
+    document.getElementById("ed-status").textContent="Parse error: "+e.message;
+  }
+}
+
+// Import panel
+function edToggleImport(){
+  var panel=document.getElementById("ed-import-panel");
+  panel.style.display=panel.style.display==="none"?"block":"none";
+  setTimeout(edResize,50);
+}
+function edDoImport(){
+  var text=document.getElementById("ed-import-text").value.trim();
+  if(!text){document.getElementById("ed-import-status").textContent="Paste some data first";return;}
+  try{
+    var data=JSON.parse(text);
+    // Accept array of {t,l} or object with melody property
+    var arr=Array.isArray(data)?data:(data.melody||data.p||[]);
+    if(!Array.isArray(arr)||arr.length===0){document.getElementById("ed-import-status").textContent="No notes found";return;}
+    edMelody=arr.filter(function(m){return typeof m.t==="number"&&typeof m.l==="number";})
+      .map(function(m){return{t:m.t,l:m.l};});
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    if(data.bpm)edBpm=data.bpm;
+    document.getElementById("ed-bpm").value=edBpm;
+    edSelected=-1;edDraw();edUpdateCode();
+    document.getElementById("ed-import-status").textContent="Imported "+edMelody.length+" notes!";
+  }catch(e){
+    document.getElementById("ed-import-status").textContent="JSON parse error: "+e.message;
+  }
+}
+function edImportMIDI(){document.getElementById("ed-midi-file").click();}
+function edHandleFile(e){
+  var file=e.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  if(file.name.endsWith(".json")){
+    reader.onload=function(ev){
+      document.getElementById("ed-import-text").value=ev.target.result;
+      edDoImport();
+    };
+    reader.readAsText(file);
+  }else{
+    document.getElementById("ed-import-status").textContent="MIDI parsing not yet supported — convert to JSON first (use AI or online converter)";
+  }
+  e.target.value="";
+}
+
+// Show/hide edit button — works for all genres
+function updateEditBtn(){
+  var pieces=SYNTH_GENRES[curGenre]||GENRES[curGenre];
+  var btn=document.getElementById("edit-btn");
+  btn.style.display=(pieces&&pieces[curIdx])?"":"none";
 }
 
 // ── GAME START ─────────────────────────────────────────
@@ -3686,9 +3844,12 @@ function stopGame(){playing=false;if(mp3Src){try{mp3Src.stop();}catch(e){}mp3Src
 function resetStats(){cScore=0;cStreak=0;cTotal=0;cGood=0;cMaxStreak=0;gameEndTime=null;}
 
 function buildNotes(r){
-  const bs=60/r.bpm/gameSpeed,bars=r.bars||8,res=[];
+  var saved=edLoadSaved(r.n);
+  var pattern=saved?saved.melody:r.p;
+  var bpm=saved?saved.bpm:r.bpm;
+  const bs=60/bpm/gameSpeed,bars=r.bars||8,res=[];
   for(let bar=0;bar<bars;bar++)
-    for(const p of r.p)
+    for(const p of pattern)
       if(activePads[p.l])
         res.push({time:(bar*4+p.t)*bs,lane:p.l,hit:false,missed:false});
   return res.sort((a,b)=>a.time-b.time);
