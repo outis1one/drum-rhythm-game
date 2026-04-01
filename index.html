@@ -202,6 +202,10 @@ canvas{display:block;}
     <button class="smbtn" onclick="edToggleCode()" id="ed-code-btn">{} Code</button>
     <button class="smbtn" onclick="edToggleImport()">📥 Import</button>
     <button class="smbtn red" onclick="edReset()">↺ Reset</button>
+    <button class="smbtn" onclick="edDownloadAllEdits()" title="Download all edits as a JSON file">⬇ Edits File</button>
+    <button class="smbtn" onclick="document.getElementById('ed-load-file').click()" title="Load edits from a JSON file">⬆ Load Edits</button>
+    <input type="file" id="ed-load-file" accept=".json" style="display:none" onchange="edLoadEditsFile(event)">
+    <button class="smbtn" onclick="edBakeIntoHtml()" style="background:#805ad5;" title="Download index.html with all edits embedded">📦 Bake into HTML</button>
     <span id="ed-status" style="color:#888;font-size:11px;margin-left:auto;"></span>
   </div>
   <div id="ed-help" style="padding:4px 12px;background:#0d0d18;color:#666;font-size:11px;border-bottom:1px solid #222;">
@@ -229,6 +233,10 @@ canvas{display:block;}
 </div>
 
 <script>
+// ── BAKED EDITS (auto-populated by "Bake into HTML") ──
+var BAKED_EDITS = {};
+// ── END BAKED EDITS ──
+
 // ── LANE DEFINITIONS ──────────────────────────────────
 const LANES=[
   {label:"Red",   color:"#e53e3e",key:"f", type:"tom"},
@@ -5101,7 +5109,14 @@ function edPreview(){
 
 // Save/load edits to localStorage
 var ED_STORAGE_KEY="drgame_edits";
-function edGetAllSaved(){try{return JSON.parse(localStorage.getItem(ED_STORAGE_KEY))||{};}catch(e){return{};}}
+function edGetAllSaved(){
+  var local={};try{local=JSON.parse(localStorage.getItem(ED_STORAGE_KEY))||{};}catch(e){}
+  // Merge baked edits as fallback — localStorage overrides baked
+  if(typeof BAKED_EDITS==='object'&&BAKED_EDITS){
+    for(var k in BAKED_EDITS)if(!local[k])local[k]=BAKED_EDITS[k];
+  }
+  return local;
+}
 function edLoadSaved(name){var all=edGetAllSaved();return all[name]||null;}
 function edSave(){
   var all=edGetAllSaved();
@@ -5226,6 +5241,61 @@ function edHandleFile(e){
     document.getElementById("ed-import-status").textContent="MIDI parsing not yet supported — convert to JSON first (use AI or online converter)";
   }
   e.target.value="";
+}
+
+// Download all edits as a JSON file (for transferring between machines)
+function edDownloadAllEdits(){
+  var all=edGetAllSaved();
+  var keys=Object.keys(all);
+  if(keys.length===0){document.getElementById("ed-status").textContent="No edits to download";return;}
+  var json=JSON.stringify(all,null,2);
+  var blob=new Blob([json],{type:"application/json"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="drum-game-edits.json";
+  a.click();URL.revokeObjectURL(a.href);
+  document.getElementById("ed-status").textContent="Downloaded "+keys.length+" edit(s)";
+}
+
+// Load edits from a JSON file into localStorage
+function edLoadEditsFile(e){
+  var file=e.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var imported=JSON.parse(ev.target.result);
+      var all={}; try{all=JSON.parse(localStorage.getItem(ED_STORAGE_KEY))||{};}catch(x){}
+      var count=0;
+      for(var k in imported){all[k]=imported[k];count++;}
+      localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));
+      document.getElementById("ed-status").textContent="Loaded "+count+" edit(s) from file";
+      // Refresh current editor view if open
+      if(edPiece){var saved=edLoadSaved(edPiece.n);if(saved){edMelody=saved.melody.map(function(m){return{t:m.t,l:m.l};});edBpm=saved.bpm||edBpm;document.getElementById("ed-bpm").value=edBpm;edDraw();}}
+    }catch(err){document.getElementById("ed-status").textContent="Error: "+err.message;}
+  };
+  reader.readAsText(file);
+  e.target.value="";
+}
+
+// Bake all edits into HTML — downloads a copy of index.html with edits embedded
+function edBakeIntoHtml(){
+  var all=edGetAllSaved();
+  var keys=Object.keys(all);
+  if(keys.length===0){document.getElementById("ed-status").textContent="No edits to bake";return;}
+  // Get the current page HTML
+  var html=document.documentElement.outerHTML;
+  // Replace the BAKED_EDITS variable between the markers
+  var bakedJson=JSON.stringify(all);
+  html=html.replace(
+    /\/\/ ── BAKED EDITS[^\n]*\nvar BAKED_EDITS\s*=\s*[^;]*;\n\/\/ ── END BAKED EDITS ──/,
+    "// ── BAKED EDITS (auto-populated by \"Bake into HTML\") ──\nvar BAKED_EDITS = "+bakedJson+";\n// ── END BAKED EDITS ──"
+  );
+  var blob=new Blob(["<!DOCTYPE html>\n"+document.documentElement.outerHTML],{type:"text/html"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="index.html";
+  a.click();URL.revokeObjectURL(a.href);
+  document.getElementById("ed-status").textContent="Downloaded index.html with "+keys.length+" baked edit(s)";
 }
 
 // Show/hide edit button — works for all genres
