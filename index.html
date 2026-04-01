@@ -138,6 +138,7 @@ canvas{display:block;}
   <div class="sticky-start">
     <button class="smbtn" onclick="startRemap()">🎮 Remap Pads</button>
     <button class="smbtn" onclick="startKeyRemap()">⌨ Remap Keys</button>
+    <button class="smbtn" id="edit-btn" onclick="openEditor()" style="display:none;">✏️ Edit Melody</button>
     <button class="bigbtn" onclick="startGame()">▶ Start</button>
   </div>
 </div>
@@ -186,6 +187,45 @@ canvas{display:block;}
     <table class="stbl"><thead><tr><th></th><th>Player</th><th>Rhythm</th><th>Score</th><th>Acc</th><th>Streak</th><th>Date</th></tr></thead>
     <tbody id="stbody"></tbody></table>
   </div>
+</div>
+
+<!-- EDITOR -->
+<div class="screen" id="sed" style="padding:0;">
+  <div id="ed-toolbar" style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:#13131f;border-bottom:1px solid #333;flex-wrap:wrap;">
+    <button class="smbtn" onclick="closeEditor()">← Back</button>
+    <span id="ed-title" style="font-weight:bold;color:#ccc;margin-right:8px;">Editing: —</span>
+    <label style="color:#aaa;font-size:12px;">BPM: <input type="number" id="ed-bpm" value="120" min="30" max="300" style="width:55px;background:#1a1a2e;color:#fff;border:1px solid #444;padding:2px 4px;border-radius:3px;" onchange="edUpdateBpm()"></label>
+    <label style="color:#aaa;font-size:12px;">Zoom: <input type="range" id="ed-zoom" min="20" max="200" value="80" style="width:80px;" oninput="edDraw()"></label>
+    <button class="smbtn" onclick="edPreview()" id="ed-pv-btn">▶ Preview</button>
+    <button class="smbtn" onclick="edSave()" style="background:#38a169;">💾 Save</button>
+    <button class="smbtn" onclick="edExport()">📋 Copy JSON</button>
+    <button class="smbtn" onclick="edToggleCode()" id="ed-code-btn">{} Code</button>
+    <button class="smbtn" onclick="edToggleImport()">📥 Import</button>
+    <button class="smbtn red" onclick="edReset()">↺ Reset</button>
+    <span id="ed-status" style="color:#888;font-size:11px;margin-left:auto;"></span>
+  </div>
+  <div id="ed-help" style="padding:4px 12px;background:#0d0d18;color:#666;font-size:11px;border-bottom:1px solid #222;">
+    Click = add note | Click note = select | Drag = move | Delete/Backspace = remove selected | Scroll = pan timeline
+    <span id="ed-mode-label" style="margin-left:12px;color:#805ad5;"></span>
+  </div>
+  <div id="ed-code-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;max-height:200px;overflow:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <span style="color:#888;font-size:11px;">JavaScript — edit and click "Apply Code" to update the timeline</span>
+      <button class="smbtn" onclick="edApplyCode()" style="font-size:11px;">Apply Code</button>
+    </div>
+    <textarea id="ed-code" style="width:100%;height:140px;background:#111;color:#8f8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" spellcheck="false"></textarea>
+  </div>
+  <div id="ed-import-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span style="color:#888;font-size:11px;">Paste JSON array of {t,l} notes or drag a .json file:</span>
+      <textarea id="ed-import-text" style="width:100%;height:60px;background:#111;color:#ff8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" placeholder='[{"t":0,"l":0},{"t":0.5,"l":1}]'></textarea>
+      <button class="smbtn" onclick="edDoImport()" style="background:#3182ce;">Import</button>
+      <button class="smbtn" onclick="edImportMIDI()">MIDI File</button>
+      <input type="file" id="ed-midi-file" accept=".mid,.midi,.json" style="display:none;" onchange="edHandleFile(event)">
+      <span id="ed-import-status" style="color:#888;font-size:11px;"></span>
+    </div>
+  </div>
+  <canvas id="ed-canvas" style="display:block;width:100%;cursor:crosshair;"></canvas>
 </div>
 
 <script>
@@ -2594,121 +2634,267 @@ const CLASSICAL_PIECES=(function(){
   })();
 
   // ── Flight of the Bumblebee ──
-  // Rimsky-Korsakov's famous chromatic whirlwind in A minor, ~65s
-  // Rapid chromatic scales up and down — the buzzing bee
+  // Conductor-style: ~80s, A minor, famous chromatic runs
+  // Fast chromatic passages play in background; player hits accent peaks/valleys
   var bumblebee=(function(){
-    var bg=[],mel=[],t=0,q=60/180;
-    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    var bg=[],mel=[];
+    function tutti(time,freq,dur,v){
+      bg.push({t:time,f:freq,d:dur,i:'strings',v:v});
+      bg.push({t:time,f:freq,d:dur,i:'brass',v:v*0.5});
+      if(freq>200)bg.push({t:time,f:freq/2,d:dur,i:'bass',v:v*0.4});
+    }
+    function timp(time,v){bg.push({t:time,f:A3,d:0.4,i:'timpani',v:v||0.5});}
 
-    // Sparse harmonic bed — stays out of the way of the rapid runs
-    var harm=[
-      [0,12,[A3,C4,E4],0.06],[12,24,[A3,C4,E4],0.1],[24,40,[A3,C4,E4],0.14],
-      [40,52,[D4,F4,A4],0.12],[52,68,[A3,C4,E4],0.16]
+    // Chromatic scale note arrays
+    var chromDown=[E5,Eb5,D5,Db5,C5,B4,Bb4,A4,Ab4,G4,Gb4,F4,E4];
+    var chromUp=[E4,F4,Gb4,G4,Ab4,A4,Bb4,B4,C5,Db5,D5,Eb5,E5];
+
+    // Helper: play a fast chromatic run (background) with accent hits
+    // Every 4th note is hittable — player conducts the peaks
+    function chromRun(t0,notes,lanes,v,speed){
+      var ct=t0;
+      notes.forEach(function(f,i){
+        bg.push({t:ct,f:f,d:speed*0.85,i:'strings',v:v*0.6});
+        bg.push({t:ct,f:f,d:speed*0.85,i:'woodwind',v:v*0.3});
+        if(i%4===0){
+          mel.push({t:ct,l:lanes[Math.floor(i/4)%lanes.length]});
+          bg.push({t:ct,f:f,d:speed*2,i:'strings',v:v}); // accent
+        }
+        ct+=speed;
+      });
+      return ct;
+    }
+
+    // === CONTINUOUS HARMONIC BED ===
+    var harmony=[
+      [0,5,[A3,C4,E4],0.06],            // Am - intro
+      [5,20,[A3,C4,E4],0.1],            // Am - first runs
+      [20,35,[A3,C4,E4],0.14],          // Am - development
+      [35,50,[E4,G4,B4],0.12],          // Em - modulation
+      [50,65,[A3,C4,E4],0.18],          // Am - recapitulation
+      [65,80,[A3,C4,E4],0.22],          // Am - climax
+      [80,88,[A3,C4,E4],0.14]           // Am - coda
     ];
-    harm.forEach(function(h){
-      for(var ht=h[0];ht<h[1];ht+=2.5){
-        h[2].forEach(function(f){bg.push({t:ht,f:f,d:2.3,i:'strings',v:h[3]});});
-      }
-    });
-
-    // The chromatic descending run: E5-Eb5-D5-Db5-C5-B4-Bb4-A4-Ab4-G4-Gb4-F4-E4
-    var descChrom=[E5,Eb5,D5,Db5,C5,B4,Bb4,A4,Ab4,G4,Gb4,F4,E4];
-    var dLn=[2,1,0,1,2,3,2,1,0,3,2,1,0];
-    // The chromatic ascending run: E4-F4-Gb4-G4-Ab4-A4-Bb4-B4-C5-Db5-D5-Eb5-E5
-    var ascChrom=[E4,F4,Gb4,G4,Ab4,A4,Bb4,B4,C5,Db5,D5,Eb5,E5];
-    var aLn=[0,1,2,3,0,1,2,3,2,1,0,1,2];
-
-    // === SECTION 1 (0-12s): Solo violin — quiet buzzing ===
-    for(var s1=0;s1<2;s1++){
-      var v1=0.2+s1*0.04;
-      var nq=q*0.5; // very fast sixteenth notes
-      // Descending run
-      descChrom.forEach(function(f,i){
-        str(t,f,nq*0.8,v1);mel.push({t:t,l:dLn[i]});t+=nq;
-      });
-      // Ascending run
-      ascChrom.forEach(function(f,i){
-        str(t,f,nq*0.8,v1);mel.push({t:t,l:aLn[i]});t+=nq;
-      });
-      t+=q;
-    }
-
-    // === SECTION 2 (12-24s): More instruments join, slightly louder ===
-    for(var s2=0;s2<3;s2++){
-      var v2=0.28+s2*0.04;
-      var nq2=q*0.45;
-      descChrom.forEach(function(f,i){
-        str(t,f,nq2*0.8,v2);
-        if(s2>0)bg.push({t:t,f:f,d:nq2*0.8,i:'woodwind',v:v2*0.4});
-        mel.push({t:t,l:dLn[i]});t+=nq2;
-      });
-      ascChrom.forEach(function(f,i){
-        str(t,f,nq2*0.8,v2);
-        if(s2>0)bg.push({t:t,f:f,d:nq2*0.8,i:'woodwind',v:v2*0.4});
-        mel.push({t:t,l:aLn[i]});t+=nq2;
-      });
-      t+=q*0.5;
-    }
-
-    // === SECTION 3 (24-40s): Full string section — the bee gets frantic ===
-    for(var s3=0;s3<4;s3++){
-      var v3=0.38+s3*0.04;
-      var nq3=q*0.4;
-      // Alternate between descending and ascending with different patterns
-      var pattern=s3%2===0?descChrom:ascChrom;
-      var pLn=s3%2===0?dLn:aLn;
-      pattern.forEach(function(f,i){
-        str(t,f,nq3*0.8,v3);bg.push({t:t,f:f,d:nq3*0.8,i:'woodwind',v:v3*0.3});
-        bg.push({t:t,f:f/2,d:nq3*0.8,i:'bass',v:v3*0.2});
-        mel.push({t:t,l:pLn[i]});t+=nq3;
-      });
-      // Quick turnaround notes
-      [E4,G4,B4,E5].forEach(function(f,i){
-        str(t,f,nq3*0.6,v3);mel.push({t:t,l:[0,3,0,2][i]});t+=nq3*0.7;
-      });
-      t+=q*0.3;
-    }
-
-    // === SECTION 4 (40-52s): Contrasting middle — broader melody ===
-    var middle=[[A4,q*1.5,1],[G4,q*0.75,3],[F4,q*0.75,0],[E4,q*1.5,2],
-                [G4,q*0.75,3],[A4,q*0.75,1],[B4,q*1.5,0],[A4,q*0.75,1],
-                [G4,q*0.75,3],[E4,q*2,2]];
-    for(var m=0;m<2;m++){
-      var mv=0.4+m*0.08;
-      middle.forEach(function(n){
-        str(t,n[0],n[1]*0.9,mv);bg.push({t:t,f:n[0],d:n[1]*0.9,i:'woodwind',v:mv*0.5});
-        if(m>0)bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:mv*0.3});
-        mel.push({t:t,l:n[2]});t+=n[1];
-      });
-      t+=q;
-    }
-
-    // === SECTION 5 (52-65s): Final frenzy — fastest runs ===
-    for(var s5=0;s5<4;s5++){
-      var v5=0.48+s5*0.04;
-      var nq5=q*(0.38-s5*0.02); // accelerating
-      descChrom.forEach(function(f,i){
-        str(t,f,nq5*0.75,v5);bg.push({t:t,f:f,d:nq5*0.75,i:'woodwind',v:v5*0.4});
-        if(s5>1)bg.push({t:t,f:f/2,d:nq5*0.75,i:'bass',v:v5*0.3});
-        mel.push({t:t,l:dLn[i]});t+=nq5;
-      });
-      if(s5<3){
-        ascChrom.slice(0,7).forEach(function(f,i){
-          str(t,f,nq5*0.75,v5);mel.push({t:t,l:aLn[i]});t+=nq5;
+    harmony.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=2.0){
+        h[2].forEach(function(f){
+          bg.push({t:ht,f:f,d:1.9,i:'strings',v:h[3]});
         });
+        bg.push({t:ht,f:h[2][0]/2,d:1.9,i:'bass',v:h[3]*0.5});
       }
-      t+=q*0.3;
+    });
+
+    var t=0;
+
+    // === SECTION 1 (0-5s): INTRODUCTION — orchestra sets the scene ===
+    // Sustained Am chord builds, then a quick scale tease
+    [A3,C4,E4].forEach(function(f){
+      bg.push({t:0,f:f,d:3.0,i:'strings',v:0.15});
+      bg.push({t:0,f:f,d:3.0,i:'woodwind',v:0.08});
+    });
+    bg.push({t:0,f:A3/2,d:3.0,i:'bass',v:0.12});
+    // Quick chromatic tease (background only)
+    for(var ri=0;ri<8;ri++){
+      bg.push({t:3.0+ri*0.08,f:chromDown[ri],d:0.07,i:'strings',v:0.15+ri*0.02});
+    }
+    // Sparse hits to start
+    timp(1.5,0.3);mel.push({t:1.5,l:4});
+    timp(3.5,0.35);mel.push({t:3.5,l:4});
+    t=5.0;
+
+    // === SECTION 2 (5-20s): FIRST CHROMATIC RUNS — the famous buzzing ===
+    // Speed: 16th notes at ~0.09s each (very fast background)
+    var sp1=0.09;
+
+    // Run 1: descending E5→E4 (background buzzing, accents hittable)
+    t=chromRun(t,chromDown,[2,0,3,1],0.3,sp1);
+    t+=0.2;
+    // Run 2: ascending E4→E5
+    t=chromRun(t,chromUp,[1,3,0,2],0.32,sp1);
+    t+=0.25;
+    // Run 3: descending again, louder
+    t=chromRun(t,chromDown,[0,2,1,3],0.38,sp1);
+    t+=0.2;
+    // Run 4: ascending with strings thickening
+    var s2a=t;
+    for(ri=0;ri<30;ri++){
+      bg.push({t:s2a+ri*0.12,f:[A3,E4,A3,C4,E4,A3][ri%6],d:0.1,i:'strings',v:0.1});
+    }
+    t=chromRun(t,chromUp,[3,1,2,0],0.4,sp1);
+    t+=0.25;
+    // Repeated descending — building
+    t=chromRun(t,chromDown,[2,0,3,1],0.42,sp1);
+    t+=0.2;
+    t=chromRun(t,chromUp,[1,3,0,2],0.44,sp1);
+    t+=0.3;
+    // Orchestral accent between phrases
+    tutti(t,A4,0.4,0.45);timp(t,0.45);mel.push({t:t,l:4});t+=0.6;
+
+    // === SECTION 3 (20-35s): DEVELOPMENT — new patterns, thicker texture ===
+    var s3s=t;
+    // Woodwind sustained chords underneath
+    for(var bi=0;bi<8;bi++){
+      [A3,C4,E4].forEach(function(f){
+        bg.push({t:s3s+bi*1.8,f:f,d:1.6,i:'woodwind',v:0.1});
+      });
     }
 
-    // Final sting — the bee lands!
-    [A3,C4,E4,A4].forEach(function(f){
-      str(t,f,0.3,0.55);bg.push({t:t,f:f,d:0.3,i:'brass',v:0.4});
+    // Partial runs — just the top half, then bottom half
+    var chromTopDown=[E5,Eb5,D5,Db5,C5,B4,Bb4,A4];
+    var chromBotUp=[A4,Bb4,B4,C5,Db5,D5,Eb5,E5];
+    t=chromRun(t,chromTopDown,[2,0,3,1],0.42,sp1);
+    t+=0.15;
+    t=chromRun(t,chromBotUp,[1,3,0,2],0.44,sp1);
+    t+=0.2;
+    // Full descending with brass accents
+    chromDown.forEach(function(f,i){
+      bg.push({t:t+i*sp1,f:f,d:sp1*0.85,i:'strings',v:0.45});
+      if(i%4===0){
+        bg.push({t:t+i*sp1,f:f,d:sp1*3,i:'brass',v:0.3});
+        mel.push({t:t+i*sp1,l:[0,2,1,3][Math.floor(i/4)]});
+      }
     });
-    mel.push({t:t,l:4});t+=0.5;
-    [A3,E4,A4].forEach(function(f){str(t,f,2.0,0.4);});
-    bg.push({t:t,f:A3/2,d:1.5,i:'bass',v:0.3});mel.push({t:t,l:4});
+    t+=chromDown.length*sp1+0.2;
+    // Full ascending
+    t=chromRun(t,chromUp,[3,1,0,2],0.48,sp1);
+    t+=0.25;
+    // Double-speed burst (even faster!)
+    var sp2=0.065;
+    t=chromRun(t,chromDown,[2,0,3,1],0.5,sp2);
+    t+=0.15;
+    t=chromRun(t,chromUp,[1,3,0,2],0.52,sp2);
+    t+=0.3;
+    tutti(t,A4,0.4,0.5);timp(t,0.5);mel.push({t:t,l:4});t+=0.6;
 
-    return {n:"Flight of the Bumblebee",composer:"Rimsky-Korsakov",bpm:180,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+    // === SECTION 4 (35-50s): MODULATION TO E MINOR — new color ===
+    var chromDownE=[B4,Bb4,A4,Ab4,G4,Gb4,F4,E4,Eb4,D4,Db4,C4,B3];
+    var chromUpE=[B3,C4,Db4,D4,Eb4,E4,F4,Gb4,G4,Ab4,A4,Bb4,B4];
+    var s4s=t;
+    for(bi=0;bi<8;bi++){
+      [E4,G4,B4].forEach(function(f){
+        bg.push({t:s4s+bi*1.8,f:f,d:1.6,i:'strings',v:0.12});
+      });
+      bg.push({t:s4s+bi*1.8,f:E3,d:1.6,i:'bass',v:0.15});
+    }
+
+    t=chromRun(t,chromDownE,[3,1,0,2],0.45,sp1);
+    t+=0.2;
+    t=chromRun(t,chromUpE,[2,0,3,1],0.48,sp1);
+    t+=0.25;
+    t=chromRun(t,chromDownE,[0,2,1,3],0.5,sp1);
+    t+=0.2;
+    t=chromRun(t,chromUpE,[1,3,2,0],0.52,sp1);
+    t+=0.25;
+    // Fast burst in E minor
+    t=chromRun(t,chromDownE,[3,1,0,2],0.55,sp2);
+    t+=0.15;
+    t=chromRun(t,chromUpE,[2,0,3,1],0.55,sp2);
+    t+=0.3;
+    // Transition back to A minor
+    [[E4,2],[F4,1],[G4,3],[A4,0]].forEach(function(n){
+      tutti(t,n[0],0.25,0.5);mel.push({t:t,l:n[1]});t+=0.3;
+    });
+    timp(t,0.55);mel.push({t:t,l:4});t+=0.5;
+
+    // === SECTION 5 (50-65s): RECAPITULATION — full orchestra, louder ===
+    var s5s=t;
+    for(ri=0;ri<70;ri++){
+      var rf5=[A3,C4,E4,A4,E4,C4][ri%6];
+      bg.push({t:s5s+ri*0.1,f:rf5,d:0.09,i:'strings',v:0.12});
+    }
+    for(bi=0;bi<8;bi++){
+      bg.push({t:s5s+bi*1.8,f:A3/2,d:1.6,i:'bass',v:0.2});
+      if(bi%2===0)timp(s5s+bi*1.8,0.35);
+    }
+
+    // Louder runs with brass doubling accents
+    t=chromRun(t,chromDown,[0,2,3,1],0.55,sp1);
+    t+=0.15;
+    t=chromRun(t,chromUp,[1,3,0,2],0.58,sp1);
+    t+=0.2;
+    // Fast burst
+    t=chromRun(t,chromDown,[2,0,1,3],0.6,sp2);
+    t+=0.12;
+    t=chromRun(t,chromUp,[3,1,2,0],0.62,sp2);
+    t+=0.2;
+    // Repeated descending — relentless buzzing
+    t=chromRun(t,chromDown,[0,2,3,1],0.6,sp2);
+    t+=0.12;
+    t=chromRun(t,chromUp,[1,3,0,2],0.62,sp2);
+    t+=0.15;
+    t=chromRun(t,chromDown,[2,0,1,3],0.64,sp2);
+    t+=0.2;
+    tutti(t,A4,0.35,0.58);timp(t,0.55);mel.push({t:t,l:4});t+=0.5;
+
+    // === SECTION 6 (65-80s): CLIMAX — maximum speed, fff ===
+    var s6s=t;
+    for(ri=0;ri<80;ri++){
+      var rf6=[A3,E4,A4,C5,A4,E4,C4,A3][ri%8];
+      bg.push({t:s6s+ri*0.08,f:rf6,d:0.07,i:'strings',v:0.15});
+      if(ri%6===0)bg.push({t:s6s+ri*0.08,f:rf6*0.5,d:0.2,i:'brass',v:0.1});
+    }
+    for(bi=0;bi<8;bi++){
+      bg.push({t:s6s+bi*1.6,f:A3/2,d:1.4,i:'bass',v:0.25});
+      timp(s6s+bi*1.6,0.45);
+    }
+
+    // Fastest runs — sp3 speed
+    var sp3=0.055;
+    t=chromRun(t,chromDown,[0,2,3,1],0.65,sp3);
+    t+=0.1;
+    t=chromRun(t,chromUp,[1,3,0,2],0.68,sp3);
+    t+=0.1;
+    t=chromRun(t,chromDown,[2,0,1,3],0.7,sp3);
+    t+=0.1;
+    t=chromRun(t,chromUp,[3,1,2,0],0.7,sp3);
+    t+=0.15;
+    // Repeated rapid descents — the bumblebee is frantic
+    t=chromRun(t,chromDown,[0,2,3,1],0.72,sp3);
+    t+=0.08;
+    t=chromRun(t,chromDown,[2,0,1,3],0.72,sp3);
+    t+=0.08;
+    t=chromRun(t,chromUp,[1,3,0,2],0.74,sp3);
+    t+=0.1;
+    // Final ascending blast to peak
+    [E4,F4,G4,A4,B4,C5,D5,E5].forEach(function(f,i){
+      bg.push({t:t,f:f,d:0.06,i:'strings',v:0.7});
+      bg.push({t:t,f:f,d:0.06,i:'brass',v:0.5});
+      if(i%2===0)mel.push({t:t,l:[0,1,2,3][Math.floor(i/2)]});
+      t+=0.07;
+    });
+    t+=0.2;
+
+    // === SECTION 7 (80-88s): CODA — final chords ===
+    // Big orchestral chords — the bumblebee lands
+    var chords=[[A3,C4,E4,A4],[E4,G4,B4,E5],[A3,C4,E4,A4],[A3,C4,E4,A4]];
+    chords.forEach(function(ch,ci){
+      var ct=t+ci*1.5;
+      ch.forEach(function(f){
+        bg.push({t:ct,f:f,d:1.3,i:'strings',v:0.55});
+        bg.push({t:ct,f:f,d:1.3,i:'brass',v:0.45});
+      });
+      bg.push({t:ct,f:ch[0]/2,d:1.3,i:'bass',v:0.45});
+      timp(ct,0.6);mel.push({t:ct,l:4});
+      // Quick chromatic fill between chords
+      if(ci<3){
+        for(var fi=0;fi<4;fi++){
+          bg.push({t:ct+0.6+fi*0.08,f:chromDown[fi*3],d:0.07,i:'strings',v:0.4});
+        }
+        mel.push({t:ct+0.6,l:ci%2===0?0:2});
+      }
+    });
+    t+=chords.length*1.5;
+
+    // Final sustained Am chord
+    [A3,C4,E4,A4,E5].forEach(function(f){
+      bg.push({t:t,f:f,d:4.0,i:'strings',v:0.5});
+      bg.push({t:t,f:f,d:4.0,i:'brass',v:0.4});
+    });
+    bg.push({t:t,f:A3/2,d:3.5,i:'bass',v:0.5});
+    bg.push({t:t,f:A3,d:3.0,i:'timpani',v:0.6});
+    mel.push({t:t,l:4});
+
+    return {n:"Flight of the Bumblebee",composer:"Rimsky-Korsakov",bpm:180,duration:Math.ceil(t+4.5),isClassical:true,bg:bg,melody:mel};
   })();
 
   // ── Dance of the Sugar Plum Fairy ──
@@ -4345,12 +4531,15 @@ function simplifyNotes(notes){
   return result;
 }
 function buildClassicalNotes(piece){
-  var raw=piece.melody.filter(function(m){return activePads[m.l];})
+  // Check for saved melody edits
+  var saved=edLoadSaved(piece.n);
+  var melody=saved?saved.melody:piece.melody;
+  return melody.filter(function(m){return activePads[m.l];})
     .map(function(m){
       var freq=261.63;
       for(var i=0;i<piece.bg.length;i++){
         var b=piece.bg[i];
-        if(Math.abs(b.t-m.t)<0.01&&b.i!=='bass'&&b.i!=='timpani'){freq=b.f;break;}
+        if(Math.abs(b.t-m.t)<0.05&&b.i!=='bass'&&b.i!=='timpani'){freq=b.f;break;}
       }
       return{time:m.t/gameSpeed,lane:m.l,freq:freq,hit:false,missed:false};
     })
@@ -4518,6 +4707,7 @@ function buildMenu(){
     pl.appendChild(row);
   });
   updateHitModeVisibility();
+  updateEditBtn();
 }
 buildMenu();loadSettings();
 function addPlayer(){players.push({name:"Player "+(players.length+1)});buildMenu();}
@@ -4595,6 +4785,456 @@ function renderScores(){
 }
 refreshMiniLB();
 
+// ── MELODY EDITOR ─────────────────────────────────────
+var edPiece=null,edMelody=[],edBpm=120,edBars=8,edSelected=-1,edScrollX=0,edDragging=false,edDragNote=-1,edDragOffX=0,edDragOffY=0,edPreviewing=false,edIsClassical=false,edGenre="";
+var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=0,ED_NOTE_W=14,ED_NOTE_H=16;
+var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
+var ED_NAMES=["Red","Yellow","Blue","Green","Kick"];
+
+function getEdCanvas(){return document.getElementById("ed-canvas");}
+function getEdCtx(){return getEdCanvas().getContext("2d");}
+function edPxPerUnit(){return parseInt(document.getElementById("ed-zoom").value);}
+function edTimeToX(t){return t*edPxPerUnit()-edScrollX;}
+function edXToTime(x){return(x+edScrollX)/edPxPerUnit();}
+function edYToLane(y){
+  if(y<ED_HEAD)return-1;
+  var laneY=y-ED_HEAD;
+  var padH=ED_LANE_H;
+  for(var i=0;i<4;i++){if(laneY<padH*(i+1))return i;}
+  return 4; // kick
+}
+function edLaneToY(l){
+  if(l<4)return ED_HEAD+l*ED_LANE_H+ED_LANE_H/2;
+  return ED_HEAD+4*ED_LANE_H+ED_KICK_H/2;
+}
+
+function openEditor(){
+  var pieces=SYNTH_GENRES[curGenre]||GENRES[curGenre];
+  if(!pieces||!pieces[curIdx])return;
+  edPiece=pieces[curIdx];
+  edGenre=curGenre;
+  edIsClassical=!!edPiece.isClassical;
+  // Load saved edits or use original
+  var saved=edLoadSaved(edPiece.n);
+  if(saved){
+    edMelody=saved.melody.map(function(m){return{t:m.t,l:m.l};});
+    edBpm=saved.bpm||edPiece.bpm;
+    if(!edIsClassical)edBars=saved.bars||edPiece.bars||8;
+  }else if(edIsClassical){
+    edMelody=edPiece.melody.map(function(m){return{t:m.t,l:m.l};});
+    edBpm=edPiece.bpm;
+  }else{
+    // Regular rhythm: load the repeating pattern
+    edMelody=edPiece.p.map(function(m){return{t:m.t,l:m.l};});
+    edBpm=edPiece.bpm;
+    edBars=edPiece.bars||8;
+  }
+  edSelected=-1;edScrollX=0;
+  document.getElementById("ed-title").textContent="Editing: "+edPiece.n+(edPiece.composer?" ("+edPiece.composer+")":"");
+  document.getElementById("ed-bpm").value=edBpm;
+  document.getElementById("ed-mode-label").textContent=edIsClassical?"Classical (full timeline)":"Pattern (4-beat cycle, repeats "+edBars+"x)";
+  document.getElementById("ed-code-panel").style.display="none";
+  document.getElementById("ed-import-panel").style.display="none";
+  show("sed");
+  setTimeout(edResize,50);
+}
+function closeEditor(){stopPreview();edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";show("sm");}
+
+function edResize(){
+  var cv=getEdCanvas();
+  var rect=cv.parentElement.getBoundingClientRect();
+  var toolH=document.getElementById("ed-toolbar").offsetHeight+document.getElementById("ed-help").offsetHeight;
+  cv.width=rect.width;
+  cv.height=window.innerHeight-toolH-cv.getBoundingClientRect().top+window.scrollY;
+  ED_LANE_H=Math.floor((cv.height-ED_KICK_H)/4);
+  edDraw();
+}
+window.addEventListener("resize",function(){if(document.getElementById("sed").classList.contains("active"))edResize();});
+
+function edDraw(){
+  var cv=getEdCanvas(),ctx=getEdCtx(),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  var pps=edPxPerSec();
+
+  // Draw lane backgrounds
+  for(var i=0;i<4;i++){
+    ctx.fillStyle=i%2===0?"#0e0e1a":"#111122";
+    ctx.fillRect(0,ED_HEAD+i*ED_LANE_H,W,ED_LANE_H);
+    // Lane label
+    ctx.fillStyle=ED_COLORS[i];ctx.globalAlpha=0.3;
+    ctx.font="bold 12px sans-serif";
+    ctx.fillText(ED_NAMES[i],4,ED_HEAD+i*ED_LANE_H+15);
+    ctx.globalAlpha=1;
+  }
+  // Kick lane
+  ctx.fillStyle="#0a0a14";
+  ctx.fillRect(0,ED_HEAD+4*ED_LANE_H,W,ED_KICK_H);
+  ctx.fillStyle=ED_COLORS[4];ctx.globalAlpha=0.3;
+  ctx.font="bold 12px sans-serif";
+  ctx.fillText("Kick",4,ED_HEAD+4*ED_LANE_H+15);
+  ctx.globalAlpha=1;
+
+  // Grid lines
+  if(edIsClassical){
+    // Classical: grid by beats (seconds / (60/bpm))
+    var beatSec=60/edBpm;
+    var startBeat=Math.floor(edXToTime(0)/beatSec);
+    var endBeat=Math.ceil(edXToTime(W)/beatSec);
+    for(var b=startBeat;b<=endBeat;b++){
+      var bx=edTimeToX(b*beatSec);
+      if(bx<0||bx>W)continue;
+      ctx.strokeStyle=b%4===0?"#444":"#222";
+      ctx.lineWidth=b%4===0?1.5:0.5;
+      ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
+      if(b%4===0){
+        ctx.fillStyle="#555";ctx.font="10px sans-serif";
+        ctx.fillText((b*beatSec).toFixed(1)+"s",bx+2,H-4);
+      }
+    }
+  }else{
+    // Regular rhythm: grid by beat subdivisions (t=0 to 4)
+    // Draw 16th note grid (every 0.25 beats)
+    for(var sub=0;sub<=16;sub++){
+      var bt=sub*0.25;
+      var bx=edTimeToX(bt);
+      if(bx<0||bx>W)continue;
+      var isBeat=sub%4===0;
+      var isHalf=sub%2===0;
+      ctx.strokeStyle=isBeat?"#555":isHalf?"#333":"#1a1a2a";
+      ctx.lineWidth=isBeat?2:0.5;
+      ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
+      if(isBeat){
+        ctx.fillStyle="#888";ctx.font="bold 11px sans-serif";
+        ctx.fillText("Beat "+(sub/4+1),bx+3,H-4);
+      }
+    }
+  }
+
+  // Lane separator lines
+  for(i=1;i<5;i++){
+    var ly=ED_HEAD+i*ED_LANE_H;
+    ctx.strokeStyle="#333";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,ly);ctx.lineTo(W,ly);ctx.stroke();
+  }
+
+  // Draw notes
+  edMelody.forEach(function(m,idx){
+    var nx=edTimeToX(m.t)-ED_NOTE_W/2;
+    var ny=edLaneToY(m.l)-ED_NOTE_H/2;
+    if(nx+ED_NOTE_W<0||nx>W)return;
+    ctx.fillStyle=ED_COLORS[m.l]||"#888";
+    ctx.globalAlpha=idx===edSelected?1:0.8;
+    ctx.fillRect(nx,ny,ED_NOTE_W,ED_NOTE_H);
+    if(idx===edSelected){
+      ctx.strokeStyle="#fff";ctx.lineWidth=2;
+      ctx.strokeRect(nx-1,ny-1,ED_NOTE_W+2,ED_NOTE_H+2);
+    }
+    ctx.globalAlpha=1;
+  });
+
+  // Duration / pattern end marker
+  if(edPiece){
+    var endTime=edIsClassical?(edPiece.duration||90):4; // 4 beats for pattern
+    var dx=edTimeToX(endTime);
+    if(dx>0&&dx<W){
+      ctx.strokeStyle="#e53e3e";ctx.lineWidth=2;ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.moveTo(dx,0);ctx.lineTo(dx,H);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle="#e53e3e";ctx.font="10px sans-serif";
+      ctx.fillText(edIsClassical?"END":"LOOP (4 beats)",dx+3,12);
+    }
+  }
+
+  // Status
+  document.getElementById("ed-status").textContent=edMelody.length+" notes | "+
+    (edSelected>=0?"Selected #"+edSelected+" (t="+edMelody[edSelected].t.toFixed(3)+"s, "+ED_NAMES[edMelody[edSelected].l]+")":"Click to add, click note to select");
+}
+
+function edHitTest(x,y){
+  for(var i=edMelody.length-1;i>=0;i--){
+    var m=edMelody[i];
+    var nx=edTimeToX(m.t)-ED_NOTE_W/2;
+    var ny=edLaneToY(m.l)-ED_NOTE_H/2;
+    if(x>=nx&&x<=nx+ED_NOTE_W&&y>=ny&&y<=ny+ED_NOTE_H)return i;
+  }
+  return-1;
+}
+
+// Mouse handlers
+function edMouseDown(e){
+  var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
+  var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  var hit=edHitTest(mx,my);
+  if(hit>=0){
+    edSelected=hit;
+    edDragging=true;edDragNote=hit;
+    edDragOffX=mx-edTimeToX(edMelody[hit].t);
+    edDragOffY=my-edLaneToY(edMelody[hit].l);
+    edDraw();
+  }else{
+    // Add new note
+    var t=edXToTime(mx);
+    var l=edYToLane(my);
+    if(l>=0&&l<=4&&t>=0){
+      // Snap to nearest subdivision
+      var snap=edIsClassical?(60/edBpm/4):0.25; // 1/4 beat in seconds or 1/16 note in beat units
+      t=Math.round(t/snap)*snap;
+      t=parseFloat(t.toFixed(4));
+      // For regular rhythms, clamp to 0-4 range
+      if(!edIsClassical)t=Math.max(0,Math.min(3.99,t));
+      edMelody.push({t:t,l:l});
+      edMelody.sort(function(a,b){return a.t-b.t;});
+      edSelected=edMelody.findIndex(function(m){return m.t===t&&m.l===l;});
+      edDraw();
+    }
+  }
+}
+function edMouseMove(e){
+  if(!edDragging||edDragNote<0)return;
+  var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
+  var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  var t=edXToTime(mx-edDragOffX);
+  var l=edYToLane(my);
+  var snap=60/edBpm/4;
+  t=Math.max(0,Math.round(t/snap)*snap);
+  if(l>=0&&l<=4){
+    edMelody[edDragNote].t=t;
+    edMelody[edDragNote].l=l;
+    edSelected=edDragNote;
+    edDraw();
+  }
+}
+function edMouseUp(){
+  if(edDragging){
+    edDragging=false;edDragNote=-1;
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    // Re-find selected after sort
+    edDraw();
+  }
+}
+function edWheel(e){
+  e.preventDefault();
+  edScrollX+=e.deltaX||e.deltaY;
+  if(edScrollX<0)edScrollX=0;
+  edDraw();
+}
+function edKeyDown(e){
+  if(!document.getElementById("sed").classList.contains("active"))return;
+  if((e.key==="Delete"||e.key==="Backspace")&&edSelected>=0){
+    edMelody.splice(edSelected,1);
+    edSelected=-1;
+    edDraw();
+    e.preventDefault();
+  }
+  if(e.key==="ArrowLeft"&&edSelected>=0){
+    var snap=edIsClassical?(60/edBpm/4):0.25;
+    edMelody[edSelected].t=Math.max(0,parseFloat((edMelody[edSelected].t-snap).toFixed(4)));
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    edDraw();e.preventDefault();
+  }
+  if(e.key==="ArrowRight"&&edSelected>=0){
+    var snap2=edIsClassical?(60/edBpm/4):0.25;
+    var maxT=edIsClassical?9999:3.99;
+    edMelody[edSelected].t=Math.min(maxT,parseFloat((edMelody[edSelected].t+snap2).toFixed(4)));
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    edDraw();e.preventDefault();
+  }
+  if(e.key==="ArrowUp"&&edSelected>=0){
+    edMelody[edSelected].l=Math.max(0,edMelody[edSelected].l-1);
+    edDraw();e.preventDefault();
+  }
+  if(e.key==="ArrowDown"&&edSelected>=0){
+    edMelody[edSelected].l=Math.min(4,edMelody[edSelected].l+1);
+    edDraw();e.preventDefault();
+  }
+}
+
+// Setup editor canvas events
+(function(){
+  var cv=document.getElementById("ed-canvas");
+  cv.addEventListener("mousedown",edMouseDown);
+  cv.addEventListener("mousemove",edMouseMove);
+  cv.addEventListener("mouseup",edMouseUp);
+  cv.addEventListener("mouseleave",edMouseUp);
+  cv.addEventListener("wheel",edWheel,{passive:false});
+  document.addEventListener("keydown",edKeyDown);
+})();
+
+function edUpdateBpm(){edBpm=parseInt(document.getElementById("ed-bpm").value)||120;edDraw();}
+
+function edPreview(){
+  if(edPreviewing){stopPreview();edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";return;}
+  var ac=getAc(true);ac.resume();
+  var piece=edPiece;
+  if(edIsClassical){
+    // Play background orchestration
+    if(piece.bg)for(var i=0;i<piece.bg.length;i++){
+      var n=piece.bg[i];
+      playSynth(ac,n.f,ac.currentTime+0.1+n.t,n.d,n.i,n.v*1.2,previewNodes);
+    }
+    // Play melody notes as woodwind clicks
+    edMelody.forEach(function(m){
+      var freq=[329,392,440,349,220][m.l]||329;
+      playSynth(ac,freq,ac.currentTime+0.1+m.t,0.1,'woodwind',0.5,previewNodes);
+    });
+    var dur=piece.duration||90;
+    setTimeout(function(){if(edPreviewing){edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";}},dur*1000+500);
+  }else{
+    // Regular rhythm: play drum sounds for each note in pattern, looped over bars
+    var bs=60/edBpm;
+    var bars=edBars||8;
+    var drumFreqs=[329,392,440,349,220]; // red,yellow,blue,green,kick
+    var drumInst=['strings','woodwind','woodwind','strings','bass'];
+    for(var bar=0;bar<bars;bar++){
+      edMelody.forEach(function(m){
+        var t=ac.currentTime+0.1+(bar*4+m.t)*bs;
+        var freq=drumFreqs[m.l]||329;
+        playSynth(ac,freq,t,0.08,drumInst[m.l]||'woodwind',0.6,previewNodes);
+      });
+    }
+    var totalDur=bars*4*bs;
+    setTimeout(function(){if(edPreviewing){edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";}},totalDur*1000+500);
+  }
+  edPreviewing=true;
+  document.getElementById("ed-pv-btn").textContent="⏹ Stop";
+}
+
+// Save/load edits to localStorage
+var ED_STORAGE_KEY="drgame_edits";
+function edGetAllSaved(){try{return JSON.parse(localStorage.getItem(ED_STORAGE_KEY))||{};}catch(e){return{};}}
+function edLoadSaved(name){var all=edGetAllSaved();return all[name]||null;}
+function edSave(){
+  var all=edGetAllSaved();
+  var entry={melody:edMelody.map(function(m){return{t:m.t,l:m.l};}),bpm:edBpm,isClassical:edIsClassical};
+  if(!edIsClassical)entry.bars=edBars;
+  all[edPiece.n]=entry;
+  try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
+  document.getElementById("ed-status").textContent="Saved! ("+edMelody.length+" notes)";
+}
+function edReset(){
+  if(!confirm("Reset to original? This discards your edits."))return;
+  var all=edGetAllSaved();delete all[edPiece.n];
+  try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
+  if(edIsClassical){
+    edMelody=edPiece.melody.map(function(m){return{t:m.t,l:m.l};});
+  }else{
+    edMelody=edPiece.p.map(function(m){return{t:m.t,l:m.l};});
+    edBars=edPiece.bars||8;
+  }
+  edBpm=edPiece.bpm;
+  document.getElementById("ed-bpm").value=edBpm;
+  edSelected=-1;edDraw();
+}
+function edExport(){
+  var data=JSON.stringify({name:edPiece.n,bpm:edBpm,type:edIsClassical?"classical":"pattern",melody:edMelody},null,2);
+  navigator.clipboard.writeText(data).then(function(){
+    document.getElementById("ed-status").textContent="Copied to clipboard!";
+  }).catch(function(){
+    prompt("Copy this JSON:",data);
+  });
+}
+
+// Code view toggle — shows JS representation of current notes
+function edToggleCode(){
+  var panel=document.getElementById("ed-code-panel");
+  if(panel.style.display==="none"){
+    panel.style.display="block";
+    edUpdateCode();
+  }else{
+    panel.style.display="none";
+  }
+  setTimeout(edResize,50);
+}
+function edUpdateCode(){
+  var ta=document.getElementById("ed-code");
+  if(edIsClassical){
+    // Show melody array as JS
+    var lines=edMelody.map(function(m){
+      return"  {t:"+m.t.toFixed(3)+", l:"+m.l+"}";
+    });
+    ta.value="// "+edPiece.n+" — melody ("+edMelody.length+" notes)\n"+
+      "// BPM: "+edBpm+", Duration: "+(edPiece.duration||"?")+"s\n"+
+      "// Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick\n"+
+      "melody: [\n"+lines.join(",\n")+"\n]";
+  }else{
+    // Show pattern array as JS
+    var lines2=edMelody.map(function(m){
+      return"  {t:"+m.t+", l:"+m.l+"}";
+    });
+    ta.value="// "+edPiece.n+" — pattern ("+edMelody.length+" notes, repeats "+edBars+"x)\n"+
+      "// BPM: "+edBpm+", Bars: "+edBars+"\n"+
+      "// t = beat offset (0-4), Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick\n"+
+      "p: [\n"+lines2.join(",\n")+"\n]";
+  }
+}
+function edApplyCode(){
+  var ta=document.getElementById("ed-code");
+  var code=ta.value;
+  // Extract the array from the code text
+  var match=code.match(/\[\s*([\s\S]*)\s*\]/);
+  if(!match){document.getElementById("ed-status").textContent="Could not find [...] array in code";return;}
+  try{
+    // Parse the array — handle JS object notation {t:1, l:2} as JSON
+    var arrStr="["+match[1].replace(/(\w+)\s*:/g,'"$1":')+"]";
+    var arr=JSON.parse(arrStr);
+    edMelody=arr.filter(function(m){return typeof m.t==="number"&&typeof m.l==="number";})
+      .map(function(m){return{t:m.t,l:m.l};});
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    edSelected=-1;edDraw();
+    document.getElementById("ed-status").textContent="Applied! "+edMelody.length+" notes loaded from code.";
+  }catch(e){
+    document.getElementById("ed-status").textContent="Parse error: "+e.message;
+  }
+}
+
+// Import panel
+function edToggleImport(){
+  var panel=document.getElementById("ed-import-panel");
+  panel.style.display=panel.style.display==="none"?"block":"none";
+  setTimeout(edResize,50);
+}
+function edDoImport(){
+  var text=document.getElementById("ed-import-text").value.trim();
+  if(!text){document.getElementById("ed-import-status").textContent="Paste some data first";return;}
+  try{
+    var data=JSON.parse(text);
+    // Accept array of {t,l} or object with melody property
+    var arr=Array.isArray(data)?data:(data.melody||data.p||[]);
+    if(!Array.isArray(arr)||arr.length===0){document.getElementById("ed-import-status").textContent="No notes found";return;}
+    edMelody=arr.filter(function(m){return typeof m.t==="number"&&typeof m.l==="number";})
+      .map(function(m){return{t:m.t,l:m.l};});
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    if(data.bpm)edBpm=data.bpm;
+    document.getElementById("ed-bpm").value=edBpm;
+    edSelected=-1;edDraw();edUpdateCode();
+    document.getElementById("ed-import-status").textContent="Imported "+edMelody.length+" notes!";
+  }catch(e){
+    document.getElementById("ed-import-status").textContent="JSON parse error: "+e.message;
+  }
+}
+function edImportMIDI(){document.getElementById("ed-midi-file").click();}
+function edHandleFile(e){
+  var file=e.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  if(file.name.endsWith(".json")){
+    reader.onload=function(ev){
+      document.getElementById("ed-import-text").value=ev.target.result;
+      edDoImport();
+    };
+    reader.readAsText(file);
+  }else{
+    document.getElementById("ed-import-status").textContent="MIDI parsing not yet supported — convert to JSON first (use AI or online converter)";
+  }
+  e.target.value="";
+}
+
+// Show/hide edit button — works for all genres
+function updateEditBtn(){
+  var pieces=SYNTH_GENRES[curGenre]||GENRES[curGenre];
+  var btn=document.getElementById("edit-btn");
+  btn.style.display=(pieces&&pieces[curIdx])?"":"none";
+}
+
 // ── GAME START ─────────────────────────────────────────
 function startGame(){
   stopPreview();
@@ -4618,9 +5258,12 @@ function stopGame(){playing=false;if(mp3Src){try{mp3Src.stop();}catch(e){}mp3Src
 function resetStats(){cScore=0;cStreak=0;cTotal=0;cGood=0;cMaxStreak=0;gameEndTime=null;}
 
 function buildNotes(r){
-  const bs=60/r.bpm/gameSpeed,bars=r.bars||8,res=[];
+  var saved=edLoadSaved(r.n);
+  var pattern=saved?saved.melody:r.p;
+  var bpm=saved?saved.bpm:r.bpm;
+  const bs=60/bpm/gameSpeed,bars=r.bars||8,res=[];
   for(let bar=0;bar<bars;bar++)
-    for(const p of r.p)
+    for(const p of pattern)
       if(activePads[p.l])
         res.push({time:(bar*4+p.t)*bs,lane:p.l,hit:false,missed:false});
   var sorted=res.sort((a,b)=>a.time-b.time);
