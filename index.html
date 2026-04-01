@@ -55,10 +55,10 @@ canvas{display:block;}
 #pause-overlay{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:20;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
 #pause-overlay.show{display:flex;}
 #pause-overlay h2{font-size:28px;color:#fff;}
-#remap-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-#remap-overlay.show{display:flex;}
-#remap-prompt{font-size:20px;font-weight:bold;text-align:center;}
-#remap-status{font-size:13px;opacity:.5;text-align:center;}
+#remap-overlay,#keyremap-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+#remap-overlay.show,#keyremap-overlay.show{display:flex;}
+#remap-prompt,#keyremap-prompt{font-size:20px;font-weight:bold;text-align:center;}
+#remap-status,#keyremap-status{font-size:13px;opacity:.5;text-align:center;}
 </style>
 </head>
 <body>
@@ -98,6 +98,12 @@ canvas{display:block;}
     <h2>Active Pads</h2>
     <div class="pad-toggle" id="pad-toggles"></div>
     <p style="font-size:11px;opacity:.4;margin-top:8px">Toggle which pads show notes. Inactive pads still make sound when hit.</p>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid #222;">
+      <span style="font-size:11px;opacity:.5;margin-right:8px;">Note density:</span>
+      <button class="smbtn" id="density-full" onclick="setSimpleMode(false)">Full</button>
+      <button class="smbtn" id="density-simple" onclick="setSimpleMode(true)">Simple</button>
+      <span style="font-size:10px;opacity:.35;margin-left:6px;" id="density-hint">Fewer notes for beginners</span>
+    </div>
     <div id="hitmode-toggle" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid #222;">
       <span style="font-size:11px;opacity:.5;margin-right:8px;">Classical hit sound:</span>
       <button class="smbtn" id="hitmode-drums" onclick="setHitMode('drums')">🥁 Drums</button>
@@ -131,6 +137,7 @@ canvas{display:block;}
 
   <div class="sticky-start">
     <button class="smbtn" onclick="startRemap()">🎮 Remap Pads</button>
+    <button class="smbtn" onclick="startKeyRemap()">⌨ Remap Keys</button>
     <button class="smbtn" id="edit-btn" onclick="openEditor()" style="display:none;">✏️ Edit Melody</button>
     <button class="bigbtn" onclick="startGame()">▶ Start</button>
   </div>
@@ -162,8 +169,10 @@ canvas{display:block;}
   </div>
 </div>
 
-<!-- REMAP -->
+<!-- REMAP (gamepad) -->
 <div id="remap-overlay"><div id="remap-prompt"></div><div id="remap-status"></div><button class="smbtn red" onclick="cancelRemap()">Cancel</button></div>
+<!-- REMAP (keyboard) -->
+<div id="keyremap-overlay"><div id="keyremap-prompt"></div><div id="keyremap-status"></div><button class="smbtn red" onclick="cancelKeyRemap()">Cancel</button></div>
 
 <!-- SCORES -->
 <div class="screen" id="ss" style="padding:16px;">
@@ -227,10 +236,15 @@ const LANES=[
   {label:"Blue",  color:"#3182ce",key:"h", type:"hihat"},
   {label:"Green", color:"#38a169",key:"j", type:"tom2"},
   {label:"Kick",  color:"#805ad5",key:" ", type:"kick"},
+  {label:"Crash", color:"#ed8936",key:"d", type:"crash"},
+  {label:"Ride",  color:"#4fd1c5",key:"k", type:"ride"},
+  {label:"Tom 3", color:"#d53f8c",key:"l", type:"tom3"},
 ];
 
 // which pads are active (show notes) — all on by default
-let activePads=[true,true,true,true,true];
+let activePads=[true,true,true,true,true,false,false,false];
+// Simple mode — thins out notes, keeping only strong beats
+let simpleMode=false;
 
 // ── RHYTHMS ───────────────────────────────────────────
 // Every pattern now uses ALL 5 lanes (0=Red/tom, 1=Yellow/snare, 2=Blue/hihat, 3=Green/tom2, 4=Kick)
@@ -624,7 +638,7 @@ const GENRES={
 };
 
 // ── CLASSICAL MODE ────────────────────────────────────
-const NT={C3:130.81,D3:146.83,Eb3:155.56,E3:164.81,F3:174.61,G3:196.00,Ab3:207.65,A3:220.00,Bb3:233.08,B3:246.94,C4:261.63,D4:293.66,Eb4:311.13,E4:329.63,F4:349.23,G4:392.00,Ab4:415.30,A4:440.00,Bb4:466.16,B4:493.88,C5:523.25,D5:587.33,Eb5:622.25,E5:659.25,F5:698.46,G5:783.99,A5:880.00,Gb3:185.00,Db4:277.18,Gb4:369.99,Db5:554.37,C6:1046.50};
+const NT={C3:130.81,D3:146.83,Eb3:155.56,E3:164.81,F3:174.61,G3:196.00,Ab3:207.65,A3:220.00,Bb3:233.08,B3:246.94,C4:261.63,D4:293.66,Eb4:311.13,E4:329.63,F4:349.23,G4:392.00,Ab4:415.30,A4:440.00,Bb4:466.16,B4:493.88,C5:523.25,D5:587.33,Eb5:622.25,E5:659.25,F5:698.46,G5:783.99,A5:880.00,Ab5:830.61,Gb3:185.00,Db4:277.18,Gb4:369.99,Db5:554.37,C6:1046.50};
 
 function playSynth(ac,freq,t,dur,inst,vol,arr){
   if(t<ac.currentTime-0.1)return;
@@ -689,7 +703,7 @@ function playSynth(ac,freq,t,dur,inst,vol,arr){
 const CLASSICAL_PIECES=(function(){
   var G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,Bb3=NT.Bb3,B3=NT.B3,
     C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,
-    C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,E5=NT.E5,F5=NT.F5,G5=NT.G5,A5=NT.A5,
+    C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,E5=NT.E5,F5=NT.F5,G5=NT.G5,A5=NT.A5,Ab5=NT.Ab5,
     C3=NT.C3,D3=NT.D3,E3=NT.E3,B4=NT.B4,F3=NT.F3,Gb3=NT.Gb3,Db4=NT.Db4,Gb4=NT.Gb4,Db5=NT.Db5;
 
   // ── Beethoven's 5th Symphony (Opening) ──
@@ -889,8 +903,8 @@ const CLASSICAL_PIECES=(function(){
   var hmk=(function(){
     var bg=[],mel=[];
     function orch(t,freq,dur,v,inst){bg.push({t:t,f:freq,d:dur,i:inst||'strings',v:v||0.3});}
-    var theme=[A3,B3,C4,D4,E4,C4,E4,Eb4,E4,Eb4,E4,D4,C4,B3];
-    var lanes=[0,1,2,0,1,2,1,3,1,3,1,0,2,1];
+    var theme=[B3,Db4,D4,E4,Gb4,D4,Gb4,E4,Db4,E4,Eb4,B3,Eb4,B3];
+    var lanes=[0,1,2,0,1,2,1,0,3,0,1,3,1,3];
     var t=0;
     // Pass 1: Very slow, barely audible (creeping start)
     var d0=0.55;
@@ -932,7 +946,7 @@ const CLASSICAL_PIECES=(function(){
     theme.forEach(function(f,i){
       orch(t,f,d5*0.8,0.5,'strings');orch(t,f,d5*0.8,0.35,'brass');
       orch(t,f/2,d5*0.8,0.35,'bass');
-      if(i%4===0)bg.push({t:t,f:A3/2,d:0.3,i:'timpani',v:0.45});
+      if(i%4===0)bg.push({t:t,f:B3/2,d:0.3,i:'timpani',v:0.45});
       mel.push({t:t,l:lanes[i]});t+=d5;
     });
     t+=0.2;
@@ -941,7 +955,7 @@ const CLASSICAL_PIECES=(function(){
     theme.forEach(function(f,i){
       orch(t,f,d6*0.8,0.6,'strings');orch(t,f,d6*0.8,0.45,'brass');
       orch(t,f/2,d6*0.8,0.4,'bass');
-      if(i%2===0)bg.push({t:t,f:A3/2,d:0.2,i:'timpani',v:0.55});
+      if(i%2===0)bg.push({t:t,f:B3/2,d:0.2,i:'timpani',v:0.55});
       mel.push({t:t,l:lanes[i]});t+=d6;
     });
     t+=0.15;
@@ -950,25 +964,25 @@ const CLASSICAL_PIECES=(function(){
     theme.forEach(function(f,i){
       orch(t,f,d7*0.8,0.65,'strings');orch(t,f,d7*0.8,0.5,'brass');
       orch(t,f/2,d7*0.8,0.45,'bass');
-      bg.push({t:t,f:A3/2,d:0.15,i:'timpani',v:0.6});
+      bg.push({t:t,f:B3/2,d:0.15,i:'timpani',v:0.6});
       mel.push({t:t,l:lanes[i]});t+=d7;
     });
     // Big finale: repeated chords
     t+=0.15;
     for(var ci=0;ci<4;ci++){
       var t2=t+ci*0.4;
-      [A3,C4,E4,A4].forEach(function(f){
+      [B3,D4,Gb4,B4].forEach(function(f){
         orch(t2,f,0.35,0.65,'brass');orch(t2,f,0.35,0.55,'strings');
       });
-      bg.push({t:t2,f:A3/2,d:0.4,i:'timpani',v:0.65});
+      bg.push({t:t2,f:B3/2,d:0.4,i:'timpani',v:0.65});
       mel.push({t:t2,l:4});
     }
     // Final long chord
     t=t+1.8;
-    [A3,C4,E4,A4].forEach(function(f){
+    [B3,D4,Gb4,B4].forEach(function(f){
       orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5,'strings');
     });
-    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.7});
+    bg.push({t:t,f:B3/2,d:1.5,i:'timpani',v:0.7});
     mel.push({t:t,l:4});
     return {n:"Hall of the Mountain King",composer:"Grieg",bpm:120,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
@@ -1582,46 +1596,681 @@ const CLASSICAL_PIECES=(function(){
   })();
 
   // ── William Tell Overture (Gallop) ──
-  var tell=tp("William Tell Overture (Gallop)","Rossini",152,
-    [G4,G4,B4,G4,G4,B4,D5,D5,B4,G4,E4,G4,B4,D5,B4,G4,E4,D4,E4,G4],
-    [0,0,3,0,0,3,1,1,3,0,2,0,3,1,3,0,2,1,2,0],
-    [{d:0.28,v:0.22,i:'strings'},{d:0.25,v:0.28,i:'strings'},{d:0.22,v:0.35,i:'strings'},{d:0.20,v:0.42,i:'strings'},{d:0.18,v:0.48,i:'brass'},{d:0.16,v:0.54,i:'brass'},{d:0.14,v:0.58,i:'brass'},{d:0.12,v:0.62,i:'brass'}],
-    [G4,B4,D5,G5]);
+  // The famous finale gallop in G major, ~70s
+  // Trumpet fanfare → galloping theme → accelerating coda
+  var tell=(function(){
+    var bg=[],mel=[],t=0,q=60/152;
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.4});}
+    function tutti(t,f,d,v){str(t,f,d,v);brs(t,f,d,(v||0.4)*0.7);bg.push({t:t,f:f/2,d:d,i:'bass',v:(v||0.4)*0.4});}
+
+    // Harmonic bed
+    var harm=[
+      [0,8,[G3,B3,D4],0.12],[8,20,[G3,B3,D4],0.15],[20,32,[G3,B3,D4],0.18],
+      [32,44,[C4,E4,G4],0.16],[44,56,[G3,B3,D4],0.2],[56,72,[G3,B3,D4],0.22]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=2.0){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:1.9,i:'strings',v:h[3]});});
+        bg.push({t:ht,f:h[2][0]/2,d:1.9,i:'bass',v:h[3]*0.5});
+      }
+    });
+
+    // === SECTION 1 (0-8s): Trumpet fanfare intro ===
+    // Galloping triplet rhythm on trumpet: da-da-DUM da-da-DUM
+    var trip=q/3;
+    for(var fi=0;fi<4;fi++){
+      var ft=fi*q*2;
+      brs(ft,D5,trip*0.8,0.45);brs(ft+trip,D5,trip*0.8,0.45);brs(ft+trip*2,G4,q*0.8,0.5);
+      mel.push({t:ft,l:0},{t:ft+trip,l:0},{t:ft+trip*2,l:3});
+    }
+    t=q*8;
+    // Sustained trumpet call
+    brs(t,D5,q*2,0.5);brs(t,B4,q*2,0.45);mel.push({t:t,l:1});
+    t+=q*2.5;
+    brs(t,G4,q*3,0.55);brs(t,D4,q*3,0.5);bg.push({t:t,f:G3,d:q*2,i:'timpani',v:0.4});mel.push({t:t,l:3});
+    t=8;
+
+    // === SECTION 2 (8-20s): Main galloping theme ===
+    // The famous melody: G-G-B | G-G-B | D-D-B-G | E-G-B-D-B-G
+    var gallop1=[
+      [G4,trip,0],[G4,trip,0],[B4,q,3],
+      [G4,trip,0],[G4,trip,0],[B4,q,3],
+      [D5,trip,1],[D5,trip,1],[B4,q*0.7,3],[G4,q*0.7,0],
+      [E4,q*0.7,2],[G4,trip,0],[B4,trip,3],[D5,q,1],[B4,trip,3],[G4,q,0]
+    ];
+    for(var rep=0;rep<3;rep++){
+      var v1=0.35+rep*0.08;
+      gallop1.forEach(function(n){
+        tutti(t,n[0],n[1]*0.85,v1);
+        mel.push({t:t,l:n[2]});
+        t+=n[1];
+      });
+      t+=q*0.5;
+    }
+
+    // === SECTION 3 (20-32s): Contrasting lyrical phrase ===
+    // Strings take over with smoother melody
+    var lyric=[[B4,q*2,3],[A4,q,1],[G4,q,0],[A4,q*2,1],[B4,q*2,3],
+               [D5,q*2,1],[C5,q,2],[B4,q,3],[A4,q*2,1],[G4,q*2,0]];
+    for(var lr=0;lr<2;lr++){
+      var vl=0.4+lr*0.08;
+      lyric.forEach(function(n){
+        str(t,n[0],n[1]*0.9,vl);
+        if(lr>0)brs(t,n[0],n[1]*0.9,vl*0.5);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 4 (32-44s): Theme returns with full orchestra ===
+    for(var rep2=0;rep2<3;rep2++){
+      var v2=0.45+rep2*0.08;
+      gallop1.forEach(function(n){
+        tutti(t,n[0],n[1]*0.85,v2);
+        if(rep2>0)bg.push({t:t,f:n[0],d:n[1]*0.85,i:'brass',v:v2*0.5});
+        if(rep2>1&&n[2]===0)bg.push({t:t,f:G3,d:0.15,i:'timpani',v:v2*0.5});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q*0.5;
+    }
+
+    // === SECTION 5 (44-56s): Ascending fanfare + gallop intensifies ===
+    // Brass fanfare ascending
+    var fanfare=[[G4,0],[B4,3],[D5,1],[G5,3],[D5,1],[B4,3],[G4,0]];
+    for(var ff=0;ff<2;ff++){
+      fanfare.forEach(function(n){
+        brs(t,n[0],q*0.85,0.55);str(t,n[0],q*0.85,0.45);
+        mel.push({t:t,l:n[1]});t+=q;
+      });
+      bg.push({t:t,f:G3,d:0.4,i:'timpani',v:0.5});mel.push({t:t,l:4});t+=q*1.5;
+    }
+    // Double-time gallop
+    var dTrip=trip*0.8;
+    for(var dg=0;dg<4;dg++){
+      var vd=0.5+dg*0.04;
+      gallop1.slice(0,10).forEach(function(n){
+        tutti(t,n[0],n[1]*0.7,vd);mel.push({t:t,l:n[2]});t+=n[1]*0.8;
+      });
+      t+=q*0.3;
+    }
+
+    // === SECTION 6 (56-68s): Final gallop — full speed ===
+    for(var fg=0;fg<4;fg++){
+      var vf=0.55+fg*0.05;
+      gallop1.forEach(function(n){
+        tutti(t,n[0],n[1]*0.7,vf);
+        brs(t,n[0],n[1]*0.7,vf*0.6);
+        if(fg>1)bg.push({t:t,f:n[0],d:n[1]*0.7,i:'choir',v:vf*0.25});
+        mel.push({t:t,l:n[2]});t+=n[1]*0.75;
+      });
+      bg.push({t:t,f:G3,d:0.3,i:'timpani',v:vf*0.7});mel.push({t:t,l:4});t+=q*0.5;
+    }
+
+    // === FINALE: Big G major chords ===
+    for(var c=0;c<6;c++){
+      [G3,B3,D4,G4,B4,D5].forEach(function(f){brs(t,f,0.4,0.65);str(t,f,0.4,0.55);});
+      bg.push({t:t,f:G3/2,d:0.4,i:'timpani',v:0.65});mel.push({t:t,l:4});t+=0.5;
+    }
+    [G3,B3,D4,G4,B4,D5].forEach(function(f){brs(t,f,3.0,0.7);str(t,f,3.0,0.6);});
+    bg.push({t:t,f:G3/2,d:2.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+
+    return {n:"William Tell Overture (Gallop)",composer:"Rossini",bpm:152,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Bolero ──
-  var bolero=tp("Bolero","Ravel",72,
-    [C4,D4,E4,F4,E4,D4,C4,C4,D4,E4,F4,G4,F4,E4,D4,C4,E4,G4,E4,C4],
-    [0,1,2,3,2,1,0,0,1,2,3,0,3,2,1,0,2,0,2,0],
-    [{d:0.38,v:0.15,i:'woodwind'},{d:0.36,v:0.2,i:'woodwind'},{d:0.34,v:0.28,i:'strings'},{d:0.32,v:0.35,i:'strings'},{d:0.30,v:0.42,i:'strings'},{d:0.28,v:0.5,i:'brass'},{d:0.26,v:0.58,i:'brass'}],
-    [C4,E4,G4,C5]);
+  // Ravel's Bolero in C major, ~90s
+  // Built around an endlessly repeating snare drum rhythm that crescendos
+  // The melody is stated by different instruments, each time louder
+  var bolero=(function(){
+    var bg=[],mel=[],t=0,q=60/72;
+
+    // The iconic Bolero snare rhythm: 3+3+3+3+2+2 pattern per bar
+    // ta-ta-ta ta-ta-ta ta-ta-ta ta-ta-ta ta-ta ta-ta
+    function snareBar(time,v){
+      var s=q/3;
+      for(var g=0;g<4;g++){
+        for(var n=0;n<3;n++){bg.push({t:time+g*q+n*s,f:300,d:0.05,i:'woodwind',v:v*0.3});}
+      }
+      // The two duplets at end
+      bg.push({t:time+q*4,f:300,d:0.05,i:'woodwind',v:v*0.35});
+      bg.push({t:time+q*4+q/2,f:300,d:0.05,i:'woodwind',v:v*0.35});
+      bg.push({t:time+q*5,f:300,d:0.05,i:'woodwind',v:v*0.35});
+      bg.push({t:time+q*5+q/2,f:300,d:0.05,i:'woodwind',v:v*0.35});
+    }
+
+    // Bolero Theme A (C major): C-D-E-F-E-D-E-C  |  E-C-D-C-B3-C-D-E-F-E-D-C
+    var themeA=[[C4,q,0],[D4,q,1],[E4,q*0.5,2],[F4,q*0.5,3],[E4,q*0.5,2],[D4,q*0.5,1],
+                [E4,q,2],[C4,q*2,0],
+                [E4,q*0.5,2],[C4,q*0.5,0],[D4,q*0.5,1],[C4,q*0.5,0],[B3,q*0.5,3],
+                [C4,q*0.5,0],[D4,q,1],[E4,q*0.5,2],[F4,q*0.5,3],[E4,q*0.5,2],[D4,q*0.5,1],[C4,q*2,0]];
+
+    // Bolero Theme B (chromatic inflection): C-D-Eb-D-C-D-Eb-F-Eb-D-C-Bb3-C
+    var themeB=[[C4,q,0],[D4,q*0.5,1],[Eb4,q*0.5,2],[D4,q*0.5,1],[C4,q*0.5,0],
+                [D4,q*0.5,1],[Eb4,q*0.5,2],[F4,q,3],[Eb4,q*0.5,2],[D4,q*0.5,1],
+                [C4,q,0],[Bb3,q,3],[C4,q*2,0]];
+
+    // Continuous harmonic bed — very sparse at first, grows
+    var harm=[
+      [0,20,[C3,G3,C4],0.06],[20,40,[C3,G3,C4],0.1],[40,60,[C3,G3,C4],0.15],
+      [60,80,[C3,G3,C4],0.2],[80,95,[C3,G3,E4],0.25]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=q*4){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:q*3.8,i:'strings',v:h[3]});});
+      }
+    });
+
+    // 7 statements of the theme, each louder with different instruments
+    var statements=[
+      {inst:'woodwind',v:0.18,theme:'A'},  // flute solo
+      {inst:'woodwind',v:0.22,theme:'A'},  // clarinet
+      {inst:'woodwind',v:0.28,theme:'B'},  // bassoon
+      {inst:'strings',v:0.35,theme:'A'},   // strings pizz
+      {inst:'strings',v:0.42,theme:'B'},   // strings arco
+      {inst:'brass',v:0.5,theme:'A'},      // brass
+      {inst:'brass',v:0.6,theme:'A'}       // full orchestra
+    ];
+
+    statements.forEach(function(st,si){
+      var barLen=q*6;
+      // Snare drum rhythm underneath
+      snareBar(t,0.1+si*0.06);
+      snareBar(t+barLen,0.1+si*0.06);
+
+      var theme=st.theme==='A'?themeA:themeB;
+      theme.forEach(function(n){
+        bg.push({t:t,f:n[0],d:n[1]*0.9,i:st.inst,v:st.v});
+        // Add harmony voices in later statements
+        if(si>=3)bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:st.v*0.4});
+        if(si>=4)bg.push({t:t,f:n[0]*1.5,d:n[1]*0.9,i:'strings',v:st.v*0.3});
+        if(si>=5){
+          bg.push({t:t,f:n[0],d:n[1]*0.9,i:'strings',v:st.v*0.5});
+          bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:st.v*0.25});
+        }
+        if(si>=6&&n[2]===0)bg.push({t:t,f:C3,d:0.2,i:'timpani',v:st.v*0.5});
+        mel.push({t:t,l:n[2]});
+        t+=n[1];
+      });
+      // Kick hit at end of each statement
+      bg.push({t:t,f:C3,d:0.3,i:'timpani',v:0.15+si*0.06});
+      mel.push({t:t,l:4});
+      t+=q*2;
+    });
+
+    // === FINALE: Modulation up + massive crescendo ===
+    // Theme in Db (up a half step) — the famous key change
+    var finaleTheme=[[Db4,q*0.8,0],[Eb4,q*0.4,1],[F4,q*0.4,3],[Eb4,q*0.4,1],[Db4,q*0.4,0],
+                     [Eb4,q*0.8,1],[Db4,q*1.5,0]];
+    for(var fc=0;fc<2;fc++){
+      var fv=0.6+fc*0.08;
+      snareBar(t,0.4+fc*0.05);
+      finaleTheme.forEach(function(n){
+        bg.push({t:t,f:n[0],d:n[1]*0.9,i:'brass',v:fv});
+        bg.push({t:t,f:n[0],d:n[1]*0.9,i:'strings',v:fv*0.8});
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:fv*0.5});
+        bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:fv*0.3});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      bg.push({t:t,f:Db4/2,d:0.3,i:'timpani',v:fv*0.7});mel.push({t:t,l:4});t+=q;
+    }
+
+    // Final massive C chord
+    t+=q;
+    [C3,G3,C4,E4,G4,C5].forEach(function(f){
+      bg.push({t:t,f:f,d:3.5,i:'brass',v:0.7});bg.push({t:t,f:f,d:3.5,i:'strings',v:0.6});
+      bg.push({t:t,f:f,d:3.5,i:'choir',v:0.35});
+    });
+    bg.push({t:t,f:C3/2,d:3.0,i:'timpani',v:0.75});mel.push({t:t,l:4});
+
+    return {n:"Bolero",composer:"Ravel",bpm:72,duration:Math.ceil(t+4),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Barber of Seville Overture ──
-  var barber=tp("Barber of Seville Overture","Rossini",144,
-    [G4,A4,B4,G4,E4,G4,A4,B4,C5,B4,A4,G4,E4,D4,E4,G4,B4,D5,C5,B4],
-    [0,1,3,0,2,0,1,3,0,3,1,0,2,1,2,0,3,1,0,3],
-    [{d:0.24,v:0.22,i:'strings'},{d:0.22,v:0.3,i:'strings'},{d:0.20,v:0.38,i:'strings'},{d:0.18,v:0.42,i:'strings'},{d:0.16,v:0.48,i:'brass'},{d:0.14,v:0.54,i:'brass'},{d:0.12,v:0.6,i:'brass'}],
-    [G4,B4,D5,G5]);
+  // Rossini's famous overture in E major, ~75s
+  // Quiet opening → crescendo string runs → the "Rossini crescendo"
+  var barber=(function(){
+    var bg=[],mel=[],t=0,q=60/144;
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.4});}
+
+    // Harmonic bed
+    var harm=[
+      [0,12,[E3,G3,B3],0.08],[12,28,[E3,G3,B3],0.14],[28,44,[E3,G3,B3],0.18],
+      [44,56,[A3,C4,E4],0.16],[56,72,[E3,G3,B3],0.22],[72,80,[E3,G3,B3],0.25]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=2.0){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:1.9,i:'strings',v:h[3]});});
+      }
+    });
+
+    // === SECTION 1 (0-12s): Quiet pizzicato opening ===
+    // Tip-toeing melody, very soft
+    var pizz=[[E4,q,2],[E4,q*0.5,2],[G4,q*0.5,3],[B4,q,0],[G4,q*0.5,3],[E4,q*0.5,2],
+              [D4,q,1],[E4,q,2],[G4,q*0.5,3],[E4,q*0.5,2],[D4,q,1],[E4,q*2,2]];
+    for(var pr=0;pr<2;pr++){
+      var pv=0.2+pr*0.05;
+      pizz.forEach(function(n){
+        str(t,n[0],n[1]*0.4,pv); // short staccato for pizzicato feel
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 2 (12-28s): The famous "Rossini crescendo" ===
+    // Repeated motif that gets louder and louder
+    var crescMotif=[[E4,q*0.5,2],[E4,q*0.5,2],[G4,q*0.5,3],[G4,q*0.5,3],
+                    [B4,q*0.5,0],[B4,q*0.5,0],[E5,q*0.5,2],[D5,q*0.5,1],
+                    [B4,q*0.5,0],[G4,q*0.5,3],[E4,q,2]];
+    for(var cr=0;cr<4;cr++){
+      var cv=0.22+cr*0.08;
+      var ci=cr<2?'strings':cr<3?'brass':'brass';
+      crescMotif.forEach(function(n){
+        bg.push({t:t,f:n[0],d:n[1]*0.85,i:ci,v:cv});
+        if(cr>=1)str(t,n[0],n[1]*0.85,cv*0.6);
+        if(cr>=2)bg.push({t:t,f:n[0]/2,d:n[1]*0.85,i:'bass',v:cv*0.4});
+        if(cr>=3){brs(t,n[0],n[1]*0.85,cv*0.5);bg.push({t:t,f:n[0],d:n[1]*0.85,i:'choir',v:cv*0.2});}
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      // Punctuating chord
+      if(cr>=2){bg.push({t:t,f:E3,d:0.3,i:'timpani',v:cv*0.5});}
+      mel.push({t:t,l:4});t+=q*1.5;
+    }
+
+    // === SECTION 3 (28-44s): Running string passages ===
+    // Fast scalar runs — the hallmark of Rossini
+    var run1=[E4,G4,B4,E5,D5,B4,G4,E4,D4,E4,G4,B4,D5,E5,D5,B4];
+    var r1Ln=[2,3,0,2,1,0,3,2,1,2,3,0,1,2,1,0];
+    for(var rr=0;rr<3;rr++){
+      var rv=0.4+rr*0.06;
+      var rq=q*(0.5-rr*0.05); // speeds up each time
+      run1.forEach(function(f,i){
+        str(t,f,rq*0.85,rv);
+        if(rr>0)brs(t,f,rq*0.85,rv*0.4);
+        if(rr>1)bg.push({t:t,f:f/2,d:rq*0.85,i:'bass',v:rv*0.3});
+        mel.push({t:t,l:r1Ln[i]});t+=rq;
+      });
+      // Big chord punctuation
+      [E3,B3,E4,G4].forEach(function(f){brs(t,f,0.4,rv);str(t,f,0.4,rv*0.8);});
+      bg.push({t:t,f:E3/2,d:0.3,i:'timpani',v:rv*0.6});mel.push({t:t,l:4});t+=q*2;
+    }
+
+    // === SECTION 4 (44-56s): Lyrical contrasting theme ===
+    var lyric=[[B4,q*1.5,0],[A4,q*0.5,1],[G4,q,3],[E4,q,2],[G4,q*1.5,3],[A4,q*0.5,1],
+               [B4,q*2,0],[E5,q*1.5,2],[D5,q*0.5,1],[B4,q,0],[G4,q,3],[E4,q*2,2]];
+    for(var ll=0;ll<2;ll++){
+      var lv=0.4+ll*0.1;
+      lyric.forEach(function(n){
+        str(t,n[0],n[1]*0.9,lv);brs(t,n[0],n[1]*0.9,lv*0.5);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:lv*0.35});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 5 (56-72s): Final Rossini crescendo + runs ===
+    for(var fc=0;fc<3;fc++){
+      var fv=0.5+fc*0.06;
+      var fq=q*(0.45-fc*0.04);
+      run1.forEach(function(f,i){
+        str(t,f,fq*0.85,fv);brs(t,f,fq*0.85,fv*0.6);
+        bg.push({t:t,f:f/2,d:fq*0.85,i:'bass',v:fv*0.4});
+        if(fc>0&&i%4===0)bg.push({t:t,f:E3,d:0.15,i:'timpani',v:fv*0.5});
+        mel.push({t:t,l:r1Ln[i]});t+=fq;
+      });
+      t+=q*0.5;
+    }
+
+    // === FINALE: Chords ===
+    for(var c=0;c<6;c++){
+      [E3,B3,E4,G4,B4].forEach(function(f){brs(t,f,0.35,0.65);str(t,f,0.35,0.55);});
+      bg.push({t:t,f:E3/2,d:0.35,i:'timpani',v:0.6});mel.push({t:t,l:4});t+=0.45;
+    }
+    [E3,B3,E4,G4,B4,E5].forEach(function(f){brs(t,f,3.0,0.7);str(t,f,3.0,0.6);});
+    bg.push({t:t,f:E3/2,d:2.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+
+    return {n:"Barber of Seville Overture",composer:"Rossini",bpm:144,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Sabre Dance ──
-  var sabre=tp("Sabre Dance","Khachaturian",168,
-    [D4,D4,D4,Eb4,D4,D4,D4,Eb4,D4,E4,F4,G4,A4,G4,F4,E4,D4,D4,D4,A3],
-    [0,0,0,1,0,0,0,1,0,2,3,0,1,0,3,2,0,0,0,4],
-    [{d:0.24,v:0.28,i:'strings'},{d:0.22,v:0.34,i:'strings'},{d:0.20,v:0.4,i:'strings'},{d:0.18,v:0.46,i:'brass'},{d:0.16,v:0.52,i:'brass'},{d:0.14,v:0.56,i:'brass'},{d:0.12,v:0.6,i:'brass'},{d:0.10,v:0.65,i:'brass'}],
-    [D4,F4,A4,D5]);
+  // Khachaturian's frenetic Sabre Dance in D minor, ~75s
+  // Famous for its relentless, driving ostinato
+  var sabre=(function(){
+    var bg=[],mel=[],t=0,q=60/168;
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.4});}
+    function tutti(t,f,d,v){str(t,f,d,v);brs(t,f,d,(v||0.4)*0.6);bg.push({t:t,f:f/2,d:d,i:'bass',v:(v||0.4)*0.4});}
+
+    // Harmonic bed
+    var harm=[
+      [0,15,[D3,A3,D4],0.1],[15,30,[D3,A3,D4],0.15],[30,50,[D3,F3,A3],0.18],
+      [50,65,[D3,A3,D4],0.2],[65,80,[D3,A3,D4],0.25]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=1.5){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:1.4,i:'strings',v:h[3]});});
+      }
+    });
+
+    // === SECTION 1 (0-15s): The famous ostinato — D-D-D-Eb-D repeated ===
+    // Frantic repeated notes that define the piece
+    var ostinato=[[D4,q*0.5,0],[D4,q*0.5,0],[D4,q*0.5,0],[Eb4,q*0.5,1],[D4,q*0.5,0],
+                  [D4,q*0.5,0],[D4,q*0.5,0],[Eb4,q*0.5,1]];
+    for(var os=0;os<6;os++){
+      var ov=0.3+os*0.04;
+      ostinato.forEach(function(n){
+        str(t,n[0],n[1]*0.7,ov);
+        if(os>=3)brs(t,n[0],n[1]*0.7,ov*0.5);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      // Ascending burst: D-E-F-G-A
+      [D4,E4,F4,G4,A4].forEach(function(f,i){
+        str(t,f,q*0.4,ov);mel.push({t:t,l:[0,2,3,0,1][i]});t+=q*0.5;
+      });
+      bg.push({t:t,f:D3,d:0.2,i:'timpani',v:ov*0.6});mel.push({t:t,l:4});t+=q;
+    }
+
+    // === SECTION 2 (15-30s): Contrasting lyrical middle section ===
+    // Slower, sweeping melody in strings over sustained chords
+    var lyric=[[A4,q*2,1],[G4,q,0],[F4,q,3],[E4,q*2,2],[D4,q,0],
+               [F4,q*2,3],[E4,q,2],[D4,q,0],[A3,q*2,1],[D4,q*3,0]];
+    for(var lr=0;lr<3;lr++){
+      var lv=0.35+lr*0.08;
+      lyric.forEach(function(n){
+        str(t,n[0],n[1]*0.9,lv);
+        if(lr>0)brs(t,n[0],n[1]*0.9,lv*0.5);
+        if(lr>1)bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:lv*0.4});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      if(lr>0){bg.push({t:t,f:D3,d:0.3,i:'timpani',v:lv*0.5});mel.push({t:t,l:4});t+=q;}
+      t+=q;
+    }
+
+    // === SECTION 3 (30-50s): Ostinato returns — faster, louder ===
+    var fastOst=[[D4,q*0.4,0],[D4,q*0.4,0],[D4,q*0.4,0],[Eb4,q*0.4,1],[D4,q*0.4,0],
+                 [D4,q*0.4,0],[Eb4,q*0.4,1],[F4,q*0.4,3]];
+    for(var fo=0;fo<6;fo++){
+      var fv=0.45+fo*0.04;
+      fastOst.forEach(function(n){
+        tutti(t,n[0],n[1]*0.7,fv);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      // Ascending chromatic burst
+      [D4,Eb4,E4,F4,G4,Ab4,A4,Bb4].forEach(function(f,i){
+        str(t,f,q*0.35,fv);brs(t,f,q*0.35,fv*0.5);
+        mel.push({t:t,l:[0,1,2,3,0,1,1,2][i]});t+=q*0.4;
+      });
+      // Slam
+      [D4,A4,D5].forEach(function(f){brs(t,f,0.3,fv);});
+      bg.push({t:t,f:D3,d:0.3,i:'timpani',v:fv*0.7});mel.push({t:t,l:4});t+=q;
+    }
+
+    // === SECTION 4 (50-65s): Wild descending runs + ostinato ===
+    var desc=[A4,G4,F4,E4,D4,E4,F4,G4,A4,Bb4,A4,G4,F4,E4,D4,A3];
+    var dLn=[1,0,3,2,0,2,3,0,1,2,1,0,3,2,0,4];
+    for(var dr=0;dr<3;dr++){
+      var dv=0.55+dr*0.05;
+      var dq=q*(0.45-dr*0.04);
+      desc.forEach(function(f,i){
+        tutti(t,f,dq*0.8,dv);
+        if(dr>0)bg.push({t:t,f:f,d:dq*0.8,i:'brass',v:dv*0.5});
+        if(dr>1&&i%4===0)bg.push({t:t,f:D3,d:0.15,i:'timpani',v:dv*0.6});
+        mel.push({t:t,l:dLn[i]});t+=dq;
+      });
+      t+=q*0.5;
+      // Ostinato fragment
+      fastOst.forEach(function(n){
+        tutti(t,n[0],n[1]*0.65,dv);mel.push({t:t,l:n[2]});t+=n[1]*0.85;
+      });
+      t+=q*0.5;
+    }
+
+    // === FINALE: Hammered D minor chords ===
+    for(var c=0;c<8;c++){
+      [D3,A3,D4,F4,A4].forEach(function(f){brs(t,f,0.3,0.65);str(t,f,0.3,0.55);});
+      bg.push({t:t,f:D3/2,d:0.3,i:'timpani',v:0.65});mel.push({t:t,l:4});t+=0.38;
+    }
+    [D3,A3,D4,F4,A4,D5].forEach(function(f){brs(t,f,2.5,0.7);str(t,f,2.5,0.6);});
+    bg.push({t:t,f:D3/2,d:2.0,i:'timpani',v:0.75});mel.push({t:t,l:4});
+
+    return {n:"Sabre Dance",composer:"Khachaturian",bpm:168,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Sorcerer's Apprentice ──
-  var sorcerer=tp("Sorcerer's Apprentice","Dukas",132,
-    [A3,E4,C4,E4,A3,E4,C4,E4,A3,B3,C4,D4,E4,D4,C4,B3,A3,C4,E4,A4],
-    [0,2,1,2,0,2,1,2,0,1,2,0,2,0,2,1,0,1,2,3],
-    [{d:0.28,v:0.2,i:'woodwind'},{d:0.26,v:0.28,i:'woodwind'},{d:0.24,v:0.35,i:'strings'},{d:0.22,v:0.42,i:'strings'},{d:0.20,v:0.5,i:'brass'},{d:0.18,v:0.58,i:'brass'}],
-    [A3,C4,E4,A4]);
+  // Dukas's magical march in F minor, ~80s
+  // Famous bassoon theme → march builds → magical chaos
+  var sorcerer=(function(){
+    var bg=[],mel=[],t=0,q=60/132;
+    function ww(t,f,d,v){bg.push({t:t,f:f,d:d,i:'woodwind',v:v||0.3});}
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.4});}
+
+    // Harmonic bed — mysterious
+    var harm=[
+      [0,16,[F3,Ab3,C4],0.06],[16,32,[F3,Ab3,C4],0.1],[32,48,[F3,Ab3,C4],0.15],
+      [48,64,[Bb3,Db4,F4],0.18],[64,82,[F3,Ab3,C4],0.22]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=2.5){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:2.3,i:'strings',v:h[3]});});
+      }
+    });
+
+    // === SECTION 1 (0-16s): The famous bassoon theme ===
+    // Creeping march: F-Ab-C-Ab-F  then  Ab-C-Eb-C-Ab
+    var bsnTheme=[[F3,q,0],[Ab3,q*0.5,1],[C4,q*0.5,2],[Ab3,q*0.5,1],[F3,q*0.5,0],
+                  [Ab3,q,1],[C4,q*0.5,2],[Eb4,q*0.5,3],[C4,q*0.5,2],[Ab3,q*0.5,1],
+                  [F3,q*1.5,0],[C4,q*0.5,2],[Ab3,q,1],[F3,q*2,0]];
+    for(var br=0;br<3;br++){
+      var bv=0.2+br*0.06;
+      bsnTheme.forEach(function(n){
+        ww(t,n[0],n[1]*0.85,bv);
+        if(br>0)str(t,n[0]*2,n[1]*0.85,bv*0.3); // octave higher strings echo
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 2 (16-32s): March begins — walking brooms ===
+    // Steady march rhythm with the theme on top
+    var march=[[C4,q,2],[C4,q*0.5,2],[Ab3,q*0.5,1],[F3,q,0],[Ab3,q*0.5,1],[C4,q*0.5,2],
+               [Eb4,q,3],[Db4,q*0.5,0],[C4,q*0.5,2],[Ab3,q,1],[F3,q*1.5,0]];
+    for(var mr=0;mr<4;mr++){
+      var mv=0.3+mr*0.06;
+      var mInst=mr<2?'woodwind':'strings';
+      // March bass: oom-pah
+      for(var mb=0;mb<6;mb++){
+        bg.push({t:t+mb*q*2,f:F3,d:q*0.8,i:'bass',v:mv*0.5});
+        bg.push({t:t+mb*q*2+q,f:C3,d:q*0.8,i:'bass',v:mv*0.4});
+        if(mr>=2)bg.push({t:t+mb*q*2,f:F3,d:0.15,i:'timpani',v:mv*0.4});
+      }
+      march.forEach(function(n){
+        bg.push({t:t,f:n[0],d:n[1]*0.85,i:mInst,v:mv});
+        if(mr>=2)brs(t,n[0],n[1]*0.85,mv*0.4);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 3 (32-48s): Chaos builds — theme fragments overlap ===
+    // Faster fragments of the theme, like multiple brooms marching
+    var frag1=[[F3,q*0.5,0],[Ab3,q*0.5,1],[C4,q*0.5,2],[Eb4,q*0.5,3],[C4,q*0.5,2],[Ab3,q*0.5,1]];
+    var frag2=[[C4,q*0.5,2],[Db4,q*0.5,0],[C4,q*0.5,2],[Ab3,q*0.5,1],[F3,q*0.5,0],[Ab3,q*0.5,1]];
+    for(var ch=0;ch<4;ch++){
+      var cv=0.4+ch*0.05;
+      (ch%2===0?frag1:frag2).forEach(function(n){
+        str(t,n[0],n[1]*0.8,cv);brs(t,n[0],n[1]*0.8,cv*0.5);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.8,i:'bass',v:cv*0.4});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      // Ascending rush
+      [F3,Ab3,C4,Eb4,F4,Ab4].forEach(function(f,i){
+        str(t,f,q*0.35,cv);mel.push({t:t,l:[0,1,2,3,0,1][i]});t+=q*0.4;
+      });
+      bg.push({t:t,f:F3,d:0.3,i:'timpani',v:cv*0.6});mel.push({t:t,l:4});t+=q;
+    }
+
+    // === SECTION 4 (48-64s): Full orchestra — magical pandemonium ===
+    // Full theme at double speed with brass
+    var fullTheme=[[F4,q*0.4,0],[Ab4,q*0.4,1],[C5,q*0.4,2],[Ab4,q*0.4,1],[F4,q*0.4,0],
+                   [Ab4,q*0.4,1],[C5,q*0.4,2],[Eb5,q*0.4,3],[C5,q*0.4,2],[Ab4,q*0.4,1],
+                   [F4,q*0.8,0],[C5,q*0.4,2],[Ab4,q*0.4,1],[F4,q*0.8,0]];
+    for(var ft=0;ft<4;ft++){
+      var fv=0.5+ft*0.05;
+      fullTheme.forEach(function(n){
+        str(t,n[0],n[1]*0.8,fv);brs(t,n[0],n[1]*0.8,fv*0.6);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.8,i:'bass',v:fv*0.4});
+        if(ft>1)bg.push({t:t,f:n[0],d:n[1]*0.8,i:'choir',v:fv*0.2});
+        if(ft>2&&n[2]===0)bg.push({t:t,f:F3,d:0.15,i:'timpani',v:fv*0.5});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      bg.push({t:t,f:F3,d:0.3,i:'timpani',v:fv*0.6});mel.push({t:t,l:4});t+=q;
+    }
+
+    // === SECTION 5 (64-78s): Wild ending ===
+    // Descending cascades
+    [C5,Bb4,Ab4,G4,F4,Eb4,Db4,C4,Bb3,Ab3,G3,F3].forEach(function(f,i){
+      str(t,f,q*0.3,0.55);brs(t,f,q*0.3,0.45);
+      mel.push({t:t,l:[2,3,1,0,3,2,0,1,3,1,0,4][i]});t+=q*0.35;
+    });
+    t+=q;
+
+    // Final chords
+    for(var c=0;c<6;c++){
+      [F3,C4,F4,Ab4].forEach(function(f){brs(t,f,0.35,0.65);str(t,f,0.35,0.55);});
+      bg.push({t:t,f:F3/2,d:0.35,i:'timpani',v:0.6});mel.push({t:t,l:4});t+=0.45;
+    }
+    [F3,C4,F4,Ab4,C5].forEach(function(f){brs(t,f,3.0,0.65);str(t,f,3.0,0.55);});
+    bg.push({t:t,f:F3/2,d:2.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+
+    return {n:"Sorcerer's Apprentice",composer:"Dukas",bpm:132,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Morning Mood ──
-  var morning=tp("Morning Mood","Grieg",60,
-    [F4,A4,C5,A4,F4,A4,C5,E5,F5,E5,C5,A4,F4,G4,A4,Bb4,C5,Bb4,A4,F4],
-    [0,1,2,1,0,1,2,3,0,3,2,1,0,1,1,2,2,2,1,0],
-    [{d:0.45,v:0.15,i:'woodwind'},{d:0.42,v:0.2,i:'woodwind'},{d:0.39,v:0.28,i:'woodwind'},{d:0.36,v:0.35,i:'strings'},{d:0.33,v:0.42,i:'strings'},{d:0.30,v:0.5,i:'brass'}],
-    [F4,A4,C5,F5]);
+  // Grieg's Peer Gynt — gentle sunrise in E major, ~80s
+  // Famous flute melody: G#-A-B-C#-B-A, then G#-A-B-C#-E-D#-C#-B-A-G#
+  var morning=(function(){
+    var bg=[],mel=[],t=0,q=60/60; // slow, pastoral tempo
+    function ww(t,f,d,v){bg.push({t:t,f:f,d:d,i:'woodwind',v:v||0.25});}
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.3});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.35});}
+
+    // Gentle harmonic bed — E major sustained strings
+    var harm=[
+      [0,18,[E3,Ab3,B3],0.06],[18,36,[E3,Ab3,B3],0.1],[36,54,[E3,Ab3,B3],0.15],
+      [54,70,[A3,Db4,E4],0.14],[70,85,[E3,Ab3,B3],0.18]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=3.0){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:2.8,i:'strings',v:h[3]});});
+        bg.push({t:ht,f:h[2][0]/2,d:2.8,i:'bass',v:h[3]*0.4});
+      }
+    });
+
+    // === The actual Grieg melody in E major ===
+    // G#(Ab4)-A-B-C#(Db5)-B-A | first phrase (ascending then descending)
+    var fluteMel1=[[Ab4,q*0.75,1],[A4,q*0.75,0],[B4,q*0.75,3],[Db5,q*0.75,2],
+                   [B4,q*0.75,3],[A4,q*0.75,0]];
+    // G#-A-B-C#-E-D#(Eb5)-C#-B-A-G# | second phrase (up higher then back)
+    var fluteMel2=[[Ab4,q*0.75,1],[A4,q*0.75,0],[B4,q*0.75,3],[Db5,q*0.75,2],
+                   [E5,q*0.75,0],[Eb5,q*0.75,1],[Db5,q*0.75,2],[B4,q*0.75,3],
+                   [A4,q*0.75,0],[Ab4,q*1.5,1]];
+
+    // First statement — solo flute, very quiet
+    fluteMel1.forEach(function(n){ww(t,n[0],n[1]*0.9,0.2);mel.push({t:t,l:n[2]});t+=n[1];});
+    t+=q*0.5;
+    fluteMel2.forEach(function(n){ww(t,n[0],n[1]*0.9,0.22);mel.push({t:t,l:n[2]});t+=n[1];});
+    t+=q;
+
+    // Second statement — flute + light strings
+    fluteMel1.forEach(function(n){ww(t,n[0],n[1]*0.9,0.25);str(t,n[0],n[1]*0.9,0.1);mel.push({t:t,l:n[2]});t+=n[1];});
+    t+=q*0.5;
+    fluteMel2.forEach(function(n){ww(t,n[0],n[1]*0.9,0.28);str(t,n[0],n[1]*0.9,0.12);mel.push({t:t,l:n[2]});t+=n[1];});
+    t+=q;
+
+    // === SECTION 2 (18-36s): Melody grows — oboe joins, then strings ===
+    // Third statement — woodwind + strings
+    fluteMel1.forEach(function(n){
+      ww(t,n[0],n[1]*0.9,0.3);str(t,n[0],n[1]*0.9,0.2);
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q*0.5;
+    fluteMel2.forEach(function(n){
+      ww(t,n[0],n[1]*0.9,0.32);str(t,n[0],n[1]*0.9,0.22);
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.12});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+
+    // Fourth statement — strings lead, richer
+    fluteMel1.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.35);ww(t,n[0],n[1]*0.9,0.2);
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q*0.5;
+    fluteMel2.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.38);ww(t,n[0],n[1]*0.9,0.22);
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.15});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+
+    // === SECTION 3 (36-54s): Full sunrise — brass enters, melody soars ===
+    // Expanded melody reaching up to high E
+    var soarMel=[[Ab4,q*0.65,1],[A4,q*0.65,0],[B4,q*0.65,3],[Db5,q*0.65,2],
+                 [E5,q*0.65,0],[Db5,q*0.65,2],[B4,q*0.65,3],[A4,q*0.65,0],
+                 [Ab4,q*0.65,1],[A4,q*0.65,0],[B4,q*0.65,3],[Db5,q*0.65,2],
+                 [E5,q*0.65,0],[Eb5,q*0.65,1],[Db5,q*1.3,2]];
+    for(var sr=0;sr<2;sr++){
+      var sv=0.4+sr*0.08;
+      soarMel.forEach(function(n){
+        str(t,n[0],n[1]*0.9,sv);brs(t,n[0],n[1]*0.9,sv*0.4);
+        ww(t,n[0],n[1]*0.9,sv*0.5);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:sv*0.3});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 4 (54-70s): Warm development — horns + full strings ===
+    // Broader phrasing with E major harmonies
+    var warmMel=[[Db5,q*1.3,2],[B4,q*0.65,3],[A4,q*0.65,0],[Ab4,q*1.3,1],
+                 [A4,q*0.65,0],[B4,q*0.65,3],[Db5,q*1.3,2],[E5,q*1.3,0],
+                 [Db5,q*0.65,2],[B4,q*0.65,3],[A4,q*0.65,0],[Ab4,q*2,1]];
+    for(var wr=0;wr<2;wr++){
+      var wv=0.48+wr*0.06;
+      warmMel.forEach(function(n){
+        str(t,n[0],n[1]*0.9,wv);brs(t,n[0],n[1]*0.9,wv*0.5);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:wv*0.35});
+        if(wr>0)bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:wv*0.2});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 5 (70-82s): Final sunrise — melody one last time, full and warm ===
+    fluteMel1.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.5);brs(t,n[0],n[1]*0.9,0.35);ww(t,n[0],n[1]*0.9,0.3);
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.25});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q*0.5;
+    fluteMel2.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.5);brs(t,n[0],n[1]*0.9,0.35);ww(t,n[0],n[1]*0.9,0.3);
+      bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:0.2});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+
+    // Gentle ending — sustained E major chord fading
+    [E3,Ab3,B3,E4,Ab4,B4,E5].forEach(function(f){
+      str(t,f,4.0,0.4);ww(t,f,4.0,0.25);
+    });
+    bg.push({t:t,f:E3/2,d:3.0,i:'bass',v:0.2});mel.push({t:t,l:4});
+
+    return {n:"Morning Mood",composer:"Grieg",bpm:60,duration:Math.ceil(t+4),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Mars, Bringer of War ──
   var mars=(function(){
@@ -1652,14 +2301,14 @@ const CLASSICAL_PIECES=(function(){
   var toccata=(function(){
     var bg=[],mel=[],t=0;
     function org(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.4});bg.push({t:t,f:f,d:d,i:'woodwind',v:(v||0.4)*0.5});}
-    // Opening trill: A-Ab-A
-    org(0,A4,0.12,0.55);org(0.15,Ab4,0.12,0.55);org(0.3,A4,0.9,0.6);
-    mel.push({t:0,l:0},{t:0.15,l:1},{t:0.3,l:0});
+    // Opening mordent: A-G-A (whole step, per standard editions)
+    org(0,A4,0.12,0.55);org(0.15,G4,0.12,0.55);org(0.3,A4,0.9,0.6);
+    mel.push({t:0,l:0},{t:0.15,l:3},{t:0.3,l:0});
     // Descending: G-F-E-D
     [G4,F4,E4,D4].forEach(function(f,i){org(1.3+i*0.4,f,0.35,0.55);mel.push({t:1.3+i*0.4,l:[3,2,1,0][i]});});
     // Lower octave statement
-    org(3.2,A3,0.12,0.55);org(3.35,Ab3,0.12,0.55);org(3.5,A3,0.9,0.6);
-    mel.push({t:3.2,l:0},{t:3.35,l:1},{t:3.5,l:0});
+    org(3.2,A3,0.12,0.55);org(3.35,G3,0.12,0.55);org(3.5,A3,0.9,0.6);
+    mel.push({t:3.2,l:0},{t:3.35,l:3},{t:3.5,l:0});
     [G3,F3,E3,D3].forEach(function(f,i){org(4.5+i*0.4,f,0.35,0.55);bg.push({t:4.5+i*0.4,f:f,d:0.35,i:'bass',v:0.45});mel.push({t:4.5+i*0.4,l:[3,2,1,4][i]});});
     // D minor chord
     t=6.2;
@@ -1673,28 +2322,95 @@ const CLASSICAL_PIECES=(function(){
     // Big chord
     [D3,A3,D4,F4,A4].forEach(function(f){org(t,f,1.5,0.6);});
     bg.push({t:t,f:D3/2,d:1.2,i:'timpani',v:0.55});mel.push({t:t,l:4});t+=1.8;
-    // Fugue: 6 entries accelerating
+
+    // === Toccata continuation: dramatic recitative-like passages ===
+    // Rapid ascending arpeggios (organ virtuosity)
+    var arp1=[D4,F4,A4,D5,F5,D5,A4,F4];
+    var a1Ln=[0,2,0,1,2,1,0,2];
+    [0.18,0.16,0.14].forEach(function(spd,si){
+      var av=0.4+si*0.06;
+      arp1.forEach(function(f,i){org(t,f,spd*0.8,av);mel.push({t:t,l:a1Ln[i]});t+=spd;});
+      t+=0.2;
+    });
+    // Sustained D minor chord with pedal point
+    [D3,A3,D4,F4,A4].forEach(function(f){org(t,f,2.5,0.6);});
+    bg.push({t:t,f:D3/2,d:2.0,i:'timpani',v:0.55});mel.push({t:t,l:4});t+=3.0;
+
+    // === Second toccata section: sequence descending through keys ===
+    // D minor → C major → Bb major → A major (dominant)
+    var seqKeys=[[D4,F4,A4,D5],[C4,E4,G4,C5],[Bb3,D4,F4,Bb4],[A3,Db4,E4,A4]];
+    seqKeys.forEach(function(ch,ki){
+      var sv=0.45+ki*0.04;
+      // Rapid broken chord
+      ch.forEach(function(f,i){org(t,f,0.15,sv);mel.push({t:t,l:[0,1,2,3][i]});t+=0.16;});
+      // Sustained chord
+      ch.forEach(function(f){org(t,f,1.2,sv);});
+      mel.push({t:t,l:4});t+=1.5;
+    });
+    t+=0.5;
+
+    // === Dramatic ascending chromatic passage ===
+    [D4,Eb4,E4,F4,Gb4,G4,Ab4,A4,Bb4,B4,C5,Db5,D5].forEach(function(f,i){
+      org(t,f,0.14,0.5+i*0.01);
+      bg.push({t:t,f:f/2,d:0.14,i:'bass',v:0.3});
+      mel.push({t:t,l:[0,1,2,3][i%4]});t+=0.15;
+    });
+    // Massive Neapolitan chord → V → i cadence
+    [Eb4,G4,Bb4,Eb5].forEach(function(f){org(t,f,1.5,0.6);});mel.push({t:t,l:4});t+=1.8;
+    [A3,Db4,E4,A4].forEach(function(f){org(t,f,1.2,0.6);});mel.push({t:t,l:4});t+=1.5;
+
+    // === Fugue: subject entries building in intensity ===
     var subj=[D4,E4,F4,G4,A4,Bb4,A4,G4,F4,E4,D4,A3,D4];
     var sLn=[0,1,2,3,0,2,0,3,2,1,0,4,0];
-    var speeds=[0.30,0.26,0.23,0.20,0.17,0.14];
-    var vols=[0.3,0.35,0.4,0.48,0.55,0.62];
+    // 8 entries from slow to fast, quiet to loud
+    var speeds=[0.32,0.28,0.25,0.22,0.20,0.18,0.16,0.14];
+    var vols=[0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.62];
     speeds.forEach(function(spd,si){
       subj.forEach(function(f,i){
         org(t,f,spd*0.85,vols[si]);
         if(si>1)bg.push({t:t,f:f/2,d:spd*0.85,i:'bass',v:vols[si]*0.5});
-        if(si>3)bg.push({t:t,f:f,d:spd*0.85,i:'strings',v:vols[si]*0.4});
-        if(si>3&&i%3===0)bg.push({t:t,f:D3,d:0.3,i:'timpani',v:vols[si]*0.6});
+        if(si>3){
+          bg.push({t:t,f:f,d:spd*0.85,i:'strings',v:vols[si]*0.4});
+          if(i%3===0)bg.push({t:t,f:D3,d:0.3,i:'timpani',v:vols[si]*0.6});
+        }
         mel.push({t:t,l:sLn[i]});t+=spd;
       });
-      t+=0.4;
+      t+=0.35;
     });
-    // Final cascade
+
+    // === Stretto: subject entries overlapping, maximum intensity ===
+    // Two interleaved subjects at breakneck speed
+    var strSpd=0.12;
+    subj.forEach(function(f,i){
+      org(t,f,strSpd*0.85,0.65);org(t,f*2,strSpd*0.85,0.4);
+      bg.push({t:t,f:f/2,d:strSpd*0.85,i:'bass',v:0.5});
+      bg.push({t:t,f:f,d:strSpd*0.85,i:'strings',v:0.45});
+      if(i%2===0)bg.push({t:t,f:D3,d:0.2,i:'timpani',v:0.6});
+      mel.push({t:t,l:sLn[i]});t+=strSpd;
+    });
+    t+=0.3;
+
+    // === Grand finale: cascading scales and massive chords ===
+    // Descending cascade
     [D5,C5,Bb4,A4,G4,F4,E4,D4,C4,Bb3,A3,G3].forEach(function(f,i){
-      org(t,f,0.13,0.6);bg.push({t:t,f:f,d:0.13,i:'strings',v:0.4});mel.push({t:t,l:[0,2,3,1][i%4]});t+=0.14;
+      org(t,f,0.12,0.6);bg.push({t:t,f:f,d:0.12,i:'strings',v:0.4});mel.push({t:t,l:[0,2,3,1][i%4]});t+=0.13;
     });
-    t+=0.2;
-    [D3,A3,D4,F4,A4,D5].forEach(function(f){org(t,f,3.0,0.7);});
-    bg.push({t:t,f:D3/2,d:2.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+    t+=0.15;
+    // Ascending cascade
+    [D3,E3,F3,G3,A3,Bb3,C4,D4,E4,F4,G4,A4,Bb4,C5,D5].forEach(function(f,i){
+      org(t,f,0.11,0.6);bg.push({t:t,f:f,d:0.11,i:'strings',v:0.45});mel.push({t:t,l:[0,1,2,3][i%4]});t+=0.12;
+    });
+    t+=0.3;
+
+    // Final massive chords: iv-V-i (plagal approach)
+    for(var fc=0;fc<3;fc++){
+      var fch=[[G3,Bb3,D4,G4],[A3,Db4,E4,A4],[D3,A3,D4,F4,A4,D5]][fc];
+      fch.forEach(function(f){org(t,f,0.8,0.65);bg.push({t:t,f:f,d:0.8,i:'strings',v:0.5});});
+      bg.push({t:t,f:D3/2,d:0.7,i:'timpani',v:0.6});mel.push({t:t,l:4});t+=1.0;
+    }
+    // Sustained final D minor
+    [D3,A3,D4,F4,A4,D5].forEach(function(f){org(t,f,4.0,0.7);bg.push({t:t,f:f,d:4.0,i:'strings',v:0.5});});
+    bg.push({t:t,f:D3/2,d:3.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
     return {n:"Toccata & Fugue in D Minor",composer:"Bach",bpm:100,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -1749,45 +2465,107 @@ const CLASSICAL_PIECES=(function(){
   })();
 
   // ── The Blue Danube ──
+  // J. Strauss II waltz in D major (arr. C major), ~75s
+  // The most famous waltz: ascending thirds C-E-G, G-B-D with oom-pah-pah bass
   var danube=(function(){
-    var bg=[],mel=[],t=0,q=0.5;
-    // Intro: gentle ascending
-    [C4,E4,G4,C5,E5,C5,G4,E4].forEach(function(f,i){
-      bg.push({t:t,f:f,d:q*2,i:'strings',v:0.25});mel.push({t:t,l:[0,2,3,0,2,0,3,2][i]});t+=q*1.5;
-    });
-    t+=0.5;
-    // Theme 1: the famous waltz melody
-    var th1=[[E4,q,2],[E4,q*2,2],[G4,q,3],[G4,q*2,3],[F4,q,1],[F4,q,1],[E4,q,2],[D4,q*2,0],[C4,q,0],[E4,q,2],[G4,q*2,3],[C5,q*3,0]];
-    for(var r1=0;r1<2;r1++){
-      var v1=0.3+r1*0.1;
-      th1.forEach(function(n){bg.push({t:t,f:n[0],d:n[1]*0.9,i:r1<1?'strings':'brass',v:v1});mel.push({t:t,l:n[2]});t+=n[1];});
-      t+=0.4;
+    var bg=[],mel=[],t=0,q=60/180; // waltz tempo, q = one beat of 3/4
+
+    // Waltz oom-pah-pah accompaniment helper
+    function waltz(time,root,third,v){
+      bg.push({t:time,f:root,d:q*0.8,i:'bass',v:v*0.5}); // oom
+      bg.push({t:time+q,f:third,d:q*0.6,i:'strings',v:v*0.25}); // pah
+      bg.push({t:time+q*2,f:third,d:q*0.6,i:'strings',v:v*0.2}); // pah
     }
-    // Theme 2: contrasting phrase
-    var th2=[[G4,q,3],[A4,q,1],[G4,q,3],[E4,q*2,2],[C4,q,0],[D4,q,0],[E4,q,2],[F4,q,1],[E4,q*2,2],[D4,q,0],[C4,q*3,0]];
-    for(var r2=0;r2<2;r2++){
-      var v2=0.4+r2*0.1;
-      th2.forEach(function(n){
-        bg.push({t:t,f:n[0],d:n[1]*0.9,i:'strings',v:v2});
-        if(r2>0)bg.push({t:t,f:n[0],d:n[1]*0.9,i:'brass',v:v2*0.5});
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.35});}
+
+    // Harmonic bed
+    var harm=[
+      [0,12,[C3,E3,G3],0.06],[12,30,[C3,E3,G3],0.1],[30,50,[C3,E3,G3],0.14],
+      [50,65,[G3,B3,D4],0.12],[65,80,[C3,E3,G3],0.18]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=3.0){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:2.8,i:'strings',v:h[3]});});
+      }
+    });
+
+    // === SECTION 1 (0-12s): Tremolo intro + rising anticipation ===
+    // Soft tremolo strings, then the famous ascending pickup
+    for(var tr=0;tr<8;tr++){
+      bg.push({t:tr*q*3,f:C4,d:q*2.5,i:'strings',v:0.12+tr*0.01});
+      bg.push({t:tr*q*3,f:E4,d:q*2.5,i:'strings',v:0.1+tr*0.01});
+    }
+    t=6;
+    // Pickup notes before the waltz: ascending B-C
+    str(t,B3,q*0.8,0.25);mel.push({t:t,l:3});t+=q;
+
+    // === SECTION 2 (7-30s): First waltz — the famous melody ===
+    // Real melody (transposed to C): C-C-(rest) | C-E-G | G-G-(rest) | G-B-D5
+    // Pattern: note on beat 1, sustained or leap on beat 1 of next bar
+    var waltz1=[
+      [C4,q*3,0],[C4,q*3,0],[C4,q,0],[E4,q,2],[G4,q,3],
+      [G4,q*3,3],[G4,q*3,3],[G4,q,3],[B4,q,0],[D5,q,1],
+      [D5,q*3,1],[C5,q*3,2],[C5,q,2],[E4,q,2],[G4,q,3],
+      [G4,q*2,3],[E4,q,2],[C4,q*3,0]
+    ];
+    for(var w1=0;w1<2;w1++){
+      var wv=0.3+w1*0.08;
+      var bi=0;
+      waltz1.forEach(function(n){
+        str(t,n[0],n[1]*0.9,wv);
+        if(w1>0)brs(t,n[0],n[1]*0.9,wv*0.4);
+        // Add waltz bass on beat 1 of each 3-beat group
+        if(n[1]>=q*2)waltz(t,C3,E3,wv);
+        mel.push({t:t,l:n[2]});t+=n[1];bi++;
+      });
+      t+=q;
+    }
+
+    // === SECTION 3 (30-50s): Second waltz — contrasting theme ===
+    // More lyrical flowing melody
+    var waltz2=[
+      [E4,q*2,2],[D4,q,1],[C4,q*3,0],[E4,q*2,2],[G4,q,3],
+      [G4,q*2,3],[F4,q,1],[E4,q*3,2],[D4,q*2,1],[E4,q,2],
+      [F4,q*2,1],[E4,q,2],[D4,q*3,1],[C4,q*3,0]
+    ];
+    for(var w2=0;w2<2;w2++){
+      var wv2=0.38+w2*0.08;
+      waltz2.forEach(function(n){
+        str(t,n[0],n[1]*0.9,wv2);
+        if(w2>0)brs(t,n[0],n[1]*0.9,wv2*0.4);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:wv2*0.3});
+        if(n[1]>=q*2)waltz(t,C3,E3,wv2);
         mel.push({t:t,l:n[2]});t+=n[1];
       });
-      t+=0.4;
+      t+=q;
     }
-    // Recap theme 1 with full orchestra
-    th1.forEach(function(n){
-      bg.push({t:t,f:n[0],d:n[1]*0.9,i:'brass',v:0.55});bg.push({t:t,f:n[0],d:n[1]*0.9,i:'strings',v:0.45});
-      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.35});
+
+    // === SECTION 4 (50-65s): Waltz 1 returns — full orchestra ===
+    waltz1.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.52);brs(t,n[0],n[1]*0.9,0.4);
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.3});
+      if(n[1]>=q*2)waltz(t,C3,E3,0.5);
       mel.push({t:t,l:n[2]});t+=n[1];
     });
-    t+=0.4;
-    // Finale waltz chords
-    for(var c=0;c<4;c++){
-      [C4,E4,G4,C5].forEach(function(f){bg.push({t:t,f:f,d:q*2.5,i:'brass',v:0.6});bg.push({t:t,f:f,d:q*2.5,i:'strings',v:0.5});});
+    t+=q;
+    // Faster, more energetic repeat
+    waltz1.forEach(function(n){
+      str(t,n[0],n[1]*0.85,0.55);brs(t,n[0],n[1]*0.85,0.45);
+      bg.push({t:t,f:n[0],d:n[1]*0.85,i:'choir',v:0.2});
+      mel.push({t:t,l:n[2]});t+=n[1]*0.9;
+    });
+
+    // === FINALE: Big waltz chords ===
+    t+=q;
+    for(var c=0;c<6;c++){
+      [C4,E4,G4,C5].forEach(function(f){brs(t,f,q*2.5,0.6);str(t,f,q*2.5,0.5);});
+      bg.push({t:t,f:C3,d:q*2,i:'timpani',v:0.5});
       mel.push({t:t,l:4});t+=q*3;
     }
-    [C4,E4,G4,C5].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'brass',v:0.6});bg.push({t:t,f:f,d:2.5,i:'strings',v:0.5});});
+    [C4,E4,G4,C5].forEach(function(f){brs(t,f,2.5,0.65);str(t,f,2.5,0.55);});
     bg.push({t:t,f:C3,d:2.0,i:'timpani',v:0.65});mel.push({t:t,l:4});
+
     return {n:"The Blue Danube",composer:"J. Strauss II",bpm:180,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -1832,8 +2610,8 @@ const CLASSICAL_PIECES=(function(){
   // ── Swan Lake (Theme) ──
   var swan=(function(){
     var bg=[],mel=[],t=0,q=0.55;
-    var theme=[A4,B4,C5,B4,A4,E4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,B3,A3,B3,C4,D4,E4,A4];
-    var tLn=[0,1,2,1,0,2,0,3,2,1,0,1,2,1,0,2,1,0,1,2,0,2,0];
+    var theme=[B4,Db5,D5,Db5,B4,B4,Db5,D5,E5,D5,Db5,B4,A4,Gb4,B4,A4,G4,Gb4,E4,Gb4,G4,Gb4,B4];
+    var tLn=[1,0,0,0,1,1,0,0,0,0,0,1,2,3,1,2,2,3,3,3,2,3,1];
     for(var rep=0;rep<3;rep++){
       var v=0.25+rep*0.12;
       var inst=rep===0?'woodwind':rep===1?'strings':'brass';
@@ -1841,17 +2619,17 @@ const CLASSICAL_PIECES=(function(){
         bg.push({t:t,f:f,d:q*0.85,i:inst,v:v});
         if(rep>0)bg.push({t:t,f:f/2,d:q*0.85,i:'bass',v:v*0.4});
         if(rep>1)bg.push({t:t,f:f,d:q*0.85,i:'strings',v:v*0.5});
-        if(i%3===0){bg.push({t:t,f:A3,d:q*2,i:'bass',v:v*0.3});}
+        if(i%3===0){bg.push({t:t,f:B3,d:q*2,i:'bass',v:v*0.3});}
         mel.push({t:t,l:tLn[i]});t+=q;
       });
       t+=0.5;
     }
     for(var c=0;c<3;c++){
-      [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:q*2.5,i:'strings',v:0.55});bg.push({t:t,f:f,d:q*2.5,i:'brass',v:0.45});});
+      [B3,D4,Gb4,B4].forEach(function(f){bg.push({t:t,f:f,d:q*2.5,i:'strings',v:0.55});bg.push({t:t,f:f,d:q*2.5,i:'brass',v:0.45});});
       mel.push({t:t,l:4});t+=q*3;
     }
-    [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'strings',v:0.55});});
-    bg.push({t:t,f:A3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
+    [B3,D4,Gb4,B4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'strings',v:0.55});});
+    bg.push({t:t,f:B3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
     return {n:"Swan Lake (Theme)",composer:"Tchaikovsky",bpm:110,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -2122,10 +2900,11 @@ const CLASSICAL_PIECES=(function(){
   // ── Dance of the Sugar Plum Fairy ──
   var sugarplum=(function(){
     var bg=[],mel=[],t=0,q=0.4;
-    var theme=[E4,Eb4,E4,B3,E4,Eb4,E4,B3,E4,F4,E4,D4,C4,B3,A3,B3];
-    var tLn=[2,1,2,3,2,1,2,3,2,1,2,0,1,3,0,3];
-    var ans=[E4,G4,B4,E5,B4,G4,E4,B3];
-    var aLn=[2,3,0,2,0,3,2,3];
+    // Celesta melody from The Nutcracker — staccato descending/ascending pattern in E minor
+    var theme=[B4,A4,Ab4,A4,C5,B4,A4,Ab4,E4,Ab4,B4,E5,D5,C5,B4];
+    var tLn=[3,0,1,0,2,3,0,1,2,1,3,2,1,0,3];
+    var ans=[B4,A4,Ab4,A4,C5,B4,A4];
+    var aLn=[3,0,1,0,2,3,0];
     for(var rep=0;rep<5;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<2?'woodwind':rep<4?'strings':'brass';
@@ -2142,8 +2921,8 @@ const CLASSICAL_PIECES=(function(){
       });
       t+=0.4;
     }
-    [E4,G4,B4,E5].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.5});});
-    bg.push({t:t,f:E3,d:1.5,i:'bass',v:0.4});mel.push({t:t,l:4});
+    [E3,B3,E4,Ab4,B4].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.5});});
+    bg.push({t:t,f:E3/2,d:1.5,i:'bass',v:0.4});mel.push({t:t,l:4});
     return {n:"Dance of the Sugar Plum Fairy",composer:"Tchaikovsky",bpm:120,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
 
@@ -2176,26 +2955,257 @@ const CLASSICAL_PIECES=(function(){
   })();
 
   // ── Habanera (Carmen) ──
-  var habanera=tp("Habanera (Carmen)","Bizet",108,
-    [D5,Db5,C5,B4,Bb4,A4,Ab4,G4,Gb4,F4,E4,F4,Gb4,G4,Ab4,A4,Bb4,A4,Ab4,G4],
-    [0,1,2,3,2,1,0,3,2,1,0,1,2,3,0,1,2,1,0,3],
-    [{d:0.32,v:0.2,i:'strings'},{d:0.30,v:0.28,i:'strings'},{d:0.28,v:0.35,i:'strings'},{d:0.26,v:0.42,i:'brass'},{d:0.24,v:0.48,i:'brass'},{d:0.22,v:0.55,i:'brass'}],
-    [D4,F4,A4,D5]);
+  // Bizet's famous aria in D minor, ~80s
+  // Descending chromatic melody with the habanera rhythm (dotted + sixteenth)
+  var habanera=(function(){
+    var bg=[],mel=[],t=0,q=60/108;
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.35});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.35});}
+    function ww(t,f,d,v){bg.push({t:t,f:f,d:d,i:'woodwind',v:v||0.3});}
+
+    // Harmonic bed
+    var harm=[
+      [0,18,[D3,F3,A3],0.08],[18,36,[D3,F3,A3],0.12],[36,54,[D3,F3,A3],0.16],
+      [54,68,[Bb3,D4,F4],0.14],[68,84,[D3,F3,A3],0.18]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=2.0){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:1.9,i:'strings',v:h[3]});});
+      }
+    });
+
+    // The habanera bass rhythm: dotted-eighth + sixteenth + quarter + quarter
+    // DUM da-DUM DUM (characteristic Cuban rhythm)
+    function habBass(time,root,v){
+      bg.push({t:time,f:root,d:q*0.7,i:'bass',v:v*0.5});
+      bg.push({t:time+q*0.75,f:root*1.5,d:q*0.2,i:'bass',v:v*0.35});
+      bg.push({t:time+q,f:root,d:q*0.7,i:'bass',v:v*0.45});
+      bg.push({t:time+q*2,f:root,d:q*0.7,i:'bass',v:v*0.4});
+    }
+
+    // === SECTION 1 (0-18s): The famous descending chromatic melody ===
+    // D-Db-C-B-Bb-A-Ab-G — each note slightly longer, seductive descent
+    var desc1=[[D5,q*0.7,0],[Db5,q*0.7,1],[C5,q*0.7,2],[B4,q*0.7,3],
+               [Bb4,q*0.7,2],[A4,q*0.7,1],[Ab4,q*0.7,0],[G4,q*1.4,3]];
+    // Answer phrase: bouncing back up
+    var ans1=[[A4,q*0.5,1],[Bb4,q*0.5,2],[A4,q,1],[G4,q*0.5,3],[A4,q*0.5,1],[D4,q*1.5,0]];
+
+    for(var s1=0;s1<3;s1++){
+      var v1=0.2+s1*0.05;
+      habBass(t,D3,v1);habBass(t+q*3,D3,v1);
+      desc1.forEach(function(n){
+        ww(t,n[0],n[1]*0.9,v1);
+        if(s1>0)str(t,n[0],n[1]*0.9,v1*0.5);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      ans1.forEach(function(n){
+        ww(t,n[0],n[1]*0.9,v1);
+        if(s1>0)str(t,n[0],n[1]*0.9,v1*0.5);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 2 (18-36s): Second verse — strings take melody ===
+    // Same chromatic descent but with richer orchestration
+    var desc2=[[D5,q*0.65,0],[Db5,q*0.65,1],[C5,q*0.65,2],[B4,q*0.65,3],
+               [Bb4,q*0.65,2],[A4,q*0.65,1],[Ab4,q*0.65,0],[G4,q*1.3,3]];
+    var ans2=[[A4,q*0.5,1],[Bb4,q*0.5,2],[C5,q*0.5,2],[A4,q,1],[F4,q*0.5,3],[D4,q*1.5,0]];
+
+    for(var s2=0;s2<3;s2++){
+      var v2=0.32+s2*0.06;
+      habBass(t,D3,v2);habBass(t+q*3,A3,v2);
+      desc2.forEach(function(n){
+        str(t,n[0],n[1]*0.9,v2);ww(t,n[0],n[1]*0.9,v2*0.5);
+        if(s2>0)bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:v2*0.3});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      ans2.forEach(function(n){
+        str(t,n[0],n[1]*0.9,v2);ww(t,n[0],n[1]*0.9,v2*0.5);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      bg.push({t:t,f:D3,d:0.2,i:'timpani',v:v2*0.4});mel.push({t:t,l:4});t+=q;
+    }
+
+    // === SECTION 3 (36-54s): Major key contrast — "L'amour" refrain ===
+    // Shifts to D major — bright, passionate
+    var refrain=[[D4,q,0],[F4,q*0.5,3],[A4,q*0.5,1],[D5,q*1.5,0],
+                 [C5,q*0.5,2],[Bb4,q*0.5,2],[A4,q,1],[G4,q*0.5,3],[A4,q*0.5,1],
+                 [D4,q*2,0]];
+    for(var s3=0;s3<3;s3++){
+      var v3=0.4+s3*0.06;
+      habBass(t,D3,v3);habBass(t+q*3,A3,v3);
+      refrain.forEach(function(n){
+        str(t,n[0],n[1]*0.9,v3);brs(t,n[0],n[1]*0.9,v3*0.5);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:v3*0.35});
+        if(s3>1)bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:v3*0.2});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      if(s3>0){bg.push({t:t,f:D3,d:0.3,i:'timpani',v:v3*0.5});mel.push({t:t,l:4});}
+      t+=q;
+    }
+
+    // === SECTION 4 (54-68s): Return of chromatic descent — full orchestra ===
+    for(var s4=0;s4<3;s4++){
+      var v4=0.5+s4*0.05;
+      habBass(t,D3,v4);habBass(t+q*3,D3,v4);
+      desc1.forEach(function(n){
+        str(t,n[0],n[1]*0.9,v4);brs(t,n[0],n[1]*0.9,v4*0.6);
+        ww(t,n[0],n[1]*0.9,v4*0.4);
+        if(s4>0)bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:v4*0.2});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      ans1.forEach(function(n){
+        str(t,n[0],n[1]*0.9,v4);brs(t,n[0],n[1]*0.9,v4*0.6);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      bg.push({t:t,f:D3,d:0.25,i:'timpani',v:v4*0.6});mel.push({t:t,l:4});t+=q;
+    }
+
+    // === FINALE: Passionate ending ===
+    // Final descent + big D minor chord
+    desc1.forEach(function(n){
+      str(t,n[0],n[1]*0.8,0.6);brs(t,n[0],n[1]*0.8,0.5);
+      bg.push({t:t,f:n[0],d:n[1]*0.8,i:'choir',v:0.3});
+      mel.push({t:t,l:n[2]});t+=n[1]*0.85;
+    });
+    t+=q;
+    for(var c=0;c<4;c++){
+      [D3,A3,D4,F4].forEach(function(f){brs(t,f,0.4,0.6);str(t,f,0.4,0.5);});
+      bg.push({t:t,f:D3/2,d:0.4,i:'timpani',v:0.6});mel.push({t:t,l:4});t+=0.5;
+    }
+    [D3,A3,D4,F4,A4].forEach(function(f){brs(t,f,3.0,0.6);str(t,f,3.0,0.5);});
+    bg.push({t:t,f:D3/2,d:2.5,i:'timpani',v:0.65});mel.push({t:t,l:4});
+
+    return {n:"Habanera (Carmen)",composer:"Bizet",bpm:108,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Spring (Four Seasons) ──
-  var spring=tp("Spring (Four Seasons)","Vivaldi",120,
-    [F4,A4,C5,A4,F4,G4,A4,Bb4,C5,D5,C5,Bb4,A4,G4,F4,E4,F4,G4,A4,C5],
-    [0,1,2,1,0,3,1,2,2,0,2,2,1,3,0,2,0,3,1,2],
-    [{d:0.24,v:0.22,i:'strings'},{d:0.22,v:0.28,i:'strings'},{d:0.20,v:0.35,i:'strings'},{d:0.18,v:0.42,i:'strings'},{d:0.16,v:0.48,i:'brass'},{d:0.14,v:0.54,i:'brass'},{d:0.12,v:0.6,i:'brass'}],
-    [F4,A4,C5,F5]);
+  // Vivaldi's Spring from The Four Seasons in E major, ~75s
+  // Joyful opening ritornello → birdsong trills → pastoral dance
+  var spring=(function(){
+    var bg=[],mel=[],t=0,q=60/120;
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.35});}
+
+    // Harmonic bed
+    var harm=[
+      [0,14,[E3,G3,B3],0.1],[14,28,[E3,G3,B3],0.14],[28,44,[A3,C4,E4],0.13],
+      [44,58,[E3,G3,B3],0.16],[58,78,[E3,G3,B3],0.2]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=2.0){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:1.9,i:'strings',v:h[3]});});
+        bg.push({t:ht,f:h[2][0]/2,d:1.9,i:'bass',v:h[3]*0.5});
+      }
+    });
+
+    // === SECTION 1 (0-14s): The famous opening ritornello ===
+    // Bright, joyful E major: E-E-E-G#-B-B-B-G#-E
+    var rit=[[E4,q*0.5,2],[E4,q*0.5,2],[E4,q*0.5,2],[Ab4,q*0.5,1],[B4,q,0],
+             [B4,q*0.5,0],[B4,q*0.5,0],[Ab4,q*0.5,1],[E4,q*1,2]];
+    // Answer: ascending scale burst
+    var ritAns=[[E4,q*0.5,2],[Ab4,q*0.5,1],[B4,q*0.5,0],[E5,q,2],
+                [D5,q*0.5,1],[B4,q*0.5,0],[Ab4,q*0.5,1],[E4,q*1,2]];
+
+    for(var r1=0;r1<2;r1++){
+      var rv=0.35+r1*0.08;
+      rit.forEach(function(n){str(t,n[0],n[1]*0.85,rv);mel.push({t:t,l:n[2]});t+=n[1];});
+      t+=q*0.3;
+      ritAns.forEach(function(n){str(t,n[0],n[1]*0.85,rv);mel.push({t:t,l:n[2]});t+=n[1];});
+      t+=q;
+    }
+
+    // === SECTION 2 (14-28s): Birdsong — trills and rapid ornaments ===
+    // High violin trills imitating birds
+    var bird1=[[E5,q*0.25,2],[D5,q*0.25,1],[E5,q*0.25,2],[D5,q*0.25,1],
+               [E5,q*0.5,2],[B4,q*0.5,0],[Ab4,q*0.5,1],[E4,q,2]];
+    var bird2=[[B4,q*0.25,0],[A4,q*0.25,1],[B4,q*0.25,0],[A4,q*0.25,1],
+               [B4,q*0.5,0],[Ab4,q*0.5,1],[E4,q*0.5,2],[B3,q,3]];
+    for(var b=0;b<3;b++){
+      var bv=0.3+b*0.06;
+      var birds=b%2===0?bird1:bird2;
+      birds.forEach(function(n){
+        str(t,n[0],n[1]*0.8,bv);
+        if(b>0)bg.push({t:t,f:n[0],d:n[1]*0.8,i:'woodwind',v:bv*0.4});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q*0.5;
+      // Gentle bass response
+      [E3,B3,E4].forEach(function(f){bg.push({t:t,f:f,d:q*1.5,i:'bass',v:bv*0.3});});
+      mel.push({t:t,l:4});t+=q*2;
+    }
+
+    // === SECTION 3 (28-44s): Ritornello returns — fuller ===
+    for(var r2=0;r2<2;r2++){
+      var rv2=0.42+r2*0.08;
+      rit.forEach(function(n){
+        str(t,n[0],n[1]*0.85,rv2);brs(t,n[0],n[1]*0.85,rv2*0.4);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.85,i:'bass',v:rv2*0.3});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q*0.3;
+      ritAns.forEach(function(n){
+        str(t,n[0],n[1]*0.85,rv2);brs(t,n[0],n[1]*0.85,rv2*0.4);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+    // Running scales
+    [E4,Ab4,B4,E5,D5,B4,Ab4,E4,D4,E4,Ab4,B4,D5,E5,Ab5,E5].forEach(function(f,i){
+      str(t,f,q*0.35,0.5);mel.push({t:t,l:[2,1,0,2,1,0,1,2,0,2,1,0,1,2,0,2][i]});t+=q*0.4;
+    });
+    t+=q;
+
+    // === SECTION 4 (44-58s): Pastoral dance — lilting 12/8 feel ===
+    var dance=[[E4,q,2],[Ab4,q*0.5,1],[B4,q*0.5,0],[E4,q*0.5,2],[Ab4,q*0.5,1],
+               [B4,q,0],[E5,q*0.5,2],[D5,q*0.5,1],[B4,q,0],[Ab4,q*0.5,1],[E4,q*1,2]];
+    for(var d=0;d<3;d++){
+      var dv=0.45+d*0.06;
+      dance.forEach(function(n){
+        str(t,n[0],n[1]*0.85,dv);
+        if(d>0)brs(t,n[0],n[1]*0.85,dv*0.4);
+        if(d>1)bg.push({t:t,f:n[0]/2,d:n[1]*0.85,i:'bass',v:dv*0.35});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q;
+    }
+
+    // === SECTION 5 (58-72s): Final ritornello — full orchestra ===
+    for(var r3=0;r3<3;r3++){
+      var rv3=0.52+r3*0.06;
+      rit.forEach(function(n){
+        str(t,n[0],n[1]*0.85,rv3);brs(t,n[0],n[1]*0.85,rv3*0.5);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.85,i:'bass',v:rv3*0.35});
+        if(r3>1)bg.push({t:t,f:n[0],d:n[1]*0.85,i:'choir',v:rv3*0.2});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q*0.3;
+      ritAns.forEach(function(n){
+        str(t,n[0],n[1]*0.85,rv3);brs(t,n[0],n[1]*0.85,rv3*0.5);
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      t+=q*0.5;
+    }
+
+    // Finale chords
+    for(var c=0;c<4;c++){
+      [E3,B3,E4,Ab4,B4].forEach(function(f){str(t,f,0.4,0.6);brs(t,f,0.4,0.5);});
+      mel.push({t:t,l:4});t+=0.5;
+    }
+    [E3,B3,E4,Ab4,B4,E5].forEach(function(f){str(t,f,3.0,0.6);brs(t,f,3.0,0.5);});
+    bg.push({t:t,f:E3/2,d:2.5,i:'timpani',v:0.55});mel.push({t:t,l:4});
+
+    return {n:"Spring (Four Seasons)",composer:"Vivaldi",bpm:120,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── Für Elise ──
   var furelise=(function(){
     var bg=[],mel=[],t=0,q=0.35;
     var motif=[E4,Eb4,E4,Eb4,E4,B3,D4,C4,A3];
     var mLn=[2,1,2,1,2,3,0,2,0];
-    var ph2=[C4,E4,A4,B4,E4,C5,B4,A4];
-    var p2Ln=[1,2,0,3,2,0,3,0];
+    var ph2=[C4,E4,A4,B4,E4,Ab4,B4,A4];
+    var p2Ln=[1,2,0,3,2,1,3,0];
     for(var rep=0;rep<5;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<2?'woodwind':rep<3?'strings':'brass';
@@ -2227,8 +3237,9 @@ const CLASSICAL_PIECES=(function(){
   var canon=(function(){
     var bg=[],mel=[],t=0,q=0.55;
     var bassLine=[D3,A3,B3,Gb3,G3,D3,G3,A3];
-    var melody2=[A4,Gb4,G4,A4,Gb4,D4,Gb4,G4,A4,B4,G4,A4,Gb4,D4,E4,Gb4];
-    var m2Ln=[1,2,3,1,2,0,2,3,1,0,3,1,2,0,1,2];
+    // Real Pachelbel violin melody: F#5-E5-D5-C#5-B4-A4-B4-C#5 (var 1) then D5-C#5-B4-A4-G4-F#4-G4-A4 (var 2)
+    var melody2=[Gb4,E4,D4,Db4,B3,A3,B3,Db4,D4,Db4,B3,A3,G3,Gb3,G3,A3];
+    var m2Ln=[2,1,0,1,3,0,3,1,0,1,3,0,3,2,3,0];
     for(var rep=0;rep<4;rep++){
       var v=0.2+rep*0.08;
       bassLine.forEach(function(f,i){
@@ -2256,10 +3267,10 @@ const CLASSICAL_PIECES=(function(){
   var hungarian=(function(){
     var bg=[],mel=[],t=0;
     function orch(t,f,d,v,i){bg.push({t:t,f:f,d:d,i:i||'strings',v:v||0.4});}
-    var fast=[A4,G4,A4,E4,A4,G4,A4,E4,F4,E4,D4,C4,B3,A3,B3,C4,D4,E4,F4,E4];
-    var fLn=[0,3,0,2,0,3,0,2,1,2,0,1,3,0,3,1,0,2,1,2];
-    var slow=[A4,A4,G4,F4,E4,D4,E4,F4,G4,A4];
-    var sLn=[0,0,3,1,2,0,2,1,3,0];
+    var fast=[A4,A4,A4,A4,Bb4,A4,G4,F4,F4,E4,F4,G4,A4,A4,Bb4,A4,G4,F4,E4,D4];
+    var fLn=[0,0,0,0,2,0,3,1,1,2,1,3,0,0,2,0,3,1,2,0];
+    var slow=[D4,D4,E4,F4,F4,E4,D4,E4,F4,A4];
+    var sLn=[0,0,2,1,1,2,0,2,1,0];
     // Fast section 1
     [0.20,0.18].forEach(function(qf,qi){
       var v=0.35+qi*0.1;
@@ -2294,20 +3305,143 @@ const CLASSICAL_PIECES=(function(){
       t+=0.3;
     });
     for(var c=0;c<4;c++){
-      [A3,C4,E4,A4].forEach(function(f){orch(t,f,0.35,0.65,'brass');});
-      bg.push({t:t,f:A3/2,d:0.35,i:'timpani',v:0.65});mel.push({t:t,l:4});t+=0.45;
+      [D3,A3,D4,F4].forEach(function(f){orch(t,f,0.35,0.65,'brass');});
+      bg.push({t:t,f:D3/2,d:0.35,i:'timpani',v:0.65});mel.push({t:t,l:4});t+=0.45;
     }
-    [A3,C4,E4,A4].forEach(function(f){orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5);});
-    bg.push({t:t,f:A3/2,d:1.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
+    [D3,A3,D4,F4,A4].forEach(function(f){orch(t,f,2.0,0.6,'brass');orch(t,f,2.0,0.5);});
+    bg.push({t:t,f:D3/2,d:1.5,i:'timpani',v:0.7});mel.push({t:t,l:4});
     return {n:"Hungarian Dance No. 5",composer:"Brahms",bpm:140,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   })();
 
   // ── Ode to Joy ──
-  var odeToJoy=tp("Ode to Joy","Beethoven",100,
-    [E4,E4,F4,G4,G4,F4,E4,D4,C4,C4,D4,E4,E4,D4,D4,C4,C4,D4,E4,D4,C4,C4],
-    [2,2,1,3,3,1,2,0,0,0,1,2,2,0,0,0,0,1,2,0,0,0],
-    [{d:0.42,v:0.18,i:'woodwind'},{d:0.40,v:0.25,i:'strings'},{d:0.38,v:0.32,i:'strings'},{d:0.36,v:0.4,i:'brass'},{d:0.34,v:0.48,i:'brass'}],
-    [C4,E4,G4,C5]);
+  // Beethoven's 9th Symphony finale in D major, ~85s
+  // The most famous melody in classical music, builds from solo to full chorus
+  var odeToJoy=(function(){
+    var bg=[],mel=[],t=0,q=60/100;
+    function str(t,f,d,v){bg.push({t:t,f:f,d:d,i:'strings',v:v||0.4});}
+    function brs(t,f,d,v){bg.push({t:t,f:f,d:d,i:'brass',v:v||0.4});}
+    function ww(t,f,d,v){bg.push({t:t,f:f,d:d,i:'woodwind',v:v||0.3});}
+
+    // Harmonic bed
+    var harm=[
+      [0,16,[D3,A3,D4],0.08],[16,32,[D3,A3,D4],0.12],[32,48,[D3,A3,D4],0.16],
+      [48,64,[G3,B3,D4],0.15],[64,88,[D3,A3,D4],0.2]
+    ];
+    harm.forEach(function(h){
+      for(var ht=h[0];ht<h[1];ht+=2.5){
+        h[2].forEach(function(f){bg.push({t:ht,f:f,d:2.3,i:'strings',v:h[3]});});
+        bg.push({t:ht,f:h[2][0]/2,d:2.3,i:'bass',v:h[3]*0.5});
+      }
+    });
+
+    // The Ode to Joy melody (A section):
+    // E-E-F-G | G-F-E-D | C-C-D-E | E-D-D
+    var melA=[[Gb4,q,2],[Gb4,q,2],[G4,q,3],[A4,q,1],
+              [A4,q,1],[G4,q,3],[Gb4,q,2],[E4,q,0],
+              [D4,q,0],[D4,q,0],[E4,q,2],[Gb4,q,2],
+              [Gb4,q*1.5,2],[E4,q*0.5,0],[E4,q*2,0]];
+    // B section (contrasting middle):
+    // E-E-F-G | G-F-E-D | C-C-D-E | D-C-C
+    var melB=[[Gb4,q,2],[Gb4,q,2],[G4,q,3],[A4,q,1],
+              [A4,q,1],[G4,q,3],[Gb4,q,2],[E4,q,0],
+              [D4,q,0],[D4,q,0],[E4,q,2],[Gb4,q,2],
+              [E4,q*1.5,0],[D4,q*0.5,1],[D4,q*2,1]];
+
+    // === SECTION 1 (0-16s): Quiet cellos — theme stated simply ===
+    melA.forEach(function(n){
+      str(t,n[0]/2,n[1]*0.9,0.2); // cello register
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+    melB.forEach(function(n){
+      str(t,n[0]/2,n[1]*0.9,0.22);
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+
+    // === SECTION 2 (16-32s): Violas + woodwinds join ===
+    melA.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.3);ww(t,n[0],n[1]*0.9,0.18);
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+    melB.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.32);ww(t,n[0],n[1]*0.9,0.2);
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+
+    // === SECTION 3 (32-48s): Full strings + brass hint ===
+    melA.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.42);brs(t,n[0],n[1]*0.9,0.2);
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.2});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+    melB.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.44);brs(t,n[0],n[1]*0.9,0.22);
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.22});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+
+    // === SECTION 4 (48-64s): Development — contrasting bridge ===
+    // Middle section with different harmonies
+    var bridge=[[E4,q,0],[E4,q*0.5,0],[Gb4,q*0.5,2],[A4,q,1],[A4,q*0.5,1],[G4,q*0.5,3],
+                [Gb4,q,2],[E4,q*0.5,0],[D4,q*0.5,1],[E4,q,2],[D4,q,1],[A3,q*2,0]];
+    for(var br=0;br<2;br++){
+      var bv=0.4+br*0.08;
+      bridge.forEach(function(n){
+        str(t,n[0],n[1]*0.9,bv);brs(t,n[0],n[1]*0.9,bv*0.5);
+        bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:bv*0.4});
+        if(br>0)bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:bv*0.25});
+        mel.push({t:t,l:n[2]});t+=n[1];
+      });
+      bg.push({t:t,f:D3,d:0.3,i:'timpani',v:bv*0.5});mel.push({t:t,l:4});t+=q;
+    }
+
+    // === SECTION 5 (64-80s): Grand finale — full orchestra + choir ===
+    // "Freude, schöner Götterfunken" at full power
+    melA.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.55);brs(t,n[0],n[1]*0.9,0.45);
+      ww(t,n[0],n[1]*0.9,0.3);
+      bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:0.35});
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.3});
+      if(n[2]===1||n[2]===0)bg.push({t:t,f:D3,d:0.15,i:'timpani',v:0.35});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+    melB.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.58);brs(t,n[0],n[1]*0.9,0.48);
+      bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:0.38});
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.3});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+    t+=q;
+
+    // Final triumphant repeat of A
+    melA.forEach(function(n){
+      str(t,n[0],n[1]*0.9,0.6);brs(t,n[0],n[1]*0.9,0.5);
+      bg.push({t:t,f:n[0],d:n[1]*0.9,i:'choir',v:0.4});
+      bg.push({t:t,f:n[0]/2,d:n[1]*0.9,i:'bass',v:0.35});
+      mel.push({t:t,l:n[2]});t+=n[1];
+    });
+
+    // === CODA: Big D major chords ===
+    t+=q;
+    for(var c=0;c<6;c++){
+      [D3,A3,D4,Gb4,A4].forEach(function(f){brs(t,f,0.45,0.65);str(t,f,0.45,0.55);});
+      bg.push({t:t,f:D3/2,d:0.45,i:'timpani',v:0.6});
+      bg.push({t:t,f:D4,d:0.45,i:'choir',v:0.4});
+      mel.push({t:t,l:4});t+=0.55;
+    }
+    [D3,A3,D4,Gb4,A4,D5].forEach(function(f){
+      brs(t,f,4.0,0.7);str(t,f,4.0,0.6);bg.push({t:t,f:f,d:4.0,i:'choir',v:0.4});
+    });
+    bg.push({t:t,f:D3/2,d:3.0,i:'timpani',v:0.7});mel.push({t:t,l:4});
+
+    return {n:"Ode to Joy",composer:"Beethoven",bpm:100,duration:Math.ceil(t+4),isClassical:true,bg:bg,melody:mel};
+  })();
 
   // ── William Tell Overture (Storm) ──
   var tellStorm=(function(){
@@ -2372,7 +3506,7 @@ const VIDEOGAME_PIECES=(function(){
 
   // ── Turkish March (Mozart) ──
   var turkish=(function(){
-    var bg=[],mel=[],t=0,q=0.18;
+    var bg=[],mel=[],t=0,q=0.227;
     var theme=[B3,A3,Ab3,A3,C4,D4,C4,B3,A3,B3,C4,D4,E4,D4,C4,B3,A3,B3,A3,A3];
     var tLn= [3,0,1,0,2,1,2,3,0,3,0,1,2,1,0,3,0,3,0,0];
     for(var rep=0;rep<6;rep++){
@@ -2434,7 +3568,7 @@ const VIDEOGAME_PIECES=(function(){
 
   // ── Can-Can (Offenbach) ──
   var cancan=(function(){
-    var bg=[],mel=[],t=0,q=0.16;
+    var bg=[],mel=[],t=0,q=0.197;
     var theme=[C4,D4,E4,C4,E4,C4,E4,D4,E4,F4,E4,D4,C4,D4,E4,F4,G4,A4,G4,E4,C4,D4,E4,C4];
     var tLn=  [0,1,2,0,2,0,2,1,2,3,2,1,0,1,2,3,0,1,0,2,0,1,2,0];
     for(var rep=0;rep<6;rep++){
@@ -2557,73 +3691,6 @@ const CHIPTUNE_PIECES=(function(){
   return [platformer,spaceshooter,rpg,racing,dungeon,victory];
 })();
 
-// ── PRIME (easy beginner songs, verified from lead sheets) ──
-const PRIME_PIECES=(function(){
-  var C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
-    C5=NT.C5,D5=NT.D5,E5=NT.E5;
-  function primer(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
-    for(var rep=0;rep<passes;rep++){
-      var v=0.2+rep*0.1;
-      var inst=rep<Math.floor(passes*0.4)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
-      theme.forEach(function(f,i){
-        var d=(durations?durations[i]:1)*q;
-        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
-        if(rep>1)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.3});
-        mel.push({t:t,l:lanes[i]});t+=d;
-      });
-      t+=0.4;
-    }
-    var r=root||theme[0];
-    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.45});});
-    bg.push({t:t,f:r/2,d:1.5,i:'timpani',v:0.5});mel.push({t:t,l:4});
-    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
-  }
-
-  // ── Twinkle Twinkle Little Star (C major, from lead sheet) ──
-  var twinkle=primer("Twinkle Twinkle Little Star","Traditional (1760s)",100,
-    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
-    [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
-    [1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,3],
-    3,C4);
-
-  // ── Mary Had a Little Lamb (C major, from lead sheet) ──
-  var mary=primer("Mary Had a Little Lamb","S.J. Hale (1830)",110,
-    [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,E4,D4,D4,E4,D4,C4],
-    [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,2,1,1,2,1,0],
-    [1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
-
-  // ── Happy Birthday (C major, from lead sheet in D transposed) ──
-  var birthday=primer("Happy Birthday","P.S. Hill (1893)",100,
-    [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
-    [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
-    [1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
-
-  // ── Chopsticks (C major, from lead sheet — alternating dyad notes) ──
-  var chopsticks=primer("Chopsticks","Euphemia Allen (1877)",140,
-    [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,D4,F4,C4,E4,C4,E4,C4,E4,F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,D4,F4,C4,E4,C4,E4,C4,E4],
-    [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,1,1,0,2,0,2,0,2,1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,1,1,0,2,0,2,0,2],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    3,C4);
-
-  // ── Lavender's Blue (C major, from lead sheet in D transposed) ──
-  var lavender=primer("Lavender's Blue","English Traditional (1670s)",110,
-    [E4,E4,E4,D4,E4,F4,G4,G4,G4,G4,A4,G4,F4,F4,F4,E4,D4,E4,F4,E4,E4,E4,D4,E4,F4,G4,G4,G4,A4,G4,F4,E4],
-    [2,2,2,1,2,1,3,3,3,3,0,3,1,1,1,2,1,2,1,2,2,2,1,2,1,3,3,3,0,3,1,2],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
-
-  // ── Shortnin' Bread (C major, from lead sheet in A transposed) ──
-  var shortnin=primer("Shortnin' Bread","Traditional (1900s)",130,
-    [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
-    [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
-    4,C4);
-
-  return [twinkle,mary,birthday,chopsticks,lavender,shortnin];
-})();
 
 // ── FOLK (public domain traditional songs) ──
 const FOLK_PIECES=(function(){
@@ -2633,7 +3700,7 @@ const FOLK_PIECES=(function(){
 
   // Folk piece helper
   function folk(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -2656,57 +3723,65 @@ const FOLK_PIECES=(function(){
   var ohsusanna=folk("Oh! Susanna","Stephen Foster (1848)",120,
     [C4,D4,E4,G4,G4,A4,G4,E4,C4,D4,E4,E4,D4,C4,D4,C4,D4,E4,G4,G4,A4,G4,E4,C4,D4,E4,E4,D4,D4,C4],
     [0,1,2,3,3,0,3,2,0,1,2,2,1,0,1,0,1,2,3,3,0,3,2,0,1,2,2,1,1,0],
-    [1,1,2,2,1,1,2,2,1,1,2,1,1,2,2,1,1,2,2,1,1,2,2,1,1,2,1,1,1,3],
+    [2,2,4,4,2,2,4,4,2,2,4,2,2,4,4,2,2,4,4,2,2,4,4,2,2,4,2,2,2,6],
     5,C4);
 
   // ── Greensleeves ──
   var greensleeves=folk("Greensleeves","English Traditional (1580)",100,
     [A3,C4,D4,E4,F4,E4,D4,B3,G3,A3,B3,C4,A3,A3,Ab3,A3,B3,Ab3,A3,C4,D4,E4,F4,E4,D4,B3,G3,A3,B3,C4,B3,A3],
     [0,1,0,2,1,2,0,3,3,0,3,1,0,0,1,0,3,3,0,1,0,2,1,2,0,3,3,0,3,1,3,0],
-    [2,1,2,2,1,2,2,1,2,1,1,2,2,1,1,1,2,2,2,1,2,2,1,2,2,1,2,1,1,1,1,3],
+    [2,3,1,2,3,1,2,3,1,2,1,2,6,2,1,2,3,6,2,3,1,2,3,1,2,3,1,2,1,2,2,6],
     4,A3);
 
   // ── Camptown Races ──
   var camptown=folk("Camptown Races","Stephen Foster (1850)",140,
     [G4,G4,E4,G4,A4,G4,E4,C4,D4,D4,E4,E4,F4,E4,D4,C4,C4,E4,G4,G4,G4,E4,G4,A4,G4,E4,C4,G4,A4,B4,A4,G4,E4,D4,D4,C4],
     [3,3,2,3,0,3,2,0,1,1,2,2,1,2,1,0,0,2,3,3,3,2,3,0,3,2,0,3,0,3,0,3,2,1,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
     3,C4);
 
   // ── Red River Valley ──
+  // Slow American ballad in 4/4. "From this val-ley they say you are go-ing"
+  // Uses dotted-quarter + eighth for the flowing melodic phrases.
   var redriver=folk("Red River Valley","American Traditional (1870s)",85,
     [C4,D4,E4,G4,G4,E4,D4,C4,D4,E4,F4,E4,D4,C4,E4,G4,A4,G4,E4,D4,C4,D4,E4,C4],
     [0,1,2,3,3,2,1,0,1,2,1,2,1,0,2,3,0,3,2,1,0,1,2,0],
-    [2,1,1,3,1,1,1,2,1,1,1,2,1,2,1,2,2,1,1,1,2,1,2,3],
+    [2,3,1,4,1,3,2,4, 2,3,1,3,1,4,2,4, 2,3,1,3,1,3,1,8],
     4,C4);
 
   // ── Home on the Range ──
   var homerange=folk("Home on the Range","American Traditional (1870s)",95,
     [C4,E4,G4,A4,G4,E4,C4,D4,F4,A4,G4,F4,E4,D4,C4,E4,G4,C5,A4,G4,E4,D4,C4,C4],
     [0,2,3,0,3,2,0,1,1,0,3,1,2,1,0,2,3,0,0,3,2,1,0,0],
-    [2,1,2,2,1,1,2,1,1,2,1,1,2,1,2,1,2,2,1,1,1,1,2,3],
+    [2,2,4,2,2,2,4,2,2,4,2,2,2,4,2,2,4,2,2,2,4,2,4,6],
     4,C4);
 
   // ── Yankee Doodle ──
   var yankee=folk("Yankee Doodle","American Traditional (1770s)",130,
     [C4,C4,D4,E4,C4,E4,D4,G3,C4,C4,D4,E4,C4,B3,C4,C4,D4,E4,F4,E4,D4,C4,B3,G3,A3,B3,C4,C4],
     [0,0,1,2,0,2,1,3,0,0,1,2,0,3,0,0,1,2,1,2,1,0,3,3,0,3,0,0],
-    [1,1,1,1,1,1,2,2,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,3],
+    [2,2,2,2,2,2,4,4,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,4,6],
     5,C4);
 
   // ── Turkey in the Straw ──
   var turkey=folk("Turkey in the Straw","American Traditional (1820s)",145,
     [G4,A4,B4,G4,E4,G4,A4,B4,C5,B4,A4,G4,E4,D4,E4,G4,A4,B4,C5,D5,C5,B4,A4,G4],
     [0,1,3,0,2,0,1,3,0,3,1,0,2,1,2,0,1,3,0,1,0,3,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
     5,G4);
 
   // ── Danny Boy ──
+  // Londonderry Air: flowing Irish ballad, famous "long-short" dotted feel.
+  // Phrase A: "Oh Dan-ny Boy, the pipes, the pipes are call-ing" (notes 0-10)
+  // Phrase B: "From glen to glen and down the moun-tain side" (notes 11-24)
+  // Phrase C: High passage, peaks at E5 (notes 25-37)
+  // Phrase D: Final resolution back to tonic C (notes 38-48)
+  // Duration units: 1=eighth, 2=quarter, 3=dotted-quarter, 4=half, 6=dotted-half, 8=whole
   var dannyboy=folk("Danny Boy","Irish Traditional (1910s)",72,
-    [C4,E4,F4,G4,A4,G4,F4,E4,C4,D4,E4,F4,E4,D4,C4,E4,F4,G4,A4,C5,A4,G4,F4,C4],
-    [0,2,1,3,0,3,1,2,0,1,2,1,2,1,0,2,1,3,0,0,0,3,1,0],
-    [2,1,1,2,2,1,1,2,2,1,2,1,2,2,2,1,1,2,2,2,1,1,2,3],
-    4,C4);
+    [C4,E4,F4,G4,A4,G4,A4,C5,B4,A4,G4,F4,G4,C4,E4,F4,G4,A4,G4,A4,C5,D5,C5,A4,G4,A4,A4,C5,D5,E5,D5,C5,A4,C5,B4,A4,G4,A4,G4,E4,C4,E4,F4,G4,A4,G4,F4,E4,C4],
+    [0,2,1,3,0,3,0,0,3,0,3,1,3,0,2,1,3,0,3,0,0,1,0,0,3,0,0,0,1,2,1,0,0,0,3,0,3,0,3,2,0,2,1,3,0,3,1,2,0],
+    [2,3,1,4,1,3,1,3,1,3,6, 2,3,1,3,1,4,1,3,1,3,1,3,1,6, 2,1,3,1,4,1,3,1,3,1,3,1,6, 2,3,1,3,1,4,1,3,1,3,8],
+    3,C4);
 
   return [ohsusanna,greensleeves,camptown,redriver,homerange,yankee,turkey,dannyboy];
 })();
@@ -2715,10 +3790,10 @@ const FOLK_PIECES=(function(){
 // ── CHRISTMAS (public domain carols) ──
 const CHRISTMAS_PIECES=(function(){
   var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,A3=NT.A3,B3=NT.B3,
-    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
-    C5=NT.C5,D5=NT.D5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,Gb4=NT.Gb4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
   function carol(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -2740,54 +3815,128 @@ const CHRISTMAS_PIECES=(function(){
   var jingle=carol("Jingle Bells","J. Pierpont (1857)",140,
     [E4,E4,E4,E4,E4,E4,E4,G4,C4,D4,E4,F4,F4,F4,F4,F4,E4,E4,E4,E4,D4,D4,E4,D4,G4,E4,E4,E4,E4,E4,E4,E4,G4,C4,D4,E4,F4,F4,F4,F4,F4,E4,E4,G4,G4,F4,D4,C4],
     [2,2,2,2,2,2,2,3,0,1,2,1,1,1,1,1,2,2,2,2,1,1,2,1,3,2,2,2,2,2,2,2,3,0,1,2,1,1,1,1,1,2,2,3,3,1,1,0],
-    [1,1,2,1,1,2,1,1,1,1,4,1,1,1,1,1,1,1,1,1,1,1,1,1,4,1,1,2,1,1,2,1,1,1,1,4,1,1,1,1,1,1,1,1,1,1,1,4],
-    4,C4);
+    [1,1,2,1,1,2,1,1,1,1,6,2,2,2,1,1,2,2,1,1,2,2,2,2,6,1,1,2,1,1,2,1,1,1,1,6,2,1,1,1,2,1,1,2,2,2,2,6],
+    3,C4);
   var silent=carol("Silent Night","F. Gruber (1818)",72,
     [G4,A4,G4,E4,G4,A4,G4,E4,D5,D5,B4,C5,C5,G4,A4,A4,C5,B4,A4,G4,A4,G4,E4,A4,A4,C5,B4,A4,G4,A4,G4,E4,D5,D5,F5,D5,B4,C5,E5,C5,G4,E4,G4,F4,D4,C4],
     [3,0,3,2,3,0,3,2,0,0,3,0,0,3,0,0,0,3,0,3,0,3,2,0,0,0,3,0,3,0,3,2,0,0,1,0,3,0,2,0,3,2,3,1,1,0],
-    [2,1,2,3,2,1,2,3,2,1,3,2,1,3,2,1,2,1,2,2,1,2,3,2,1,2,1,2,2,1,2,3,2,1,2,1,3,2,2,2,2,1,1,1,1,4],
+    [3,1,2,6,3,1,2,6,2,2,6,2,2,6,2,2,3,1,2,3,1,2,6,2,2,3,1,2,3,1,2,6,2,2,3,1,6,2,2,2,2,2,3,1,2,6],
     3,C4);
   var deck=carol("Deck the Halls","Welsh (1862)",130,
     [C5,Bb4,A4,G4,F4,G4,A4,F4,G4,A4,Bb4,G4,A4,G4,F4,E4,D4,E4,F4,G4,A4,G4,F4,E4,F4,G4,A4,Bb4,C5,A4,G4,F4],
     [0,3,0,3,1,3,0,1,3,0,2,3,0,3,1,2,1,2,1,3,0,3,1,2,1,3,0,2,0,0,3,1],
-    [2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,4],
+    [3,1,2,2,3,1,2,2,2,2,2,2,3,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,1,2,4],
     4,F4);
   var wish=carol("We Wish You a Merry Christmas","English (1500s)",140,
     [G4,C5,C5,D5,C5,B4,A4,A4,D5,D5,E5,D5,C5,B4,G4,E5,E5,F5,E5,D5,C5,A4,G4,G4,A4,D5,B4,C5],
     [3,0,0,1,0,3,0,0,1,1,2,1,0,3,3,2,2,1,2,1,0,0,3,3,0,1,3,0],
-    [1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,10],
     5,C4);
   var ocometree=carol("O Christmas Tree","German (1824)",100,
-    [F4,Bb4,Bb4,Bb4,C5,D5,D5,D5,C5,D5,Eb4,C5,A4,Bb4,F4,Bb4,Bb4,Bb4,C5,D5,D5,D5,C5,D5,Eb4,C5,A4,Bb4],
-    [1,2,2,2,0,1,1,1,0,1,2,0,0,2,1,2,2,2,0,1,1,1,0,1,2,0,0,2],
-    [1,2,1,1,1,2,1,1,1,1,1,1,1,3,1,2,1,1,1,2,1,1,1,1,1,1,1,4],
+    [F4,Bb4,Bb4,Bb4,C5,D5,D5,D5,D5,Eb5,C5,A4,Bb4,F4,Bb4,Bb4,Bb4,C5,D5,D5,D5,D5,Eb5,C5,A4,Bb4],
+    [1,2,2,2,0,1,1,1,1,2,0,0,2,1,2,2,2,0,1,1,1,1,2,0,0,2],
+    [2,4,2,2,2,4,2,2,2,2,2,2,6,2,4,2,2,2,4,2,2,2,2,2,2,6],
     4,Bb4);
   var firstnoel=carol("The First Noel","English (1823)",95,
     [E4,D4,C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,A4,B4,C5,B4,A4,G4,A4,B4,C5,G4,F4,E4,D4,C4,D4,C4],
     [2,1,0,1,2,1,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,1,2,1,0,1,0],
-    [1,1,2,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,4],
+    [2,2,4,2,2,2,4,2,2,4,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,4,2,6],
     4,C4);
   var joy=carol("Joy to the World","G.F. Handel (1719)",120,
     [C5,B4,A4,G4,F4,E4,D4,C4,G4,A4,A4,B4,B4,C5,C5,C5,B4,A4,G4,G4,F4,E4,C5,C5,B4,A4,G4,G4,F4,E4,D4,C4],
     [0,3,0,3,1,2,1,0,3,0,0,3,3,0,0,0,3,0,3,3,1,2,0,0,3,0,3,3,1,2,1,0],
-    [2,1,1,2,1,1,1,3,2,1,2,1,2,1,2,1,1,1,2,1,1,3,2,1,1,1,2,1,1,1,1,4],
+    [3,1,2,6,2,2,2,8,4,2,4,2,4,2,2,1,1,2,4,2,2,6,2,1,1,2,4,2,2,2,2,8],
     4,C4);
   var away=carol("Away in a Manger","J.Murray (1885)",80,
     [C4,F4,F4,F4,G4,A4,F4,F4,A4,G4,F4,G4,F4,D4,C4,C4,F4,F4,F4,G4,A4,F4,F4,A4,G4,F4,G4,F4,D4,C4,Bb4,A4,F4],
     [0,1,1,1,3,0,1,1,0,3,1,3,1,1,0,0,1,1,1,3,0,1,1,0,3,1,3,1,1,0,2,0,1],
-    [1,2,1,1,1,2,1,1,2,1,1,1,2,1,3,1,2,1,1,1,2,1,1,2,1,1,1,2,1,2,1,1,4],
+    // 3/4 waltz. "A-way in a man-ger no crib for a bed":
+    // beat 1 of each bar gets a longer note, phrase ends get dotted-half
+    [2,2,2,2,2,4, 2,2,2,2,6, 2,2,2,4, 2,2,2,2,2,4, 2,2,2,2,6, 2,2,2,4, 2,4,8],
     4,F4);
   var twelve=carol("12 Days of Christmas","English (1780)",110,
     [C4,F4,F4,F4,F4,E4,F4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,C5,A4,Bb4,G4,A4,F4],
     [0,1,1,1,1,2,1,3,0,2,0,3,1,3,0,2,0,3,1,3,0,2,0,0,2,3,0,1],
-    [1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,8],
     5,F4);
   var hark=carol("Hark the Herald Angels Sing","Mendelssohn (1840)",115,
     [C4,F4,F4,E4,F4,A4,A4,G4,C5,A4,A4,G4,C5,A4,A4,G4,A4,Bb4,G4,A4,Bb4,C5,A4,F4,G4,Bb4,A4,G4,F4],
     [0,1,1,2,1,0,0,3,0,0,0,3,0,0,0,3,0,2,3,0,2,0,0,1,3,2,0,3,1],
-    [1,2,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,4],
+    [2,4,2,2,4,2,2,4,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,8],
     4,F4);
-  return [jingle,silent,deck,wish,ocometree,firstnoel,joy,away,twelve,hark];
+  // ── O Come All Ye Faithful (G major → transposed to C) ──
+  var ocome=carol("O Come All Ye Faithful","J.F. Wade (1743)",100,
+    [C4,C4,G4,C4,D4,G4,E4,D4,E4,F4,E4,D4,C4,B4,A4,B4,C5,B4,A4,G4,A4,E4,F4,E4,D4,E4,F4,D4,C4,D4,C4,Bb4,A4,G4,F4,E4,F4,E4,D4,C4],
+    [0,0,3,0,1,3,2,1,2,1,2,1,0,3,0,3,0,3,0,3,0,2,1,2,1,2,1,1,0,1,0,2,0,3,1,2,1,2,1,0],
+    [4,2,4,2,4,6,2,2,2,2,2,2,4,2,2,2,4,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,6],
+    3,C4);
+
+  // ── God Rest Ye Merry Gentlemen (E minor / A minor) ──
+  var godrest=carol("God Rest Ye Merry Gentlemen","English (1500s)",120,
+    [E4,E4,E4,D4,C4,D4,E4,Gb4,G4,A4,B4,A4,G4,Gb4,E4,D4,C4,D4,E4,Gb4,E4,D4,C4,B3,C4,G4,G4,Gb4,E4,Gb4,G4,A4,B4,A4,G4,Gb4,E4],
+    [2,2,2,1,0,1,2,1,3,0,2,0,3,1,2,1,0,1,2,1,2,1,0,3,0,3,3,1,2,1,3,0,2,0,3,1,2],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,6,2,2,2,2,2,2,2,2,2,2,2,8],
+    4,E4);
+
+  // ── What Child Is This (Greensleeves melody as a carol) ──
+  var whatchild=carol("What Child Is This","English (1865)",95,
+    [E4,A4,B4,C5,B4,A4,G4,E4,D4,E4,F4,E4,D4,C4,E4,A4,B4,C5,B4,A4,Ab4,B4,C5,A4,A4],
+    [2,0,3,0,3,0,3,2,1,2,1,2,1,0,2,0,3,0,3,0,1,3,0,0,0],
+    [2,3,1,2,3,1,2,3,1,3,1,2,6,2,3,1,2,3,1,2,3,1,6,2,6],
+    4,A4);
+
+  // ── Angels We Have Heard on High ──
+  var angels=carol("Angels We Have Heard on High","French (1862)",110,
+    [F4,F4,F4,F4,A4,G4,F4,F4,G4,A4,F4,D4,C4,D4,F4,G4,A4,G4,F4,E4,F4,G4,A4,G4,F4,E4,F4,G4,A4,G4,F4,G4,F4],
+    [1,1,1,1,0,3,1,1,3,0,1,1,0,1,1,3,0,3,1,2,1,3,0,3,1,2,1,3,0,3,1,3,1],
+    [2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,2,2,2,4,8],
+    4,F4);
+
+  // ── O Holy Night (in C major) ──
+  var oholynight=carol("O Holy Night","A. Adam (1847)",72,
+    [C4,F4,F4,F4,E4,F4,A4,A4,G4,F4,F4,Bb4,A4,G4,F4,G4,A4,G4,F4,E4,F4,C5,C5,Bb4,A4,G4,A4,Bb4,A4,G4,F4],
+    [0,1,1,1,2,1,0,0,3,1,1,2,0,3,1,3,0,3,1,2,1,0,0,2,0,3,0,2,0,3,1],
+    // 12/8 compound feel: "O ho-ly night! The stars are bright-ly shi-ning"
+    // Characteristic dotted-quarter+eighth pairs and long phrase-end notes
+    [2,3,1,4,1,3,1,3,1,3,1, 2,3,1,4,1,3,1,3,1,4, 2,3,1,3,1,2,2,3,1,4],
+    3,F4);
+
+  // ── Rudolph the Red-Nosed Reindeer (in C major) ──
+  var rudolph=carol("Rudolph the Red-Nosed Reindeer","J. Marks (1949)",130,
+    [G4,A4,G4,E4,C5,A4,G4,G4,A4,G4,A4,G4,C5,B4,F4,A4,G4,F4,D4,E4,F4,D4,G4,A4,G4,E4,C5,A4,G4,G4,A4,G4,A4,G4,A4,D5,C5],
+    [3,0,3,2,0,0,3,3,0,3,0,3,0,3,1,0,3,1,1,2,1,1,3,0,3,2,0,0,3,3,0,3,0,3,0,1,0],
+    [2,2,2,2,4,2,4,2,2,2,2,2,4,6,2,2,2,2,2,2,2,6,2,2,2,2,4,2,4,2,2,2,2,2,2,2,8],
+    3,C4);
+
+  // ── Frosty the Snowman (in C major) ──
+  var frosty=carol("Frosty the Snowman","S. Nelson (1950)",125,
+    [G4,E4,F4,G4,C5,B4,A4,G4,A4,G4,F4,E4,F4,A4,G4,F4,E4,D4,C4,C4,G4,E4,F4,G4,C5,B4,A4,G4,A4,G4,F4,E4,D4,C4],
+    [3,2,1,3,0,3,0,3,0,3,1,2,1,0,3,1,2,1,0,0,3,2,1,3,0,3,0,3,0,3,1,2,1,0],
+    [2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,2,2,2,8],
+    3,C4);
+
+  // ── Winter Wonderland (in C major) ──
+  var winter=carol("Winter Wonderland","F. Bernard (1934)",120,
+    [E4,F4,G4,G4,A4,G4,F4,E4,D4,E4,F4,F4,G4,F4,E4,D4,C4,E4,F4,G4,G4,A4,G4,F4,E4,D4,E4,F4,F4,G4,F4,E4,D4,C4],
+    [2,1,3,3,0,3,1,2,1,2,1,1,3,1,2,1,0,2,1,3,3,0,3,1,2,1,2,1,1,3,1,2,1,0],
+    [2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,6,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,8],
+    3,C4);
+
+  // ── Good King Wenceslas (in F major) ──
+  var wenceslas=carol("Good King Wenceslas","Finnish (1582)",110,
+    [F4,F4,F4,G4,F4,F4,C4,D4,E4,F4,F4,G4,F4,F4,C4,C5,Bb4,A4,G4,A4,Bb4,A4,G4,F4,G4,A4,Bb4,C5,Bb4,A4,G4,F4],
+    [1,1,1,3,1,1,0,1,2,1,1,3,1,1,0,0,2,0,3,0,2,0,3,1,3,0,2,0,2,0,3,1],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,2,6,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,8],
+    4,F4);
+
+  // ── We Three Kings (E minor) ──
+  var threekings=carol("We Three Kings","J.H. Hopkins Jr. (1857)",105,
+    [B4,A4,G4,A4,B4,B4,B4,A4,G4,A4,B4,A4,G4,F4,E4,E4,B4,B4,C5,D5,D5,C5,B4,A4,B4,C5,B4,A4,G4,A4,G4,E4],
+    [3,0,3,0,3,3,3,0,3,0,3,0,3,1,2,2,3,3,0,1,1,0,3,0,3,0,3,0,3,0,3,2],
+    [4,2,4,2,2,2,4,2,4,2,2,2,2,2,4,6,4,2,2,4,2,2,4,2,2,2,2,2,2,2,2,8],
+    4,E4);
+
+  return [jingle,silent,deck,wish,ocometree,firstnoel,joy,away,twelve,hark,ocome,godrest,whatchild,angels,oholynight,rudolph,frosty,winter,wenceslas,threekings];
 })();
 
 // ── SINGALONG (campfire, sea shanties, pub songs) ──
@@ -2796,7 +3945,7 @@ const SINGALONG_PIECES=(function(){
     C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
   function pub(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.22+rep*0.07;
       var inst=rep<Math.floor(passes*0.4)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -2817,53 +3966,55 @@ const SINGALONG_PIECES=(function(){
   var drunken=pub("Drunken Sailor","Sea Shanty (Trad.)",140,
     [D4,D4,D4,D4,E4,F4,D4,D4,D4,D4,E4,D4,C4,D4,D4,D4,E4,F4,D4,D4,F4,E4,C4,A3,D4,D4,D4,D4,F4,A4,A4,G4,F4,E4,D4,C4,D4],
     [0,0,0,0,2,1,0,0,0,0,2,0,1,0,0,0,2,1,0,0,1,2,1,0,0,0,0,0,1,0,0,3,1,2,0,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,8],
     4,D4);
   var molly=pub("Molly Malone","Irish (1880s)",100,
     [C4,E4,E4,E4,F4,G4,G4,G4,A4,G4,F4,E4,D4,E4,F4,G4,A4,C5,C5,B4,A4,G4,F4,E4,D4,C4,E4,G4,C5,C5,B4,A4,G4,F4,E4,D4,C4],
     [0,2,2,2,1,3,3,3,0,3,1,2,1,2,1,3,0,0,0,3,0,3,1,2,1,0,2,3,0,0,3,0,3,1,2,1,0],
-    [1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,4,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,2,2,6],
     4,C4);
   var whiskey=pub("Whiskey in the Jar","Irish (Trad.)",125,
     [G4,G4,A4,B4,B4,A4,G4,E4,D4,E4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,E4,G4,A4,B4,A4,G4,E4,D4,E4,G4],
     [3,3,0,3,3,0,3,2,1,2,3,3,0,3,1,3,0,3,2,1,2,3,0,3,0,3,2,1,2,3],
-    [1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,3],
+    [2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,6],
     5,G4);
   var parting=pub("The Parting Glass","Irish/Scots (Trad.)",80,
     [E4,G4,A4,B4,A4,G4,E4,D4,E4,G4,A4,B4,D5,B4,A4,G4,E4,G4,A4,B4,A4,G4,E4,D4,E4,G4,A4,B4,D5,B4,A4,G4],
     [2,3,0,3,0,3,2,1,2,3,0,3,1,3,0,3,2,3,0,3,0,3,2,1,2,3,0,3,1,3,0,3],
-    [1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,3],
+    // "Of all the mon-ey that e'er I had / I spent it in good com-pa-ny"
+    // Flowing Irish 4/4 with dotted-quarter+eighth pairs and half-notes on stressed syllables
+    [2,3,1,4,1,3,2,4, 2,3,1,2,6,2,2,6, 2,3,1,4,1,3,2,4, 2,3,1,2,6,2,2,6],
     4,E4);
   var amazing=pub("Amazing Grace","J. Newton (1779)",80,
-    [G4,C5,E5,E5,D5,C5,A4,G4,G4,C5,E5,E5,D5,E5,E5,G5,G5,E5,C5,C5,A4,G4,G4,C5,E5,E5,D5,C5],
-    [3,0,2,2,1,0,0,3,3,0,2,2,1,2,2,3,3,2,0,0,0,3,3,0,2,2,1,0],
-    [1,2,1,2,1,2,1,2,1,2,1,2,1,3,1,2,1,2,1,2,1,2,1,2,1,2,1,4],
+    [G4,C5,E5,C5,E5,D5,C5,A4,G4,G4,C5,E5,C5,E5,D5,E5,E5,C5,A4,A4,G4,E4,G4,C5,E5,C5,E5,D5,C5],
+    [3,0,2,0,2,1,0,0,3,3,0,2,0,2,1,2,2,0,0,0,3,2,3,0,2,0,2,1,0],
+    [2,4,3,1,2,2,2,4,4,2,4,3,1,2,2,4,4,3,1,2,2,4,2,4,3,1,2,2,6],
     4,C4);
   var auld=pub("Auld Lang Syne","R. Burns (1788)",95,
-    [C4,F4,F4,F4,A4,G4,F4,G4,A4,F4,F4,A4,C5,D5,C5,D5,C5,D5,C5,A4,F4,G4,A4,G4,F4,G4],
-    [0,1,1,1,0,3,1,3,0,1,1,0,0,1,0,1,0,1,0,0,1,3,0,3,1,3],
-    [1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,1,2,1,4],
+    [C4,F4,F4,F4,A4,G4,F4,G4,A4,F4,F4,A4,C5,D5,D5,D5,C5,A4,F4,F4,G4,A4,G4,F4,D4,C4],
+    [0,1,1,1,0,3,1,3,0,1,1,0,0,1,1,1,0,0,1,1,3,0,3,1,1,0],
+    [2,3,1,2,3,1,2,2,3,1,2,2,2,6,2,3,1,2,3,1,2,3,1,2,2,6],
     4,F4);
   var saints=pub("When the Saints Go Marching In","Spiritual (Trad.)",120,
     [C4,E4,F4,G4,C4,E4,F4,G4,C4,E4,F4,G4,E4,C4,E4,D4,E4,E4,D4,C4,C4,E4,G4,G4,F4,E4,F4,G4,E4,C4,D4,C4],
     [0,2,1,3,0,2,1,3,0,2,1,3,2,0,2,1,2,2,1,0,0,2,3,3,1,2,1,3,2,0,1,0],
-    [1,1,1,3,1,1,1,3,1,1,1,2,1,1,1,2,1,1,1,2,1,1,2,1,2,1,1,2,1,1,1,4],
+    [2,2,2,6,2,2,2,6,2,2,2,4,2,2,2,4,2,2,2,4,2,2,4,2,4,2,2,4,2,2,2,8],
     4,C4);
   var clementine=pub("Oh My Darling, Clementine","P. Montrose (1884)",110,
     [C4,C4,C4,G3,E4,E4,E4,C4,C4,E4,G4,G4,F4,E4,F4,G4,G4,F4,E4,F4,E4,D4,C4,D4,E4,F4,F4,E4,D4,E4,C4],
     [0,0,0,3,2,2,2,0,0,2,3,3,1,2,1,3,3,1,2,1,2,1,0,1,2,1,1,2,1,2,0],
-    [1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,4],
+    [2,2,2,4,2,2,2,4,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,8],
     4,C4);
   var scarborough=pub("Scarborough Fair","English (Medieval)",85,
-    [D4,D4,A4,A4,D5,D5,C5,D5,E5,D5,C5,A4,Bb4,A4,G4,B4,A4,G4,F4,F4,G4,A4,F4,E4,D4,E4,F4,D4,D4,F4,G4,A4,G4,F4,E4,D4],
-    [0,0,0,0,1,1,0,1,2,1,0,0,2,0,3,3,0,3,1,1,3,0,1,2,0,2,1,0,0,1,3,0,3,1,2,0],
-    [3,3,2,1,3,1,1,1,3,2,1,1,1,1,2,1,3,3,1,2,1,1,1,1,2,1,3,3,1,1,1,3,1,1,1,4],
+    [D4,D4,A4,A4,D5,D5,C5,D5,E5,D5,C5,A4,B4,A4,G4,B4,A4,G4,F4,F4,G4,A4,F4,E4,D4,E4,F4,D4,D4,F4,G4,A4,G4,F4,E4,D4],
+    [0,0,0,0,1,1,0,1,2,1,0,0,3,0,3,3,0,3,1,1,3,0,1,2,0,2,1,0,0,1,3,0,3,1,2,0],
+    [4,4,2,2,4,2,2,2,4,2,2,2,2,2,2,2,4,4,2,2,2,2,2,2,2,2,4,4,2,2,2,4,2,2,2,6],
     4,D4);
   var bonnie=pub("My Bonnie Lies Over the Ocean","Scottish (1881)",120,
-    [G4,F4,E4,F4,G4,A4,G4,F4,E4,C4,D4,E4,F4,G4,F4,E4,F4,G4,A4,G4,F4,E4,D4,C4,E4,G4,E4,C4],
-    [3,1,2,1,3,0,3,1,2,0,1,2,1,3,1,2,1,3,0,3,1,2,1,0,2,3,2,0],
-    [1,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,2,1,4],
-    5,C4);
+    [G4,C5,C5,D5,E5,E5,D5,C5,A4,G4,C5,C5,D5,E5,E5,D5,C5,G4,C5,C5,D5,E5,E5,D5,C5,A4,A4,G4,F4,E4,F4,G4,E4,C4,E5,E5,E5,E5,D5,C5,C5,D5,E5,E5,E5,E5,D5,C5,A4,C5],
+    [3,0,0,1,2,2,1,0,0,3,0,0,1,2,2,1,0,3,0,0,1,2,2,1,0,0,0,3,1,2,1,3,2,0,2,2,2,2,1,0,0,1,2,2,2,2,1,0,0,0],
+    [2,2,2,2,2,4,2,2,4,2,2,2,2,2,4,2,4,2,2,2,2,2,4,2,2,4,2,2,2,2,2,4,2,8,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,8],
+    4,C4);
   // ── Wellerman (accurate melody with driving stomp beat) ──
   var wellerman=(function(){
     var bg=[],mel=[],t=0,q=0.32;
@@ -2935,55 +4086,55 @@ const SINGALONG_PIECES=(function(){
   var leavejohnny=pub("Leave Her Johnny","Sea Shanty (Trad.)",105,
     [A3,A3,C4,D4,E4,E4,D4,C4,A3,G3,A3,C4,D4,E4,G4,E4,D4,C4,A3,G3,A3,C4,E4,D4,C4,A3],
     [0,0,1,0,2,2,0,1,0,3,0,1,0,2,3,2,0,1,0,3,0,1,2,0,1,0],
-    [1,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,3],
+    [2,2,2,2,4,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,6],
     5,A3);
   // ── Blow the Man Down ──
   var blowman=pub("Blow the Man Down","Sea Shanty (Trad.)",120,
     [C4,E4,G4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,C5,B4,A4,G4,F4,E4,D4,C4],
     [0,2,3,3,1,2,1,0,1,2,1,2,1,0,0,2,3,0,3,0,3,1,2,1,0],
-    [1,1,2,1,1,1,1,2,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,4],
+    [2,2,4,2,2,2,2,4,2,2,2,2,2,6,2,2,4,2,2,2,2,2,2,2,8],
     5,C4);
   // ── Randy Dandy Oh ──
   var randy=pub("Randy Dandy Oh","Sea Shanty (Trad.)",130,
     [G4,G4,A4,B4,B4,A4,G4,E4,D4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,G4,A4,B4,D5,B4,G4],
     [3,3,0,3,3,0,3,2,1,3,3,0,3,1,3,0,3,2,1,3,0,3,1,3,3],
-    [1,1,1,2,1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,4],
+    [2,2,2,4,2,2,2,2,4,2,2,2,4,2,2,2,2,2,4,2,2,4,2,2,8],
     5,G4);
   // ── South Australia ──
   var southaus=pub("South Australia","Sea Shanty (Trad.)",115,
     [C4,C4,D4,E4,G4,G4,E4,D4,C4,E4,G4,A4,G4,E4,C4,D4,E4,G4,E4,D4,C4,C4,E4,G4,E4,C4],
     [0,0,1,2,3,3,2,1,0,2,3,0,3,2,0,1,2,3,2,1,0,0,2,3,2,0],
-    [1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,4,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,8],
     5,C4);
   // ── Roll the Old Chariot ──
   var chariot=pub("Roll the Old Chariot Along","Sea Shanty (Trad.)",120,
     [C4,E4,G4,G4,G4,A4,G4,E4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,C5,A4,G4,E4,D4,C4],
     [0,2,3,3,3,0,3,2,0,1,2,1,2,1,0,0,2,3,0,0,3,2,1,0],
-    [1,1,1,1,1,1,1,1,2,1,1,1,1,1,3,1,1,1,2,1,1,1,1,4],
+    [2,2,2,2,2,2,2,2,4,2,2,2,2,2,6,2,2,2,4,2,2,2,2,8],
     5,C4);
   // ── Haul Away Joe ──
   var hauljoe=pub("Haul Away Joe","Sea Shanty (Trad.)",115,
     [D4,D4,F4,A4,A4,G4,F4,D4,D4,F4,A4,C5,A4,G4,F4,D4,F4,A4,G4,F4,D4,C4,D4],
     [0,0,1,0,0,3,1,0,0,1,0,0,0,3,1,0,1,0,3,1,0,1,0],
-    [1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,2,1,4],
+    [2,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,4,2,8],
     5,D4);
   // ── Spanish Ladies ──
   var spanish=pub("Spanish Ladies","Royal Navy Shanty (1790s)",110,
     [E4,E4,D4,C4,D4,E4,F4,G4,A4,G4,F4,E4,D4,C4,D4,E4,F4,E4,D4,C4,B3,A3,G3,A3,B3,C4,D4,E4],
     [2,2,1,0,1,2,1,3,0,3,1,2,1,0,1,2,1,2,1,0,3,0,3,0,3,0,1,2],
-    [1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,4],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,8],
     5,C4);
   // ── The Skye Boat Song ──
   var skye=pub("The Skye Boat Song","Scottish (1884)",85,
     [C4,F4,A4,G4,F4,E4,F4,G4,A4,C5,A4,G4,F4,E4,D4,C4,F4,A4,G4,F4,E4,F4,G4,A4,F4,D4,C4],
     [0,1,0,3,1,2,1,3,0,0,0,3,1,2,1,0,1,0,3,1,2,1,3,0,1,1,0],
-    [1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,2,2,1,1,1,1,1,2,1,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
     4,F4);
   // ── Bella Ciao ──
   var bella=pub("Bella Ciao","Italian Partisan Folk (1900s)",120,
     [A3,B3,C4,D4,D4,C4,D4,E4,A3,B3,C4,D4,D4,C4,B3,A3,E4,E4,D4,E4,F4,F4,E4,D4,C4,B3,A3,C4,B3,A3],
     [0,3,0,1,1,0,1,2,0,3,0,1,1,0,3,0,2,2,1,2,1,1,2,1,0,3,0,1,3,0],
-    [1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,4],
+    [2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,2,4,2,2,2,2,2,4,2,2,8],
     5,A3);
   return [drunken,wellerman,molly,whiskey,parting,leavejohnny,blowman,randy,southaus,chariot,hauljoe,spanish,skye,bella,amazing,auld,saints,clementine,scarborough,bonnie];
 })();
@@ -2994,7 +4145,7 @@ const SPIRITUAL_PIECES=(function(){
     C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5;
   function spirit(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.6)?'strings':'choir';
@@ -3014,44 +4165,47 @@ const SPIRITUAL_PIECES=(function(){
     return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
   }
   var swing=spirit("Swing Low, Sweet Chariot","Spiritual (1862)",80,
-    [G4,C5,C5,E5,D5,C5,A4,G4,E4,G4,A4,G4,E4,C4,D4,E4,G4,C5,C5,E5,D5,C5,A4,G4,E4,G4,A4,C5,G4],
-    [3,0,0,2,1,0,0,3,2,3,0,3,2,0,1,2,3,0,0,2,1,0,0,3,2,3,0,0,3],
-    [2,2,1,2,1,1,2,2,1,1,1,2,1,2,1,1,2,2,1,2,1,1,2,2,1,1,2,1,4],
-    4,C4);
+    [E4,C4,D4,E4,G4,G4,F4,E4,D4,C4,E4,C4,D4,E4,G4,G4,F4,E4,D4,C4,C4,C4,E4,G4,A4,G4,E4,C4,G4,F4,E4,D4,C4,C4,E4,G4,A4,G4,E4,C4,G4,F4,E4,D4,C4],
+    [2,0,1,2,3,3,1,2,1,0,2,0,1,2,3,3,1,2,1,0,0,0,2,3,0,3,2,0,3,1,2,1,0,0,2,3,0,3,2,0,3,1,2,1,0],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
   var godown=spirit("Go Down Moses","Spiritual (Trad.)",90,
     [A3,C4,C4,D4,E4,E4,D4,C4,A3,C4,D4,E4,G4,E4,D4,C4,A3,C4,E4,G4,A4,G4,E4,D4,C4,A3],
     [0,0,0,1,2,2,1,0,0,0,1,2,3,2,1,0,0,0,2,3,0,3,2,1,0,0],
-    [1,2,1,1,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,2,4],
+    [2,4,2,2,4,2,2,4,2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,2,4,6],
     5,A3);
   var wade=spirit("Wade in the Water","Spiritual (Trad.)",100,
     [E4,E4,G4,A4,B4,A4,G4,E4,D4,E4,G4,A4,B4,D5,B4,A4,G4,E4,D4,E4,G4,B4,A4,G4,E4],
     [2,2,3,0,3,0,3,2,1,2,3,0,3,1,3,0,3,2,1,2,3,3,0,3,2],
-    [1,1,1,1,2,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,4],
+    [2,2,2,2,4,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,6],
     5,E4);
   var kumbaya=spirit("Kumbaya","Spiritual (Trad.)",75,
     [C4,E4,F4,G4,G4,F4,E4,C4,C4,E4,F4,G4,A4,G4,E4,C4,E4,F4,G4,G4,F4,E4,D4,C4],
     [0,2,1,3,3,1,2,0,0,2,1,3,0,3,2,0,2,1,3,3,1,2,1,0],
-    [1,1,1,2,1,1,2,2,1,1,1,2,1,2,1,1,1,1,2,1,1,1,1,4],
+    // Slow meditative spiritual. "Kum-ba-ya my Lord Kum-ba-ya"
+    // Dotted-quarter+eighth for the 3-syllable "Kum-ba-ya" feel, half-note on "Lord"
+    [3,1,2,4, 3,1,2,4, 3,1,2,4, 3,1,2,4, 3,1,2,4, 3,1,2,8],
     5,C4);
   var michael=spirit("Michael Row the Boat Ashore","Spiritual (1860s)",90,
-    [C4,E4,F4,E4,C4,D4,E4,F4,G4,A4,G4,E4,C4,D4,C4,C4,E4,G4,A4,G4,E4,F4,E4,D4,C4],
-    [0,2,1,2,0,1,2,1,3,0,3,2,0,1,0,0,2,3,0,3,2,1,2,1,0],
-    [1,1,1,2,1,1,1,1,2,1,1,1,2,1,3,1,1,2,1,1,1,1,1,1,4],
+    [C4,E4,F4,G4,A4,A4,G4,E4,C4,C4,E4,F4,G4,A4,A4,G4,E4,C4,D4,E4,F4,E4,D4,C4,D4,C4],
+    [0,2,1,3,0,0,3,2,0,0,2,1,3,0,0,3,2,0,1,2,1,2,1,0,1,0],
+    [2,2,2,4,4,2,2,2,4,4,2,2,2,4,4,2,2,4,2,2,2,2,2,4,2,6],
     5,C4);
   var wholeworld=spirit("He's Got the Whole World","Spiritual (Trad.)",110,
     [C4,C4,E4,G4,G4,E4,G4,A4,G4,E4,C4,E4,G4,C5,A4,G4,E4,C4,E4,G4,E4,C4],
     [0,0,2,3,3,2,3,0,3,2,0,2,3,0,0,3,2,0,2,3,2,0],
-    [1,1,1,2,1,1,1,1,1,1,2,1,1,2,1,1,1,2,1,1,1,4],
+    [2,2,2,4,2,2,2,2,2,2,4,2,2,4,2,2,2,4,2,2,2,8],
     5,C4);
   var nobody=spirit("Nobody Knows the Trouble I've Seen","Spiritual (Trad.)",75,
     [C4,E4,G4,A4,G4,E4,C4,D4,E4,G4,C5,A4,G4,E4,D4,C4,E4,G4,A4,C5,A4,G4,E4,D4,C4],
     [0,2,3,0,3,2,0,1,2,3,0,0,3,2,1,0,2,3,0,0,0,3,2,1,0],
-    [1,1,2,1,1,2,2,1,1,2,1,1,1,2,1,2,1,2,1,2,1,1,1,1,4],
+    // Slow gospel: "No-bo-dy knows the trou-ble I've seen" — dotted-feel on key words
+    [2,3,1,3,1,3,2,4, 3,1,4,2,2,2,2,6, 3,1,4,2,2,2,2,2,8],
     4,C4);
   var battle=spirit("Battle Hymn of the Republic","J.W. Howe (1861)",115,
     [C4,C4,C4,E4,E4,D4,C4,D4,E4,F4,E4,D4,C4,C4,E4,G4,G4,F4,E4,F4,G4,A4,G4,E4,C4,E4,D4,C4],
     [0,0,0,2,2,1,0,1,2,1,2,1,0,0,2,3,3,1,2,1,3,0,3,2,0,2,1,0],
-    [1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,2,2,2,4,2,2,8],
     4,C4);
   return [swing,godown,wade,kumbaya,michael,wholeworld,nobody,battle];
 })();
@@ -3062,7 +4216,7 @@ const WORLD_PIECES=(function(){
     C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,Gb4=NT.Gb4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5;
   function world(name,origin,bpm,theme,lanes,durations,passes,root){
-    var bg=[],mel=[],t=0,q=0.25;
+    var bg=[],mel=[],t=0,q=30/bpm;
     for(var rep=0;rep<passes;rep++){
       var v=0.2+rep*0.08;
       var inst=rep<Math.floor(passes*0.3)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -3081,50 +4235,301 @@ const WORLD_PIECES=(function(){
     return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   }
   var hava=world("Hava Nagila","Jewish/Israeli (1918)",130,
-    [E4,F4,E4,D4,E4,F4,G4,Ab4,G4,F4,E4,F4,G4,Ab4,B4,Ab4,G4,F4,E4,F4,G4,Ab4,G4,F4,E4,D4,E4],
-    [2,1,2,1,2,1,3,0,3,1,2,1,3,0,3,0,3,1,2,1,3,0,3,1,2,1,2],
-    [1,1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,4],
-    5,E4);
+    [E4,E4,F4,E4,D4,E4,E4,F4,Ab4,A4,B4,B4,A4,Ab4,F4,E4,E4,F4,Ab4,A4,B4,A4,Ab4,A4,B4,C5,D5,C5,B4,A4,Ab4,A4,B4,C5,D5,C5,B4,A4,Ab4,E4],
+    [2,2,1,2,1,2,2,1,0,0,3,3,0,0,1,2,2,1,0,0,3,0,0,0,3,0,1,0,3,0,0,0,3,0,1,0,3,0,0,2],
+    [2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
+    4,E4);
   var cucaracha=world("La Cucaracha","Mexican (Trad.)",135,
     [C4,C4,C4,F4,A4,C4,C4,C4,F4,A4,F4,F4,E4,E4,D4,D4,C4,C4,C4,G4,Bb4,C4,C4,C4,G4,Bb4,A4,G4,F4,E4,D4,C4],
     [0,0,0,1,0,0,0,0,1,0,1,1,2,2,1,1,0,0,0,3,2,0,0,0,3,2,0,3,1,2,1,0],
-    [1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,1,1,4],
+    [2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,4,2,2,2,2,2,10],
     4,F4);
   var frere=world("Fr\u00e8re Jacques","French (1780s)",110,
     [C4,D4,E4,C4,C4,D4,E4,C4,E4,F4,G4,E4,F4,G4,G4,A4,G4,F4,E4,C4,G4,A4,G4,F4,E4,C4,C4,G3,C4,C4,G3,C4],
     [0,1,2,0,0,1,2,0,2,1,3,2,1,3,3,0,3,1,2,0,3,0,3,1,2,0,0,3,0,0,3,0],
-    [1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,4],
+    [2,2,2,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,4,2,2,2,2,2,4,2,2,4,2,2,8],
     4,C4);
   var cielito=world("Cielito Lindo","Mexican (1882)",120,
     [E4,E4,F4,G4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,E4,G4,C5,C5,B4,A4,G4,F4,E4,D4,C4,E4,G4,C5],
     [2,2,1,3,0,3,1,2,1,2,1,2,1,0,2,3,0,0,3,0,3,1,2,1,0,2,3,0],
-    [1,1,1,1,2,1,1,1,1,1,1,1,1,3,1,1,2,1,1,1,1,1,1,1,2,1,1,4],
+    [2,2,2,2,4,2,2,2,2,2,2,2,2,6,2,2,4,2,2,2,2,2,2,2,4,2,2,8],
     4,C4);
   var waltzing=world("Waltzing Matilda","Australian (1895)",110,
     [G4,G4,A4,B4,D5,B4,A4,G4,E4,G4,A4,B4,A4,G4,E4,D4,G4,G4,A4,B4,D5,B4,A4,G4,E4,D4,G4],
     [3,3,0,3,1,3,0,3,2,3,0,3,0,3,2,1,3,3,0,3,1,3,0,3,2,1,3],
-    [1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,2,1,1,1,1,1,1,4],
+    [2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,2,2,8],
     5,G4);
   var osole=world("'O Sole Mio","Italian (1898)",90,
-    [C4,D4,E4,F4,G4,A4,G4,F4,E4,D4,C4,D4,E4,F4,G4,C5,B4,A4,G4,F4,E4,F4,G4,A4,G4,F4,E4,D4,C4],
-    [0,1,2,1,3,0,3,1,2,1,0,1,2,1,3,0,3,0,3,1,2,1,3,0,3,1,2,1,0],
-    [1,1,1,1,2,1,1,1,1,1,2,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,4],
-    4,C4);
+    [C4,E4,E4,F4,E4,D4,C4,D4,E4,E4,F4,G4,A4,G4,F4,E4,E4,F4,G4,A4,Bb4,A4,G4,C5,C5,Bb4,A4,G4,F4,E4,F4,G4,A4,G4,F4,E4,D4,C4],
+    [0,2,2,1,2,1,0,1,2,2,1,3,0,3,1,2,2,1,3,0,2,0,3,0,0,2,0,3,1,2,1,3,0,3,1,2,1,0],
+    [4,2,2,2,2,2,4,2,2,2,2,4,2,2,2,4,2,2,2,4,2,2,4,4,2,2,2,2,4,2,2,2,2,2,2,2,2,6],
+    3,C4);
   var ballgame=world("Take Me Out to the Ball Game","American (1908)",125,
     [C4,C4,A4,G4,E4,G4,D4,C4,C4,A4,G4,E4,G4,C4,C4,A4,G4,F4,E4,D4,E4,F4,D4,C4,A4,G4,E4,C4],
     [0,0,0,3,2,3,1,0,0,0,3,2,3,0,0,0,3,1,2,1,2,1,1,0,0,3,2,0],
-    [1,1,2,1,1,2,1,2,1,2,1,1,3,1,1,2,1,1,1,1,1,1,2,1,1,1,1,4],
+    [2,2,4,2,2,4,2,4,2,4,2,2,6,2,2,4,2,2,2,2,2,2,4,2,2,2,2,8],
     4,C4);
   var mountain=world("She'll Be Coming Round the Mountain","American (1890s)",130,
     [G4,G4,B4,B4,D5,D5,B4,G4,A4,B4,C5,C5,A4,A4,G4,B4,D5,D5,B4,G4,A4,C5,B4,A4,G4],
     [3,3,3,3,1,1,3,3,0,3,0,0,0,0,3,3,1,1,3,3,0,0,3,0,3],
-    [1,1,2,1,2,1,1,2,1,1,2,1,2,1,2,1,2,1,1,2,1,1,1,1,4],
+    [1,1,2,2,2,2,2,4,1,1,2,2,2,4,2,2,2,2,2,4,1,1,2,2,6],
     5,G4);
   return [hava,cucaracha,frere,cielito,waltzing,osole,ballgame,mountain];
 })();
 
-var SYNTH_GENRES={"Prime":PRIME_PIECES,"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Spirituals":SPIRITUAL_PIECES,"World":WORLD_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
+// ── NURSERY RHYMES (very simple, beginner-friendly) ──
+const NURSERY_PIECES=(function(){
+  var C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,E5=NT.E5,G3=NT.G3,A3=NT.A3,B3=NT.B3;
+  function rhyme(name,origin,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=30/bpm;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.25+rep*0.08;
+      var inst=rep<1?'woodwind':'strings';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
+        if(rep>0)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.25});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.5;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.4});});
+    mel.push({t:t,l:4});
+    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  }
+  // ── Twinkle Twinkle Little Star (same melody as Baa Baa Black Sheep) ──
+  var twinkle=rhyme("Twinkle Twinkle Little Star","Traditional (1760s)",75,
+    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
+    [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,6],
+    3,C4);
+  // ── Mary Had a Little Lamb ──
+  var mary=rhyme("Mary Had a Little Lamb","S.J. Hale (1830)",80,
+    [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,D4,D4,E4,D4,C4],
+    [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,1,1,2,1,0],
+    [2,2,2,2,2,2,4,2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
+  // ── Happy Birthday ──
+  var birthday=rhyme("Happy Birthday","P.S. Hill (1893)",75,
+    [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
+    [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
+    [1,1,2,2,2,4,1,1,2,2,2,4,1,1,2,2,2,2,4,1,1,2,2,2,6],
+    3,C4);
+  // ── Chopsticks ──
+  var chopsticks=rhyme("Chopsticks","Euphemia Allen (1877)",95,
+    [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4,F4,G4,F4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4],
+    [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,0,2,0,2,1,3,1,3,2,3,2,3,1,1,1,1,0,2,0,2],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
+    3,C4);
+  // ── Lavender's Blue ──
+  var lavender=rhyme("Lavender's Blue","English Traditional (1670s)",80,
+    [E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,F4,E4,D4,E4,E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,E4],
+    [2,2,1,2,1,3,3,0,3,1,1,2,1,2,2,2,1,2,1,3,3,0,3,1,2],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
+  // ── Shortnin' Bread ──
+  var shortnin=rhyme("Shortnin' Bread","Traditional (1900s)",95,
+    [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
+    [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
+    [2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,8],
+    3,C4);
+  // ── London Bridge ──
+  var london=rhyme("London Bridge Is Falling Down","English (1744)",75,
+    [G4,A4,G4,F4,E4,F4,G4,D4,E4,F4,E4,F4,G4,G4,A4,G4,F4,E4,F4,G4,D4,G4,E4,C4],
+    [3,0,3,1,2,1,3,1,2,1,2,1,3,3,0,3,1,2,1,3,1,3,2,0],
+    [2,2,2,2,2,2,4,2,2,4,2,2,4,2,2,2,2,2,2,4,4,2,2,6],
+    3,C4);
+  // ── Old MacDonald ──
+  var macdonald=rhyme("Old MacDonald Had a Farm","English (1706)",80,
+    [C4,C4,C4,G4,A4,A4,G4,E4,E4,D4,D4,C4,G4,C4,C4,C4,G4,A4,A4,G4,E4,E4,D4,D4,C4],
+    [0,0,0,3,0,0,3,2,2,1,1,0,3,0,0,0,3,0,0,3,2,2,1,1,0],
+    [2,2,2,2,2,2,4,2,2,2,2,4,4,2,2,2,2,2,2,4,2,2,2,2,6],
+    3,C4);
+  // ── Row Row Row Your Boat ──
+  var row=rhyme("Row Row Row Your Boat","English (1852)",70,
+    [C4,C4,C4,D4,E4,E4,D4,E4,F4,G4,C5,C5,C5,G4,G4,G4,E4,E4,E4,C4,C4,C4,G4,F4,E4,D4,C4],
+    [0,0,0,1,2,2,1,2,1,3,0,0,0,3,3,3,2,2,2,0,0,0,3,1,2,1,0],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
+  // ── Three Blind Mice ──
+  var mice=rhyme("Three Blind Mice","English (1609)",75,
+    [E4,D4,C4,E4,D4,C4,G4,F4,E4,G4,F4,E4,G4,A4,G4,F4,E4,D4,G4,A4,G4,F4,E4,D4,C4],
+    [2,1,0,2,1,0,3,1,2,3,1,2,3,0,3,1,2,1,3,0,3,1,2,1,0],
+    [2,2,4,2,2,4,2,2,4,2,2,4,2,2,2,2,2,4,2,2,2,2,2,2,6],
+    3,C4);
+  // ── Itsy Bitsy Spider ──
+  var spider=rhyme("Itsy Bitsy Spider","English (1910s)",75,
+    [G4,C5,C5,C5,D5,E5,E5,D5,C5,D5,E5,C5,E5,E5,D5,D5,C5,G4,C5,C5,C5,D5,E5,E5,D5,C5,D5,E5,C5],
+    [3,0,0,0,1,2,2,1,0,1,2,0,2,2,1,1,0,3,0,0,0,1,2,2,1,0,1,2,0],
+    [2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,2,6],
+    3,C4);
+  // ── Pop Goes the Weasel ──
+  var weasel=rhyme("Pop Goes the Weasel","English (1850s)",85,
+    [C4,E4,E4,F4,G4,G4,C4,E4,E4,D4,F4,A4,A4,G4,C4,E4,E4,F4,G4,G4,E4,C4,D4,F4,E4,C4],
+    [0,2,2,1,3,3,0,2,2,1,1,0,0,3,0,2,2,1,3,3,2,0,1,1,2,0],
+    [2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
+  // ── Hot Cross Buns ──
+  var hotcross=rhyme("Hot Cross Buns","English (1798)",65,
+    [E4,D4,C4,E4,D4,C4,C4,C4,C4,C4,D4,D4,D4,D4,E4,D4,C4],
+    [2,1,0,2,1,0,0,0,0,0,1,1,1,1,2,1,0],
+    [2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,2,6],
+    4,C4);
+  // ── Jack and Jill ──
+  var jack=rhyme("Jack and Jill","English (1765)",80,
+    [C4,C4,D4,E4,E4,F4,G4,G4,F4,E4,F4,G4,A4,A4,G4,F4,E4,D4,C4],
+    [0,0,1,2,2,1,3,3,1,2,1,3,0,0,3,1,2,1,0],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,4,2,2,2,2,6],
+    3,C4);
+  // ── Humpty Dumpty ──
+  var humpty=rhyme("Humpty Dumpty","English (1797)",75,
+    [E4,G4,A4,G4,F4,E4,D4,E4,F4,E4,D4,C4,E4,G4,A4,G4,F4,E4,D4,C4],
+    [2,3,0,3,1,2,1,2,1,2,1,0,2,3,0,3,1,2,1,0],
+    [2,2,4,2,2,2,4,2,2,2,2,4,2,2,4,2,2,2,2,6],
+    3,C4);
+  // ── Baa Baa Black Sheep (same melody as Twinkle Twinkle) ──
+  var baa=rhyme("Baa Baa Black Sheep","English (1731)",80,
+    [C4,C4,G4,G4,A4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,G4,F4,F4,F4,E4,E4,E4,D4,D4,D4,C4],
+    [0,0,3,3,0,0,0,3,1,1,2,2,1,1,0,3,3,3,1,1,1,2,2,2,1,1,1,0],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
+  // ── Classics (from Prime, simple versions) ──
+  var twinkle=rhyme("Twinkle Twinkle Little Star","Traditional (1760s)",75,
+    [C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4,G4,G4,F4,F4,E4,E4,D4,C4,C4,G4,G4,A4,A4,G4,F4,F4,E4,E4,D4,D4,C4],
+    [0,0,3,3,0,0,3,1,1,2,2,1,1,0,3,3,1,1,2,2,1,0,0,3,3,0,0,3,1,1,2,2,1,1,0],
+    [2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,2,6],
+    3,C4);
+  var mary=rhyme("Mary Had a Little Lamb","S.J. Hale (1830)",80,
+    [E4,D4,C4,D4,E4,E4,E4,D4,D4,D4,E4,G4,G4,E4,D4,C4,D4,E4,E4,E4,D4,D4,E4,D4,C4],
+    [2,1,0,1,2,2,2,1,1,1,2,3,3,2,1,0,1,2,2,2,1,1,2,1,0],
+    [2,2,2,2,2,2,4,2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
+  var birthday=rhyme("Happy Birthday","P.S. Hill (1893)",75,
+    [C4,C4,D4,C4,F4,E4,C4,C4,D4,C4,G4,F4,C4,C4,C5,A4,F4,E4,D4,Bb4,Bb4,A4,F4,G4,F4],
+    [0,0,1,0,1,2,0,0,1,0,3,1,0,0,0,0,1,2,1,2,2,0,1,3,1],
+    [1,1,2,2,2,4,1,1,2,2,2,4,1,1,2,2,2,2,4,1,1,2,2,2,6],
+    3,C4);
+  var chopsticks=rhyme("Chopsticks","Euphemia Allen (1877)",95,
+    [F4,G4,F4,G4,F4,G4,E4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4,F4,G4,F4,G4,E4,G4,E4,G4,D4,F4,D4,F4,C4,E4,C4,E4],
+    [1,3,1,3,1,3,2,3,2,3,2,3,1,1,1,1,0,2,0,2,1,3,1,3,2,3,2,3,1,1,1,1,0,2,0,2],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,8],
+    3,C4);
+  var lavender=rhyme("Lavender's Blue","English Traditional (1670s)",80,
+    [E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,F4,E4,D4,E4,E4,E4,D4,E4,F4,G4,G4,A4,G4,F4,E4],
+    [2,2,1,2,1,3,3,0,3,1,1,2,1,2,2,2,1,2,1,3,3,0,3,1,2],
+    [2,2,2,2,2,2,2,2,2,4,2,2,2,4,2,2,2,2,2,2,2,2,2,2,6],
+    3,C4);
+  var shortnin=rhyme("Shortnin' Bread","Traditional (1900s)",95,
+    [E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,A4,G4,E5,E5,D5,C5,D5,C5,A4,G4,A4,G4,C5],
+    [2,2,1,0,1,0,0,3,0,3,0,3,2,2,1,0,1,0,0,3,0,3,0],
+    [2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,4,2,2,2,8],
+    3,C4);
+  return [baa,london,macdonald,row,mice,spider,weasel,hotcross,jack,humpty,twinkle,mary,birthday,chopsticks,lavender,shortnin];
+})();
 
+// ── RAGTIME (Scott Joplin & contemporaries, all public domain) ──
+const RAGTIME_PIECES=(function(){
+  var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,A3=NT.A3,Bb3=NT.Bb3,B3=NT.B3,
+    C4=NT.C4,D4=NT.D4,Eb4=NT.Eb4,E4=NT.E4,F4=NT.F4,G4=NT.G4,Ab4=NT.Ab4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
+    C5=NT.C5,D5=NT.D5,Eb5=NT.Eb5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
+  function rag(name,composer,bpm,theme,lanes,durations,passes,root){
+    var bg=[],mel=[],t=0,q=30/bpm;
+    for(var rep=0;rep<passes;rep++){
+      var v=0.2+rep*0.08;
+      // Ragtime uses piano-like timbres: strings for right hand, bass for left
+      var inst=rep%2===0?'strings':'woodwind';
+      theme.forEach(function(f,i){
+        var d=(durations?durations[i]:1)*q;
+        bg.push({t:t,f:f,d:d*0.8,i:inst,v:v});
+        // Stride bass pattern: root on beats, fifth on off-beats
+        if(i%4===0)bg.push({t:t,f:(root||theme[0])/2,d:d*0.6,i:'bass',v:v*0.5});
+        if(i%4===2)bg.push({t:t,f:(root||theme[0])*3/4,d:d*0.6,i:'bass',v:v*0.4});
+        mel.push({t:t,l:lanes[i]});t+=d;
+      });
+      t+=0.3;
+    }
+    var r=root||theme[0];
+    [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'strings',v:0.5});});
+    bg.push({t:t,f:r/2,d:1.5,i:'bass',v:0.5});mel.push({t:t,l:4});
+    return {n:name,composer:composer,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+  }
+
+  // ── The Entertainer — A section (most famous part) ──
+  var entertainer=rag("The Entertainer","Scott Joplin (1902)",130,
+    [D4,Eb4,E4,C5,E4,C5,E4,C5,C5,D5,Eb5,E5,C5,D5,E5,C5,D5,Eb5,E5,C5,E4,C5,E4,C5,A4,G4,A4,B4,C5],
+    [1,2,2,0,2,0,2,0,0,1,2,2,0,1,2,0,1,2,2,0,2,0,2,0,0,3,0,3,0],
+    [2,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,4,2,2,2,2,2,2,2,2,6],
+    4,C4);
+
+  // ── Maple Leaf Rag — A section ──
+  var maple=rag("Maple Leaf Rag","Scott Joplin (1899)",140,
+    [Ab4,A4,C5,E5,C5,A4,C5,A4,Ab4,A4,C5,E5,D5,C5,A4,G4,Ab4,A4,C5,E5,C5,A4,C5,A4,G4,A4,G4,E4,C4],
+    [0,0,0,2,0,0,0,0,0,0,0,2,1,0,0,3,0,0,0,2,0,0,0,0,3,0,3,2,0],
+    [2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,4,2,2,2,2,8],
+    4,A4);
+
+  // ── The Easy Winners — A section ──
+  var easyw=rag("The Easy Winners","Scott Joplin (1901)",125,
+    [G4,B4,D5,B4,A4,G4,E4,G4,A4,B4,C5,D5,E5,D5,C5,B4,A4,G4,B4,D5,B4,A4,G4,E4,D4,E4,G4],
+    [3,3,1,3,0,3,2,3,0,3,0,1,2,1,0,3,0,3,3,1,3,0,3,2,1,2,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,6],
+    4,G4);
+
+  // ── Elite Syncopations — A section ──
+  var elite=rag("Elite Syncopations","Scott Joplin (1902)",130,
+    [E4,G4,A4,B4,C5,D5,E5,D5,C5,B4,A4,G4,E4,G4,A4,B4,C5,E5,D5,C5,B4,A4,G4,E4,D4,C4],
+    [2,3,0,3,0,1,2,1,0,3,0,3,2,3,0,3,0,2,1,0,3,0,3,2,1,0],
+    [2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    4,C4);
+
+  // ── Solace — A section (a Mexican serenade, slower ragtime) ──
+  var solace=rag("Solace","Scott Joplin (1909)",95,
+    [A4,G4,A4,C5,B4,A4,G4,E4,D4,E4,G4,A4,B4,A4,G4,E4,A4,G4,A4,C5,D5,C5,B4,A4,G4,E4,D4,C4],
+    [0,3,0,0,3,0,3,2,1,2,3,0,3,0,3,2,0,3,0,0,1,0,3,0,3,2,1,0],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    4,A4);
+
+  // ── Peacherine Rag — A section ──
+  var peacherine=rag("Peacherine Rag","Scott Joplin (1901)",135,
+    [C5,C5,B4,C5,E5,D5,C5,A4,C5,C5,B4,C5,G4,A4,B4,C5,C5,B4,C5,E5,D5,C5,B4,A4,G4],
+    [0,0,3,0,2,1,0,0,0,0,3,0,3,0,3,0,0,3,0,2,1,0,3,0,3],
+    [2,2,2,4,2,2,2,4,2,2,2,4,2,2,2,2,2,2,4,2,2,2,2,2,8],
+    4,C4);
+
+  // ── The Cascades — A section ──
+  var cascades=rag("The Cascades","Scott Joplin (1904)",125,
+    [C5,B4,C5,E5,G5,E5,C5,D5,C5,B4,A4,G4,C5,B4,C5,E5,G5,E5,C5,D5,E5,D5,C5,B4,C5],
+    [0,3,0,2,3,2,0,1,0,3,0,3,0,3,0,2,3,2,0,1,2,1,0,3,0],
+    [2,2,4,2,2,2,2,2,2,2,2,4,2,2,4,2,2,2,2,2,2,2,2,2,6],
+    4,C4);
+
+  // ── Pineapple Rag — A section ──
+  var pineapple=rag("Pineapple Rag","Scott Joplin (1908)",130,
+    [C4,E4,G4,C5,E5,C5,G4,E4,C4,E4,G4,B4,D5,B4,G4,E4,C4,E4,G4,C5,E5,D5,C5,B4,A4,G4,C5],
+    [0,2,3,0,2,0,3,2,0,2,3,3,1,3,3,2,0,2,3,0,2,1,0,3,0,3,0],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6],
+    4,C4);
+
+  return [entertainer,maple,easyw,elite,solace,peacherine,cascades,pineapple];
+})();
+
+var SYNTH_GENRES={"Nursery Rhymes":NURSERY_PIECES,"Singalong":SINGALONG_PIECES,"Christmas":CHRISTMAS_PIECES,"Folk":FOLK_PIECES,"Spirituals":SPIRITUAL_PIECES,"World":WORLD_PIECES,"Ragtime":RAGTIME_PIECES,"Classical":CLASSICAL_PIECES,"Video Games":VIDEOGAME_PIECES,"Chiptune Originals":CHIPTUNE_PIECES};
+
+function simplifyNotes(notes){
+  if(!simpleMode||notes.length<2)return notes;
+  // Keep roughly half the notes — enforce a minimum gap between consecutive notes
+  var sorted=notes.slice().sort(function(a,b){return a.time-b.time;});
+  var minGap=0.35/gameSpeed; // ~350ms minimum between notes in simple mode
+  var result=[sorted[0]];
+  for(var i=1;i<sorted.length;i++){
+    if(sorted[i].time-result[result.length-1].time>=minGap){
+      result.push(sorted[i]);
+    }
+  }
+  return result;
+}
 function buildClassicalNotes(piece){
   // Check for saved melody edits
   var saved=edLoadSaved(piece.n);
@@ -3139,6 +4544,7 @@ function buildClassicalNotes(piece){
       return{time:m.t/gameSpeed,lane:m.l,freq:freq,hit:false,missed:false};
     })
     .sort(function(a,b){return a.time-b.time;});
+  return simplifyNotes(raw);
 }
 
 function beginClassical(){
@@ -3163,9 +4569,9 @@ let gameAc=null,mp3Buffer=null,mp3Src=null;
 let notes=[],gameStartTime=null,gameEndTime=null,playing=false;
 let gamePlayers=[],activePIdx=0;
 let cScore=0,cStreak=0,cTotal=0,cGood=0,cMaxStreak=0;
-let laneFlash=[0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[],classicalHitMode='orchestra';
+let laneFlash=[0,0,0,0,0,0,0,0],msgTmr=null,prevBtns={},gameSynthNodes=[],classicalHitMode='orchestra';
 let paused=false,pauseTime=0;
-var gpMap=JSON.parse(localStorage.getItem("drgameGpMap")||"null")||{0:2,1:3,2:0,3:1,4:4,8:4};
+var gpMap=JSON.parse(localStorage.getItem("drgameGpMap")||"null")||{0:2,1:3,2:0,3:1,4:4,5:5,6:6,7:7,8:4};
 var remapping=false,remapStep=0,remapResult={};
 var _savedSettings=JSON.parse(localStorage.getItem("drgameSettings")||"{}");
 var gameSpeed=_savedSettings.speed||1.0,masterVolume=_savedSettings.volume||1.0;
@@ -3198,12 +4604,19 @@ function buildPadToggles(){
     const b=document.createElement("button");
     b.className="ptog"+(activePads[i]?" on":"");
     b.style.borderColor=lane.color;b.style.color=lane.color;
-    b.textContent=lane.label+(i===4?" (Kick)":"");
+    b.textContent=lane.label;
     b.onclick=()=>{activePads[i]=!activePads[i];buildPadToggles();};
     el.appendChild(b);
   });
 }
 buildPadToggles();
+function setSimpleMode(on){
+  simpleMode=on;
+  var full=document.getElementById("density-full"),simple=document.getElementById("density-simple");
+  if(full){full.className="smbtn"+(on?"":" purple");}
+  if(simple){simple.className="smbtn"+(on?" purple":"");}
+}
+setSimpleMode(false);
 function saveSettings(){localStorage.setItem("drgameSettings",JSON.stringify({speed:gameSpeed,volume:masterVolume}));}
 function syncSliders(){
   var sv=Math.round(gameSpeed*100),vv=Math.round(masterVolume*100);
@@ -3223,8 +4636,9 @@ function confirmReset(){
   if(ans===null)return;
   if(parseInt(ans)===a+b){
     localStorage.removeItem("drgame5");localStorage.removeItem("drgameSettings");
-    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameHidden");localStorage.removeItem("drgameHiddenSongs");
-    savedScores=[];hiddenGenres=[];hiddenSongs={};gpMap={0:2,1:3,2:0,3:1,4:4,8:4};
+    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameKeyMap");localStorage.removeItem("drgameHidden");localStorage.removeItem("drgameHiddenSongs");
+    savedScores=[];hiddenGenres=[];hiddenSongs={};gpMap={0:2,1:3,2:0,3:1,4:4,5:5,6:6,7:7,8:4};customKeyMap=null;
+    LANES[0].key="f";LANES[1].key="g";LANES[2].key="h";LANES[3].key="j";LANES[4].key=" ";LANES[5].key="d";LANES[6].key="k";LANES[7].key="l";
     refreshMiniLB();resetSettings();buildMenu();
     alert("All data cleared!");
   } else {alert("Incorrect — data NOT cleared.");}
@@ -3247,7 +4661,7 @@ function updateHitModeVisibility(){
 // ── MENU ───────────────────────────────────────────────
 function buildMenu(){
   const gt=document.getElementById("gtabs");gt.innerHTML="";
-  var synthIcons={"Singalong":"\uD83C\uDFB5","Christmas":"\uD83C\uDF84","Folk":"\uD83C\uDFB6","Spirituals":"\uD83D\uDE4F","World":"\uD83C\uDF0D","Classical":"\uD83C\uDFBB","Video Games":"\uD83C\uDFAE","Chiptune Originals":"\uD83D\uDC7E"};
+  var synthIcons={"Nursery Rhymes":"\uD83E\uDDD2","Singalong":"\uD83C\uDFB5","Christmas":"\uD83C\uDF84","Folk":"\uD83C\uDFB6","Spirituals":"\uD83D\uDE4F","World":"\uD83C\uDF0D","Ragtime":"\uD83C\uDFB9","Classical":"\uD83C\uDFBB","Video Games":"\uD83C\uDFAE","Chiptune Originals":"\uD83D\uDC7E"};
   var allGenres=Object.keys(SYNTH_GENRES).concat(Object.keys(GENRES));
   var anyHidden=hiddenGenres.length>0;
   allGenres.forEach(function(g){
@@ -3852,7 +5266,8 @@ function buildNotes(r){
     for(const p of pattern)
       if(activePads[p.l])
         res.push({time:(bar*4+p.t)*bs,lane:p.l,hit:false,missed:false});
-  return res.sort((a,b)=>a.time-b.time);
+  var sorted=res.sort((a,b)=>a.time-b.time);
+  return simplifyNotes(sorted);
 }
 
 function countdown(cb){
@@ -3965,34 +5380,35 @@ function draw(){
   if(!W||!H)return;
   cx.clearRect(0,0,W,H);
 
-  // Active pad lanes (only those toggled on, excluding kick)
-  const activeLanes=LANES.slice(0,4).map((l,i)=>i).filter(i=>activePads[i]);
+  // Pad lanes (everything except kick) in columns; kick centered at bottom
+  const padLanes=LANES.map((l,i)=>i).filter(i=>i!==4&&activePads[i]);
   const hasKick=activePads[4];
   const PAD_H=hasKick?Math.floor(H*0.78):H;
   const KICK_H=H-PAD_H;
-  const nLanes=activeLanes.length;
-  const PAD_W=nLanes>0?W/nLanes:W;
+  const nLanes=padLanes.length;
+  const LANE_W=nLanes>0?W/nLanes:W;
   const HIT_Y=Math.floor(PAD_H*0.76);
   const KICK_HIT_Y=PAD_H+Math.floor(KICK_H*0.55);
   const now=(playing&&gameStartTime!=null)?getAc().currentTime-gameStartTime:-9999;
 
   // Lane positions map: lane index -> x center
   const laneX={};
-  activeLanes.forEach((li,col)=>{laneX[li]=col*PAD_W+PAD_W/2;});
+  padLanes.forEach((li,col)=>{laneX[li]=col*LANE_W+LANE_W/2;});
 
   // Draw pad lanes
-  activeLanes.forEach((li,col)=>{
-    const x=col*PAD_W;
+  padLanes.forEach((li,col)=>{
+    const x=col*LANE_W;
     cx.fillStyle=laneFlash[li]?LANES[li].color+"33":"#0d0d16";
-    cx.fillRect(x,0,PAD_W,PAD_H);
+    cx.fillRect(x,0,LANE_W,PAD_H);
     if(col>0){cx.strokeStyle="#1e1e2e";cx.lineWidth=1;cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,PAD_H);cx.stroke();}
     cx.fillStyle=LANES[li].color;cx.font="bold 12px sans-serif";cx.textAlign="center";
-    cx.fillText(LANES[li].label,x+PAD_W/2,PAD_H-20);
+    cx.fillText(LANES[li].label,x+LANE_W/2,PAD_H-20);
     cx.fillStyle="#999";cx.font="10px sans-serif";
-    cx.fillText(LANES[li].key.toUpperCase(),x+PAD_W/2,PAD_H-7);
+    var keyLabel=LANES[li].key===" "?"SPACE":LANES[li].key.toUpperCase();
+    cx.fillText(keyLabel,x+LANE_W/2,PAD_H-7);
   });
 
-  // Kick zone
+  // Kick zone — centered at bottom, notes fall from top of screen
   if(hasKick){
     cx.fillStyle=laneFlash[4]?LANES[4].color+"33":"#0a0a12";
     cx.fillRect(0,PAD_H,W,KICK_H);
@@ -4005,7 +5421,7 @@ function draw(){
 
   if(nLanes===0&&!hasKick)return;
 
-  // Hit line
+  // Pad hit line
   if(nLanes>0){
     cx.strokeStyle="rgba(255,255,255,0.5)";cx.lineWidth=2;
     cx.beginPath();cx.moveTo(0,HIT_Y);cx.lineTo(W,HIT_Y);cx.stroke();
@@ -4019,9 +5435,9 @@ function draw(){
     cx.beginPath();cx.moveTo(W*0.15,KICK_HIT_Y);cx.lineTo(W*0.85,KICK_HIT_Y);cx.stroke();
   }
 
-  // Target rings — pads
-  activeLanes.forEach(li=>{
-    const x=laneX[li],r=Math.min(PAD_W*0.33,26);
+  // Target rings — pad lanes
+  padLanes.forEach(li=>{
+    const x=laneX[li],r=Math.min(LANE_W*0.33,26);
     cx.beginPath();cx.arc(x,HIT_Y,r,0,Math.PI*2);
     cx.strokeStyle=laneFlash[li]?LANES[li].color:LANES[li].color+"55";
     cx.lineWidth=laneFlash[li]?3:2;cx.stroke();
@@ -4041,30 +5457,16 @@ function draw(){
     if(notes.length===0||notes.every(n=>n.hit||n.missed))endTurn();
   }
 
-  // Notes
+  // Notes — pad lanes fall in columns, kick falls centered from top
   if(mode==="builtin"&&now>-9000){
     for(const n of notes){
       if(n.hit)continue;
       const dt=n.time-now;
-      if(n.lane<4){
-        if(!laneX.hasOwnProperty(n.lane))continue;
-        const ny=HIT_Y-dt*SPEED;
-        if(ny<-40||ny>PAD_H+40){
-          if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
-          continue;
-        }
-        const x=laneX[n.lane],r=Math.min(PAD_W*0.33,26);
-        cx.globalAlpha=n.missed?0.2:1;
-        const g=cx.createRadialGradient(x,ny,0,x,ny,r*2);
-        g.addColorStop(0,LANES[n.lane].color+"aa");g.addColorStop(1,LANES[n.lane].color+"00");
-        cx.fillStyle=g;cx.beginPath();cx.arc(x,ny,r*2,0,Math.PI*2);cx.fill();
-        cx.fillStyle=LANES[n.lane].color;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.fill();
-        cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.stroke();
-        cx.globalAlpha=1;
-        if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
-      } else if(hasKick){
-        const ky=KICK_HIT_Y-dt*SPEED*0.5;
-        if(ky<PAD_H-30||ky>H+30){
+      if(n.lane===4){
+        // Kick — falls from top of screen, centered, landing on KICK_HIT_Y
+        if(!hasKick)continue;
+        const ky=KICK_HIT_Y-dt*SPEED;
+        if(ky<-40||ky>H+40){
           if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
           continue;
         }
@@ -4072,6 +5474,23 @@ function draw(){
         cx.globalAlpha=n.missed?0.2:1;
         cx.fillStyle=LANES[4].color;cx.beginPath();cx.arc(W/2,ky,kr,0,Math.PI*2);cx.fill();
         cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(W/2,ky,kr,0,Math.PI*2);cx.stroke();
+        cx.globalAlpha=1;
+        if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+      } else {
+        // Pad lanes — fall in columns
+        if(!laneX.hasOwnProperty(n.lane))continue;
+        const ny=HIT_Y-dt*SPEED;
+        if(ny<-40||ny>PAD_H+40){
+          if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
+          continue;
+        }
+        const x=laneX[n.lane],r=Math.min(LANE_W*0.33,26);
+        cx.globalAlpha=n.missed?0.2:1;
+        const g=cx.createRadialGradient(x,ny,0,x,ny,r*2);
+        g.addColorStop(0,LANES[n.lane].color+"aa");g.addColorStop(1,LANES[n.lane].color+"00");
+        cx.fillStyle=g;cx.beginPath();cx.arc(x,ny,r*2,0,Math.PI*2);cx.fill();
+        cx.fillStyle=LANES[n.lane].color;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.fill();
+        cx.strokeStyle="#fff";cx.lineWidth=2;cx.beginPath();cx.arc(x,ny,r,0,Math.PI*2);cx.stroke();
         cx.globalAlpha=1;
         if(!n.missed&&dt<-HIT_WIN){n.missed=true;if(cStreak>0){cStreak=0;updateHud();}}
       }
@@ -4109,8 +5528,29 @@ function playDrumAt(ac,lane,t,vol,arr){
     f.type="highpass";f.frequency.value=7000;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
     g.gain.setValueAtTime(vol*.5,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
     s.start(t);s.stop(t+0.06);mk(s);
-  } else { // tom / tom2
-    const freq=type==="tom"?160:120;
+  } else if(type==="crash"){
+    // Crash cymbal — long noise burst with resonance
+    const sz=ac.sampleRate*0.4,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
+    const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+    f.type="bandpass";f.frequency.value=4000;f.Q.value=0.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(vol*.6,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+    s.start(t);s.stop(t+0.45);mk(s);
+  } else if(type==="ride"){
+    // Ride cymbal — shorter metallic ping
+    const sz=ac.sampleRate*0.15,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
+    const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+    f.type="bandpass";f.frequency.value=6000;f.Q.value=1.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(vol*.45,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+    s.start(t);s.stop(t+0.15);mk(s);
+    // Add a subtle pitched ping
+    const o=ac.createOscillator(),g2=ac.createGain();
+    o.type="triangle";o.connect(g2);g2.connect(ac.destination);o.frequency.value=800;
+    g2.gain.setValueAtTime(vol*.15,t);g2.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+    o.start(t);o.stop(t+0.1);mk(o);
+  } else { // tom / tom2 / tom3
+    const freq=type==="tom"?160:type==="tom2"?120:90;
     const o=ac.createOscillator(),g=ac.createGain();
     o.connect(g);g.connect(ac.destination);
     o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*0.4,t+0.2);
@@ -4135,7 +5575,7 @@ function togglePause(){
 }
 
 // ── REMAP ─────────────────────────────────────────────
-var remapLanes=[{l:0,name:"RED",color:"#e53e3e"},{l:1,name:"YELLOW",color:"#d69e2e"},{l:2,name:"BLUE",color:"#3182ce"},{l:3,name:"GREEN",color:"#38a169"},{l:4,name:"KICK",color:"#805ad5"}];
+var remapLanes=LANES.map(function(ln,i){return{l:i,name:ln.label.toUpperCase(),color:ln.color};});
 function startRemap(){
   remapping=true;remapStep=0;remapResult={};
   document.getElementById("remap-overlay").classList.add("show");
@@ -4170,19 +5610,87 @@ function handleRemapButton(bi){
   return true;
 }
 
+// ── KEYBOARD REMAP ────────────────────────────────────
+var keyRemapping=false,keyRemapStep=0,keyRemapResult={};
+var customKeyMap=JSON.parse(localStorage.getItem("drgameKeyMap")||"null");
+// Apply saved key mappings on load
+if(customKeyMap){
+  LANES.forEach(function(ln,i){if(customKeyMap[i]!==undefined)ln.key=customKeyMap[i];});
+}
+function startKeyRemap(){
+  keyRemapping=true;keyRemapStep=0;keyRemapResult={};
+  document.getElementById("keyremap-overlay").classList.add("show");
+  showKeyRemapStep();
+}
+function cancelKeyRemap(){
+  keyRemapping=false;document.getElementById("keyremap-overlay").classList.remove("show");
+}
+function showKeyRemapStep(){
+  if(keyRemapStep>=LANES.length){
+    // Done — apply and save
+    LANES.forEach(function(ln,i){if(keyRemapResult[i]!==undefined)ln.key=keyRemapResult[i];});
+    var map={};LANES.forEach(function(ln,i){map[i]=ln.key;});
+    localStorage.setItem("drgameKeyMap",JSON.stringify(map));
+    customKeyMap=map;
+    keyRemapping=false;
+    document.getElementById("keyremap-overlay").classList.remove("show");
+    buildPadToggles();
+    return;
+  }
+  var ln=LANES[keyRemapStep];
+  document.getElementById("keyremap-prompt").innerHTML="Press key for <span style='color:"+ln.color+";font-size:24px'>"+ln.label.toUpperCase()+"</span>";
+  document.getElementById("keyremap-status").textContent="Step "+(keyRemapStep+1)+" of "+LANES.length+" (press any key)";
+}
+var keyRemapCooldown=false;
+window.addEventListener("keydown",function(e){
+  if(keyRemapping){
+    if(e.key==="Escape"){cancelKeyRemap();e.preventDefault();return;}
+    if(keyRemapCooldown)return;
+    e.preventDefault();
+    keyRemapResult[keyRemapStep]=e.key===" "?" ":e.key.toLowerCase();
+    keyRemapStep++;
+    keyRemapCooldown=true;
+    setTimeout(function(){keyRemapCooldown=false;},300);
+    showKeyRemapStep();
+    return;
+  }
+},true);
+
 // ── INPUT ──────────────────────────────────────────────
 window.addEventListener("keydown",e=>{
+  if(keyRemapping)return;
   if(e.key==="Escape"){e.preventDefault();togglePause();return;}
   if(paused)return;
   const i=LANES.findIndex(l=>l.key===e.key.toLowerCase()||(l.key===" "&&e.key===" "));
   if(i>=0){e.preventDefault();triggerPad(i);}
 });
+
+// ── GAMEPAD AUTO-DETECT ──────────────────────────────
+var gpAutoDetected=false;
+function autoDetectGamepad(gp){
+  if(gpAutoDetected)return;
+  gpAutoDetected=true;
+  var nButtons=gp.buttons.length;
+  // Enable lanes based on detected button count (5 = standard Rock Band, more = extended kit)
+  var lanesToEnable=Math.min(nButtons,LANES.length);
+  // Always enable at least the first 5 (standard kit) if we have 5+ buttons
+  if(lanesToEnable>=5){
+    for(var i=0;i<5;i++)activePads[i]=true;
+    // Enable extra lanes for extended kits (6+ buttons)
+    for(var j=5;j<lanesToEnable;j++)activePads[j]=true;
+  }
+  buildPadToggles();
+  var gpd=document.getElementById("gpd");
+  if(gpd)gpd.textContent="🎮 "+gp.id.slice(0,25)+" ("+nButtons+" buttons)";
+}
+
 function pollGP(){
   const gps=navigator.getGamepads?navigator.getGamepads():[];
   let found=false;
   for(const gp of gps){
     if(!gp)continue;found=true;
-    document.getElementById("gpd").textContent="🎮 "+gp.id.slice(0,20);
+    if(!gpAutoDetected)autoDetectGamepad(gp);
+    else document.getElementById("gpd").textContent="🎮 "+gp.id.slice(0,20);
     var remapHandled=false;
     gp.buttons.forEach((btn,bi)=>{
       if(btn.pressed&&!prevBtns[bi]){
