@@ -3971,11 +3971,93 @@ const SINGALONG_PIECES=(function(){
     bg.push({t:t,f:r/2,d:1.5,i:'timpani',v:0.55});mel.push({t:t,l:4});
     return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
   }
-  var drunken=pub("Drunken Sailor","Sea Shanty (Trad.)",140,
-    [D4,D4,D4,D4,E4,F4,D4,D4,D4,D4,E4,D4,C4,D4,D4,D4,E4,F4,D4,D4,F4,E4,C4,A3,D4,D4,D4,D4,F4,A4,A4,G4,F4,E4,D4,C4,D4],
-    [0,0,0,0,2,1,0,0,0,0,2,0,1,0,0,0,2,1,0,0,1,2,1,0,0,0,0,0,1,0,0,3,1,2,0,1,0],
-    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,2,2,2,2,2,2,2,2,2,2,2,8],
-    4,D4);
+  var drunken=(function(){
+    // Accurate "What Shall We Do With A Drunken Sailor" from sheet music
+    // D minor, 4/4, ~140 BPM
+    var bg=[],mel=[],t=0,q=60/140; // quarter note duration at 140 bpm
+    var e=q/2; // eighth note
+    function note(f,dur,lane,inst,v){
+      bg.push({t:t,f:f,d:dur*0.85,i:inst||'strings',v:v||0.35});
+      mel.push({t:t,l:lane});
+      t+=dur;
+    }
+    function chord(fs,dur,inst,v){
+      fs.forEach(function(f){bg.push({t:t,f:f,d:dur*0.85,i:inst||'strings',v:v||0.25});});
+    }
+    function rest(dur){t+=dur;}
+
+    for(var pass=0;pass<3;pass++){
+      var v=0.25+pass*0.1;
+      var inst=pass===0?'woodwind':pass===1?'strings':'brass';
+      // Add bass + chord backing
+      if(pass>0){
+        var ct=t;
+        // Am chord backing per measure (8 measures per verse+chorus)
+        var chords=[[A3,C4,E4],[A3,C4,E4],[G3,B3,D4],[G3,B3,D4],
+                    [A3,C4,E4],[A3,C4,E4],[C4,E4,G4],[D4,F4,A4]];
+        chords.forEach(function(ch,ci){
+          ch.forEach(function(f){bg.push({t:ct+ci*q*4,f:f,d:q*3.5,i:'strings',v:v*0.3});});
+          bg.push({t:ct+ci*q*4,f:ch[0]/2,d:q*3.5,i:'bass',v:v*0.35});
+        });
+      }
+
+      // M1-2: "What shall we do with a drunken sailor?" (Am)
+      // A A A, A A A, A A, D F A
+      note(A4,e,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,e,0,inst,v);
+      note(D4,q,1,inst,v); note(F4,q,1,inst,v); note(A4,q*2,0,inst,v);
+
+      // M3-4: "What shall we do with a drunken sailor?" (G)
+      note(G4,e,3,inst,v); note(G4,e,3,inst,v); note(G4,e,3,inst,v);
+      note(G4,e,3,inst,v); note(G4,e,3,inst,v);
+      note(G4,e,3,inst,v); note(G4,e,3,inst,v);
+      note(G4,e,3,inst,v);
+      note(C4,q,2,inst,v); note(E4,q,2,inst,v); note(G4,q*2,3,inst,v);
+
+      // M5-6: "What shall we do with a drunken sailor" (Am)
+      note(A4,e,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,e,0,inst,v);
+      note(B4,q,3,inst,v); note(C5,q,1,inst,v); note(D5,q*2,1,inst,v);
+
+      // M7-8: "early in the morning?" (C-A-G-E-D-D)
+      note(C5,q,0,inst,v); note(A4,q,0,inst,v);
+      note(G4,q,3,inst,v); note(E4,q,2,inst,v);
+      note(D4,q*2,1,inst,v); note(D4,q*2,1,inst,v);
+
+      // M9-10: "Way hey and up she ri-ses" (chorus)
+      note(A4,q*2,0,inst,v*1.2);
+      note(A4,q+e,0,inst,v*1.2); note(A4,e,0,inst,v*1.2);
+      note(A4,q,0,inst,v*1.2); note(D4,q,1,inst,v*1.2);
+      note(F4,q,1,inst,v*1.2); note(A4,q,0,inst,v*1.2);
+
+      // M11-12: "Way hey and up she ri-ses" (on G)
+      note(G4,q*2,3,inst,v*1.2);
+      note(G4,q+e,3,inst,v*1.2); note(G4,e,3,inst,v*1.2);
+      note(G4,q,3,inst,v*1.2); note(C4,q,2,inst,v*1.2);
+      note(E4,q,2,inst,v*1.2); note(G4,q,3,inst,v*1.2);
+
+      // M13-14: "Way hey and up she ri-ses"
+      note(A4,q*2,0,inst,v*1.2);
+      note(A4,q+e,0,inst,v*1.2); note(A4,e,0,inst,v*1.2);
+      note(A4,q,0,inst,v*1.2); note(B4,q,3,inst,v*1.2);
+      note(C5,q,1,inst,v*1.2); note(D5,q,1,inst,v*1.2);
+
+      // M15-16: "Ear-ly in the morning" (ending)
+      note(C5,q,0,inst,v*1.2); note(A4,q,0,inst,v*1.2);
+      note(G4,q,3,inst,v*1.2); note(E4,q,2,inst,v*1.2);
+      note(D4,q*2,1,inst,v*1.2); note(D4,q*2,1,inst,v*1.2);
+
+      t+=q; // small gap between passes
+    }
+    // Finale chord
+    [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'brass',v:0.55});bg.push({t:t,f:f,d:2.5,i:'strings',v:0.4});});
+    bg.push({t:t,f:A3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
+    return {n:"Drunken Sailor",composer:"Sea Shanty (Trad.)",bpm:140,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+  })();
   var molly=pub("Molly Malone","Irish (1880s)",100,
     [C4,E4,E4,E4,F4,G4,G4,G4,A4,G4,F4,E4,D4,E4,F4,G4,A4,C5,C5,B4,A4,G4,F4,E4,D4,C4,E4,G4,C5,C5,B4,A4,G4,F4,E4,D4,C4],
     [0,2,2,2,1,3,3,3,0,3,1,2,1,2,1,3,0,0,0,3,0,3,1,2,1,0,2,3,0,0,3,0,3,1,2,1,0],
