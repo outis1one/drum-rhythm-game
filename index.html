@@ -195,6 +195,7 @@ canvas{display:block;}
     <button class="smbtn" onclick="closeEditor()">← Back</button>
     <span id="ed-title" style="font-weight:bold;color:#ccc;margin-right:8px;">Editing: —</span>
     <label style="color:#aaa;font-size:12px;">BPM: <input type="number" id="ed-bpm" value="120" min="30" max="300" style="width:55px;background:#1a1a2e;color:#fff;border:1px solid #444;padding:2px 4px;border-radius:3px;" onchange="edUpdateBpm()"></label>
+    <label style="color:#aaa;font-size:12px;">Time: <select id="ed-timesig" style="background:#1a1a2e;color:#fff;border:1px solid #444;padding:2px;border-radius:3px;font-size:12px;" onchange="edUpdateTimeSig()"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option><option>9/8</option><option>5/4</option><option>7/8</option><option>12/8</option></select></label>
     <label style="color:#aaa;font-size:12px;">Zoom: <input type="range" id="ed-zoom" min="20" max="200" value="80" style="width:80px;" oninput="edDraw()"></label>
     <button class="smbtn" onclick="edPreview()" id="ed-pv-btn">▶ Preview</button>
     <button class="smbtn" onclick="edSave()" style="background:#38a169;">💾 Save</button>
@@ -209,7 +210,7 @@ canvas{display:block;}
     <span id="ed-status" style="color:#888;font-size:11px;margin-left:auto;"></span>
   </div>
   <div id="ed-help" style="padding:4px 12px;background:#0d0d18;color:#666;font-size:11px;border-bottom:1px solid #222;">
-    Click=add | Click note=select | Drag=move | Drag right edge=resize duration | D=add duration | Shift+D=remove duration | Shift+drag=select range | Ctrl+C/V=copy/paste | Ctrl+A=select all | Esc=deselect | Del=delete | Scroll=pan
+    Click=add | Click note=select | Drag=move | Drag right edge=resize duration | 1-5=set note value (whole/half/quarter/eighth/sixteenth) | D=add duration | Shift+D=remove | Shift+drag=select range | Ctrl+C/V=copy/paste | Ctrl+A=select all | Esc=deselect | Del=delete | Scroll=pan | Dbl-click header=play from here
     <span id="ed-mode-label" style="margin-left:12px;color:#805ad5;"></span>
   </div>
   <div id="ed-code-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;max-height:200px;overflow:auto;">
@@ -3952,8 +3953,9 @@ const SINGALONG_PIECES=(function(){
   var C3=NT.C3,D3=NT.D3,E3=NT.E3,F3=NT.F3,G3=NT.G3,Ab3=NT.Ab3,A3=NT.A3,B3=NT.B3,
     C4=NT.C4,D4=NT.D4,E4=NT.E4,F4=NT.F4,G4=NT.G4,A4=NT.A4,Bb4=NT.Bb4,B4=NT.B4,
     C5=NT.C5,D5=NT.D5,E5=NT.E5,F5=NT.F5,G5=NT.G5;
-  function pub(name,origin,bpm,theme,lanes,durations,passes,root){
+  function pub(name,origin,bpm,theme,lanes,durations,passes,root,opts){
     var bg=[],mel=[],t=0,q=30/bpm;
+    var timeSig=(opts&&opts.timeSig)||[4,4];
     for(var rep=0;rep<passes;rep++){
       var v=0.22+rep*0.07;
       var inst=rep<Math.floor(passes*0.4)?'woodwind':rep<Math.floor(passes*0.7)?'strings':'brass';
@@ -3962,14 +3964,14 @@ const SINGALONG_PIECES=(function(){
         bg.push({t:t,f:f,d:d*0.85,i:inst,v:v});
         if(rep>1)bg.push({t:t,f:f/2,d:d*0.85,i:'bass',v:v*0.35});
         if(rep>Math.floor(passes*0.6))bg.push({t:t,f:f,d:d*0.85,i:'brass',v:v*0.4});
-        mel.push({t:t,l:lanes[i]});t+=d;
+        mel.push({t:t,l:lanes[i],d:d,f:f});t+=d;
       });
       t+=0.4;
     }
     var r=root||theme[0];
     [r,r*5/4,r*3/2,r*2].forEach(function(f){bg.push({t:t,f:f,d:2.0,i:'brass',v:0.5});bg.push({t:t,f:f,d:2.0,i:'strings',v:0.4});});
-    bg.push({t:t,f:r/2,d:1.5,i:'timpani',v:0.55});mel.push({t:t,l:4});
-    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,bg:bg,melody:mel};
+    bg.push({t:t,f:r/2,d:1.5,i:'timpani',v:0.55});mel.push({t:t,l:4,d:1.5});
+    return {n:name,composer:origin,bpm:bpm,duration:Math.ceil(t+2.5),isClassical:true,isSingalong:true,timeSig:timeSig,bg:bg,melody:mel};
   }
   var drunken=(function(){
     // Accurate "What Shall We Do With A Drunken Sailor" from sheet music
@@ -3978,7 +3980,7 @@ const SINGALONG_PIECES=(function(){
     var e=q/2; // eighth note
     function note(f,dur,lane,inst,v){
       bg.push({t:t,f:f,d:dur*0.85,i:inst||'strings',v:v||0.35});
-      mel.push({t:t,l:lane});
+      mel.push({t:t,l:lane,d:dur,f:f});
       t+=dur;
     }
     function chord(fs,dur,inst,v){
@@ -4002,28 +4004,24 @@ const SINGALONG_PIECES=(function(){
       }
 
       // M1-2: "What shall we do with a drunken sailor?" (Am)
-      // A A A, A A A, A A, D F A
-      note(A4,e,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
-      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
-      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
-      note(A4,e,0,inst,v);
-      note(D4,q,1,inst,v); note(F4,q,1,inst,v); note(A4,q*2,0,inst,v);
+      // Rhythm: q ee q ee | q q q q
+      note(A4,q,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,q,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(B4,q,3,inst,v); note(C5,q,1,inst,v); note(A4,q,0,inst,v); note(A4,q,0,inst,v);
 
       // M3-4: "What shall we do with a drunken sailor?" (G)
-      note(G4,e,3,inst,v); note(G4,e,3,inst,v); note(G4,e,3,inst,v);
-      note(G4,e,3,inst,v); note(G4,e,3,inst,v);
-      note(G4,e,3,inst,v); note(G4,e,3,inst,v);
-      note(G4,e,3,inst,v);
-      note(C4,q,2,inst,v); note(E4,q,2,inst,v); note(G4,q*2,3,inst,v);
+      // Rhythm: q ee q ee | q q q q
+      note(G4,q,3,inst,v); note(G4,e,3,inst,v); note(G4,e,3,inst,v);
+      note(G4,q,3,inst,v); note(G4,e,3,inst,v); note(G4,e,3,inst,v);
+      note(A4,q,0,inst,v); note(B4,q,3,inst,v); note(G4,q,3,inst,v); note(G4,q,3,inst,v);
 
       // M5-6: "What shall we do with a drunken sailor" (Am)
-      note(A4,e,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
-      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
-      note(A4,e,0,inst,v); note(A4,e,0,inst,v);
-      note(A4,e,0,inst,v);
-      note(B4,q,3,inst,v); note(C5,q,1,inst,v); note(D5,q*2,1,inst,v);
+      // Rhythm: q ee q ee | q q q q
+      note(A4,q,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(A4,q,0,inst,v); note(A4,e,0,inst,v); note(A4,e,0,inst,v);
+      note(B4,q,3,inst,v); note(C5,q,1,inst,v); note(D5,q,1,inst,v); note(D5,q,1,inst,v);
 
-      // M7-8: "early in the morning?" (C-A-G-E-D-D)
+      // M7-8: "early in the morning?" (C-A-G-E | D-D)
       note(C5,q,0,inst,v); note(A4,q,0,inst,v);
       note(G4,q,3,inst,v); note(E4,q,2,inst,v);
       note(D4,q*2,1,inst,v); note(D4,q*2,1,inst,v);
@@ -4056,7 +4054,7 @@ const SINGALONG_PIECES=(function(){
     // Finale chord
     [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'brass',v:0.55});bg.push({t:t,f:f,d:2.5,i:'strings',v:0.4});});
     bg.push({t:t,f:A3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
-    return {n:"Drunken Sailor",composer:"Sea Shanty (Trad.)",bpm:140,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+    return {n:"Drunken Sailor",composer:"Sea Shanty (Trad.)",bpm:140,duration:Math.ceil(t+3),isClassical:true,isSingalong:true,timeSig:[4,4],bg:bg,melody:mel};
   })();
   var molly=pub("Molly Malone","Irish (1880s)",100,
     [C4,E4,E4,E4,F4,G4,G4,G4,A4,G4,F4,E4,D4,E4,F4,G4,A4,C5,C5,B4,A4,G4,F4,E4,D4,C4,E4,G4,C5,C5,B4,A4,G4,F4,E4,D4,C4],
@@ -4170,7 +4168,7 @@ const SINGALONG_PIECES=(function(){
     // Finale: big Am chord
     [A3,C4,E4,A4].forEach(function(f){bg.push({t:t,f:f,d:2.5,i:'brass',v:0.55});bg.push({t:t,f:f,d:2.5,i:'choir',v:0.4});});
     bg.push({t:t,f:A3/2,d:2.0,i:'timpani',v:0.6});mel.push({t:t,l:4});
-    return {n:"Wellerman",composer:"NZ Sea Shanty (1860s)",bpm:125,duration:Math.ceil(t+3),isClassical:true,bg:bg,melody:mel};
+    return {n:"Wellerman",composer:"NZ Sea Shanty (1860s)",bpm:125,duration:Math.ceil(t+3),isClassical:true,isSingalong:true,timeSig:[4,4],bg:bg,melody:mel};
   })();
   // ── Leave Her Johnny ──
   var leavejohnny=pub("Leave Her Johnny","Sea Shanty (Trad.)",105,
@@ -4875,9 +4873,11 @@ refreshMiniLB();
 
 // ── MELODY EDITOR ─────────────────────────────────────
 var edPiece=null,edMelody=[],edBpm=120,edBars=8,edSelected=-1,edScrollX=0,edDragging=false,edDragNote=-1,edDragOffX=0,edDragOffY=0,edPreviewing=false,edIsClassical=false,edGenre="";
+var edIsSingalong=false; // true = no bg orchestra in preview
+var edTimeSig=[4,4]; // time signature [beats per measure, beat unit]
 var edResizing=false,edResizeNote=-1; // right-edge duration drag
 var edSelRange=null,edSelecting=false,edClipboard=[]; // range select + copy/paste
-var edPlayhead=-1,edPlayheadStart=0,edPlayheadRAF=0; // preview playhead
+var edPlayhead=-1,edPlayheadStart=0,edPlayheadRAF=0,edPlayheadOffset=0; // preview playhead + start offset
 var edShowLabels=false; // toggle note labels on canvas
 var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=20,ED_NOTE_W=14,ED_NOTE_H=16,ED_MIN_DUR=0.05;
 var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
@@ -4913,24 +4913,29 @@ function openEditor(){
   edPiece=pieces[curIdx];
   edGenre=curGenre;
   edIsClassical=!!edPiece.isClassical;
+  edIsSingalong=!!edPiece.isSingalong||(curGenre!=="Classical"&&edIsClassical);
+  edTimeSig=edPiece.timeSig||[4,4];
   // Load saved edits or use original
   var saved=edLoadSaved(edPiece.n);
   if(saved){
-    edMelody=saved.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
+    edMelody=saved.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;if(m.f)n.f=m.f;return n;});
     edBpm=saved.bpm||edPiece.bpm;
+    if(saved.timeSig)edTimeSig=saved.timeSig;
     if(!edIsClassical)edBars=saved.bars||edPiece.bars||8;
   }else if(edIsClassical){
-    edMelody=edPiece.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
+    edMelody=edPiece.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;if(m.f)n.f=m.f;return n;});
     edBpm=edPiece.bpm;
   }else{
     edMelody=edPiece.p.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
     edBpm=edPiece.bpm;
     edBars=edPiece.bars||8;
   }
-  edSelected=-1;edScrollX=0;edSelRange=null;edClipboard=[];edPlayhead=-1;
+  edSelected=-1;edScrollX=0;edSelRange=null;edClipboard=[];edPlayhead=-1;edPlayheadOffset=0;
   document.getElementById("ed-title").textContent="Editing: "+edPiece.n+(edPiece.composer?" ("+edPiece.composer+")":"");
   document.getElementById("ed-bpm").value=edBpm;
-  document.getElementById("ed-mode-label").textContent=edIsClassical?"Classical (full timeline)":"Pattern (4-beat cycle, repeats "+edBars+"x)";
+  document.getElementById("ed-timesig").value=edTimeSig[0]+"/"+edTimeSig[1];
+  var modeLabel=edIsClassical?(edIsSingalong?"Singalong (full timeline)":"Classical (full timeline, conductor)"):"Pattern (4-beat cycle, repeats "+edBars+"x)";
+  document.getElementById("ed-mode-label").textContent=modeLabel;
   document.getElementById("ed-code-panel").style.display="none";
   document.getElementById("ed-import-panel").style.display="none";
   show("sed");
@@ -4977,28 +4982,52 @@ function edDraw(){
   ctx.fillStyle="#0a0a12";
   ctx.fillRect(0,0,W,ED_HEAD);
 
-  // Grid lines + measure numbers
+  // Grid lines + measure numbers (time-signature aware)
+  var beatsPerMeasure=edTimeSig[0];
+  var beatUnit=edTimeSig[1]; // 4=quarter, 8=eighth
+  var beatSec=edQuarterSec(); // quarter note duration
+  var subBeatSec=beatSec/2; // eighth note grid
+  if(beatUnit===8) subBeatSec=beatSec/2; // for x/8, sub-grid is sixteenth
+  var measSec=edMeasureSec();
+
   if(edIsClassical){
-    var beatSec=60/edBpm;
-    var startBeat=Math.floor(edXToTime(0)/beatSec);
-    var endBeat=Math.ceil(edXToTime(W)/beatSec);
-    for(var b=startBeat;b<=endBeat;b++){
-      var bx=edTimeToX(b*beatSec);
-      if(bx<0||bx>W)continue;
-      var isMeasure=b%4===0;
-      ctx.strokeStyle=isMeasure?"#444":"#222";
-      ctx.lineWidth=isMeasure?1.5:0.5;
-      ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
-      if(isMeasure){
-        // Measure number in header
-        var mNum=Math.floor(b/4)+1;
+    // Draw measure and beat lines
+    var startTime=edXToTime(0);
+    var endTime=edXToTime(W);
+    var startMeas=Math.max(0,Math.floor(startTime/measSec));
+    var endMeas=Math.ceil(endTime/measSec)+1;
+    for(var mi=startMeas;mi<=endMeas;mi++){
+      var measT=mi*measSec;
+      // Draw each beat within measure
+      var bCount=beatsPerMeasure;
+      var oneBeatSec=(beatUnit===8)?(beatSec/2):beatSec;
+      for(var bi=0;bi<bCount;bi++){
+        var bt2=measT+bi*oneBeatSec;
+        var bx=edTimeToX(bt2);
+        if(bx<-10||bx>W+10)continue;
+        var isMeasStart=bi===0;
+        ctx.strokeStyle=isMeasStart?"#555":"#282838";
+        ctx.lineWidth=isMeasStart?2:0.5;
+        ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
+        // Sub-beat (eighth grid for x/4, sixteenth for x/8)
+        var subX=edTimeToX(bt2+oneBeatSec/2);
+        if(subX>0&&subX<W){
+          ctx.strokeStyle="#1a1a2a";ctx.lineWidth=0.3;
+          ctx.beginPath();ctx.moveTo(subX,ED_HEAD);ctx.lineTo(subX,H);ctx.stroke();
+        }
+      }
+      // Measure number and time sig in header
+      var mx=edTimeToX(measT);
+      if(mx>-20&&mx<W+20){
         ctx.fillStyle="#888";ctx.font="bold 11px sans-serif";
-        ctx.fillText("M"+mNum,bx+3,ED_HEAD-5);
-        // Time at bottom
+        ctx.fillText("M"+(mi+1),mx+3,ED_HEAD-5);
         ctx.fillStyle="#555";ctx.font="10px sans-serif";
-        ctx.fillText((b*beatSec).toFixed(1)+"s",bx+2,H-4);
+        ctx.fillText(measT.toFixed(1)+"s",mx+2,H-4);
       }
     }
+    // Show time signature in header
+    ctx.fillStyle="#666";ctx.font="bold 10px sans-serif";
+    ctx.fillText(edTimeSig[0]+"/"+edTimeSig[1],edTimeToX(0)+1,ED_HEAD-5+40);
   }else{
     for(var sub=0;sub<=16;sub++){
       var bt=sub*0.25;
@@ -5080,11 +5109,23 @@ function edDraw(){
       ctx.strokeStyle="#805ad5";ctx.lineWidth=1.5;
       ctx.strokeRect(nx-1,ny-1,noteW+2,ED_NOTE_H+2);
     }
+    // Musical notation symbol on note (always shown if duration exists)
+    if(dur>0){
+      var di=edDurInfo(dur);
+      ctx.font="bold 13px sans-serif";
+      ctx.fillStyle=isPlaying?"#000":"rgba(255,255,255,0.9)";
+      ctx.textAlign="center";
+      ctx.fillText(di.sym,nx+noteW/2,ny+ED_NOTE_H/2+4);
+      ctx.textAlign="left";
+    }
     // Note label (when Code/Labels toggled on, or for selected note)
     if(edShowLabels||idx===edSelected){
       ctx.font="9px monospace";
       var label="t:"+m.t.toFixed(edIsClassical?2:2)+",l:"+m.l;
-      if(dur>0)label+=",d:"+dur.toFixed(2);
+      if(dur>0){
+        var di2=edDurInfo(dur);
+        label+=",d:"+dur.toFixed(2)+"s ("+di2.name+")";
+      }
       // Position label above the note, inside its lane
       var lx=nx;
       var ly=ny-4;
@@ -5130,8 +5171,8 @@ function edDraw(){
   }else if(edSelected>=0){
     var sm=edMelody[edSelected];
     statusTxt+=" | Selected #"+edSelected+" (t="+sm.t.toFixed(3)+"s, "+ED_NAMES[sm.l];
-    if(sm.d>0)statusTxt+=", dur="+sm.d.toFixed(3)+"s";
-    statusTxt+=") | D=add duration, Shift+D=remove";
+    if(sm.d>0){var sdi=edDurInfo(sm.d);statusTxt+=", "+sdi.sym+" "+sdi.name+" ("+sm.d.toFixed(3)+"s)";}
+    statusTxt+=") | 1-5=note value, D=+dur, Shift+D=remove";
   }else{
     statusTxt+=" | Click=add, Shift+drag=select range";
   }
@@ -5164,6 +5205,15 @@ function edIsOnRightEdge(x,idx){
 function edMouseDown(e){
   var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+
+  // Double-click on header = play from this position
+  if(e.detail===2&&my<ED_HEAD){
+    var startT=edXToTime(mx);
+    if(startT<0)startT=0;
+    edPlayheadOffset=startT;
+    edPreview(startT);
+    return;
+  }
 
   // Shift+click = range select
   if(e.shiftKey){
@@ -5370,6 +5420,23 @@ function edKeyDown(e){
     edMelody[edSelected].l=Math.min(4,edMelody[edSelected].l+1);
     edDraw();e.preventDefault();
   }
+  // Number keys 1-5: set note value on selected note
+  // 1=whole, 2=half, 3=quarter, 4=eighth, 5=sixteenth
+  if(e.key>="1"&&e.key<="5"&&edSelected>=0&&!e.ctrlKey&&!e.metaKey){
+    var q=edQuarterSec();
+    var durMap={"1":q*4,"2":q*2,"3":q,"4":q/2,"5":q/4};
+    edMelody[edSelected].d=parseFloat(durMap[e.key].toFixed(4));
+    edDraw();e.preventDefault();
+    return;
+  }
+  // 6=dotted half, 7=dotted quarter, 8=dotted eighth
+  if(e.key>="6"&&e.key<="8"&&edSelected>=0&&!e.ctrlKey&&!e.metaKey){
+    var q2=edQuarterSec();
+    var durMap2={"6":q2*3,"7":q2*1.5,"8":q2*0.75};
+    edMelody[edSelected].d=parseFloat(durMap2[e.key].toFixed(4));
+    edDraw();e.preventDefault();
+    return;
+  }
   // D key — toggle/set duration on selected note
   if(e.key==="d"&&edSelected>=0&&!e.ctrlKey&&!e.metaKey){
     var n=edMelody[edSelected];
@@ -5400,6 +5467,37 @@ function edKeyDown(e){
 })();
 
 function edUpdateBpm(){edBpm=parseInt(document.getElementById("ed-bpm").value)||120;edDraw();}
+function edUpdateTimeSig(){
+  var val=document.getElementById("ed-timesig").value;
+  var parts=val.split("/");
+  edTimeSig=[parseInt(parts[0])||4,parseInt(parts[1])||4];
+  edDraw();
+}
+// Get quarter note duration in seconds at current BPM
+function edQuarterSec(){return 60/edBpm;}
+// Get measure duration in seconds based on time signature
+function edMeasureSec(){
+  var q=edQuarterSec();
+  // For x/4 time: beats * quarter note duration
+  // For x/8 time: beats * eighth note duration
+  if(edTimeSig[1]===8) return edTimeSig[0]*(q/2);
+  return edTimeSig[0]*q;
+}
+// Duration name and symbol for a note duration in seconds
+function edDurInfo(durSec){
+  var q=edQuarterSec();
+  var ratio=durSec/q;
+  // Map ratio to note value
+  if(ratio>=3.5) return {sym:"\uD834\uDD5D",name:"whole",val:4};
+  if(ratio>=2.5) return {sym:"\uD834\uDD5E.",name:"dotted half",val:3};
+  if(ratio>=1.8) return {sym:"\uD834\uDD5E",name:"half",val:2};
+  if(ratio>=1.3) return {sym:"\u2669.",name:"dotted quarter",val:1.5};
+  if(ratio>=0.8) return {sym:"\u2669",name:"quarter",val:1};
+  if(ratio>=0.6) return {sym:"\u266A.",name:"dotted eighth",val:0.75};
+  if(ratio>=0.4) return {sym:"\u266A",name:"eighth",val:0.5};
+  if(ratio>=0.2) return {sym:"\u266C",name:"sixteenth",val:0.25};
+  return {sym:"\u266C\u266C",name:"32nd",val:0.125};
+}
 
 function edStopPlayhead(){
   edPlayhead=-1;
@@ -5407,9 +5505,10 @@ function edStopPlayhead(){
   edPlayheadRAF=0;
   edDraw();
 }
-function edStartPlayhead(totalDur){
+function edStartPlayhead(totalDur,offset){
   edPlayheadStart=performance.now();
   var dur=totalDur;
+  var off=offset||0;
   function tick(){
     if(!edPreviewing){edStopPlayhead();return;}
     var elapsed=(performance.now()-edPlayheadStart)/1000;
@@ -5419,7 +5518,7 @@ function edStartPlayhead(totalDur){
       edStopPlayhead();
       return;
     }
-    edPlayhead=elapsed;
+    edPlayhead=elapsed+off; // playhead position in absolute piece time
     // Auto-scroll to keep playhead visible
     var cv=getEdCanvas();
     var phx=edTimeToX(edPlayhead);
@@ -5431,33 +5530,41 @@ function edStartPlayhead(totalDur){
   }
   edPlayheadRAF=requestAnimationFrame(tick);
 }
-function edPreview(){
+function edPreview(startFrom){
   if(edPreviewing){stopPreview();edPreviewing=false;edStopPlayhead();document.getElementById("ed-pv-btn").textContent="▶ Preview";return;}
   var ac=getAc(true);ac.resume();
   var piece=edPiece;
-  edScrollX=0; // reset scroll to start
+  var offset=typeof startFrom==="number"?startFrom:0;
+  edPlayheadOffset=offset;
+  if(offset===0)edScrollX=0; // reset scroll only when starting from beginning
   if(edIsClassical){
-    // Play background orchestration
-    if(piece.bg)for(var i=0;i<piece.bg.length;i++){
-      var n=piece.bg[i];
-      playSynth(ac,n.f,ac.currentTime+0.1+n.t,n.d,n.i,n.v*1.2,previewNodes);
+    if(!edIsSingalong){
+      // Classical: play background orchestration (conductor mode)
+      if(piece.bg)for(var i=0;i<piece.bg.length;i++){
+        var n=piece.bg[i];
+        if(n.t<offset)continue; // skip notes before start position
+        playSynth(ac,n.f,ac.currentTime+0.1+(n.t-offset),n.d,n.i,n.v*1.2,previewNodes);
+      }
     }
-    // Play melody notes as woodwind clicks
+    // Play melody notes (what the player sees/hits)
     edMelody.forEach(function(m){
-      var freq=[329,392,440,349,220][m.l]||329;
-      playSynth(ac,freq,ac.currentTime+0.1+m.t,0.1,'woodwind',0.5,previewNodes);
+      if(m.t<offset)return; // skip notes before start position
+      var freq=m.f||[329,392,440,349,220][m.l]||329;
+      var dur=m.d||0.1;
+      var inst=edIsSingalong?'strings':'woodwind';
+      var vol=edIsSingalong?0.6:0.5;
+      playSynth(ac,freq,ac.currentTime+0.1+(m.t-offset),Math.min(dur,2),'woodwind',vol,previewNodes);
     });
-    var dur=piece.duration||90;
+    var totalDur=(piece.duration||90)-offset;
     edPreviewing=true;
     document.getElementById("ed-pv-btn").textContent="⏹ Stop";
-    edStartPlayhead(dur);
+    edStartPlayhead(totalDur,offset);
   }else{
     // Regular rhythm: play drum sounds for each note in pattern, looped over bars
     var bs=60/edBpm;
     var bars=edBars||8;
     var drumFreqs=[329,392,440,349,220]; // red,yellow,blue,green,kick
     var drumInst=['strings','woodwind','woodwind','strings','bass'];
-    // For playhead: we need to convert pattern time to absolute seconds
     for(var bar=0;bar<bars;bar++){
       edMelody.forEach(function(m){
         var t=ac.currentTime+0.1+(bar*4+m.t)*bs;
@@ -5466,12 +5573,10 @@ function edPreview(){
       });
     }
     var totalDur=bars*4*bs;
-    // For pattern mode, playhead is in beat units (0-4 repeating)
     edPreviewing=true;
     document.getElementById("ed-pv-btn").textContent="⏹ Stop";
-    // Playhead in pattern mode: cycles through 0-4 beats over bars
     edPlayheadStart=performance.now();
-    var beatDur=bs; // seconds per beat
+    var beatDur=bs;
     function patternTick(){
       if(!edPreviewing){edStopPlayhead();return;}
       var elapsed=(performance.now()-edPlayheadStart)/1000;
@@ -5481,7 +5586,6 @@ function edPreview(){
         edStopPlayhead();
         return;
       }
-      // Convert elapsed seconds to beat offset within 4-beat pattern
       var beatPos=(elapsed/beatDur)%4;
       edPlayhead=beatPos;
       edDraw();
@@ -5504,7 +5608,7 @@ function edGetAllSaved(){
 function edLoadSaved(name){var all=edGetAllSaved();return all[name]||null;}
 function edSave(){
   var all=edGetAllSaved();
-  var entry={melody:edMelody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;}),bpm:edBpm,isClassical:edIsClassical};
+  var entry={melody:edMelody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;if(m.f)n.f=m.f;return n;}),bpm:edBpm,isClassical:edIsClassical,timeSig:edTimeSig};
   if(!edIsClassical)entry.bars=edBars;
   all[edPiece.n]=entry;
   try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
