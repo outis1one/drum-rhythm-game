@@ -5547,6 +5547,9 @@ function edWheel(e){
 }
 function edKeyDown(e){
   if(!document.getElementById("sed").classList.contains("active"))return;
+  // Don't intercept keys when user is typing in an input or select (e.g. pitch input)
+  var tag=document.activeElement&&document.activeElement.tagName;
+  if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
 
   // Ctrl+C — copy selected range or selected note
   if((e.ctrlKey||e.metaKey)&&e.key==="c"){
