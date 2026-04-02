@@ -6497,6 +6497,8 @@ function showKeyRemapStep(){
 }
 var keyRemapCooldown=false;
 window.addEventListener("keydown",function(e){
+  var aeTag=document.activeElement&&document.activeElement.tagName;
+  if(aeTag==="INPUT"||aeTag==="TEXTAREA"||aeTag==="SELECT")return;
   if(keyRemapping){
     if(e.key==="Escape"){cancelKeyRemap();e.preventDefault();return;}
     if(keyRemapCooldown)return;
@@ -6512,6 +6514,8 @@ window.addEventListener("keydown",function(e){
 
 // ── INPUT ──────────────────────────────────────────────
 window.addEventListener("keydown",e=>{
+  var aeTag=document.activeElement&&document.activeElement.tagName;
+  if(aeTag==="INPUT"||aeTag==="TEXTAREA"||aeTag==="SELECT")return;
   if(keyRemapping)return;
   if(e.key==="Escape"){e.preventDefault();togglePause();return;}
   if(paused)return;
