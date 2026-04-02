@@ -4796,6 +4796,7 @@ var edPiece=null,edMelody=[],edBpm=120,edBars=8,edSelected=-1,edScrollX=0,edDrag
 var edResizing=false,edResizeNote=-1; // right-edge duration drag
 var edSelRange=null,edSelecting=false,edClipboard=[]; // range select + copy/paste
 var edPlayhead=-1,edPlayheadStart=0,edPlayheadRAF=0; // preview playhead
+var edShowLabels=false; // toggle note labels on canvas
 var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=20,ED_NOTE_W=14,ED_NOTE_H=16,ED_MIN_DUR=0.05;
 var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
 var ED_NAMES=["Red","Yellow","Blue","Green","Kick"];
@@ -4996,6 +4997,19 @@ function edDraw(){
     } else if(inRange){
       ctx.strokeStyle="#805ad5";ctx.lineWidth=1.5;
       ctx.strokeRect(nx-1,ny-1,noteW+2,ED_NOTE_H+2);
+    }
+    // Note label (when Code/Labels toggled on, or for selected note)
+    if(edShowLabels||idx===edSelected){
+      ctx.font="9px monospace";
+      var label="t:"+m.t.toFixed(edIsClassical?2:2)+",l:"+m.l;
+      if(dur>0)label+=",d:"+dur.toFixed(2);
+      // Position label above the note, inside its lane
+      var lx=nx;
+      var ly=ny-4;
+      // If near top of lane, put below instead
+      if(ly<ED_HEAD+8)ly=ny+ED_NOTE_H+10;
+      ctx.fillStyle=idx===edSelected?"#fff":"rgba(255,255,255,0.7)";
+      ctx.fillText(label,lx,ly);
     }
     ctx.globalAlpha=1;
   });
@@ -5438,16 +5452,19 @@ function edExport(){
   });
 }
 
-// Code view toggle — shows JS representation of current notes
+// Code view toggle — shows labels on canvas + code panel
 function edToggleCode(){
+  edShowLabels=!edShowLabels;
+  var btn=document.getElementById("ed-code-btn");
+  btn.style.background=edShowLabels?"#3182ce":"";
   var panel=document.getElementById("ed-code-panel");
-  if(panel.style.display==="none"){
+  if(edShowLabels){
     panel.style.display="block";
     edUpdateCode();
   }else{
     panel.style.display="none";
   }
-  setTimeout(edResize,50);
+  setTimeout(function(){edResize();edDraw();},50);
 }
 function edUpdateCode(){
   var ta=document.getElementById("ed-code");
