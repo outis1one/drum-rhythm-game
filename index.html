@@ -211,15 +211,15 @@ canvas{display:block;}
     <span id="ed-status" style="color:#888;font-size:11px;margin-left:auto;"></span>
   </div>
   <div id="ed-help" style="padding:4px 12px;background:#0d0d18;color:#666;font-size:11px;border-bottom:1px solid #222;">
-    Click=add | Click note=select | Drag=move | Drag right edge=resize duration | 1-5=set note value (whole/half/quarter/eighth/sixteenth) | D=add duration | Shift+D=remove | Shift+drag=select range | Ctrl+C/V=copy/paste | Ctrl+A=select all | Esc=deselect | Del=delete | Scroll=pan | Dbl-click header=play from here
+    Click=select | Dbl-click=add note | Drag=move | Drag edge=resize | 1-5=note value | Shift+↑↓=pitch | ↑↓=lane | ←→=nudge time | D=+dur | Shift+D=-dur | Shift+drag=select range | Ctrl+C/V=copy/paste | Del=delete | Scroll=pan | Click header=set start | Dbl-click header=play from there
     <span id="ed-mode-label" style="margin-left:12px;color:#805ad5;"></span>
   </div>
-  <div id="ed-code-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;overflow:auto;">
+  <div id="ed-code-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;overflow-y:auto;flex-shrink:0;max-height:45vh;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-      <span style="color:#888;font-size:11px;">JavaScript — edit and click "Apply Code" to update the timeline</span>
+      <span style="color:#888;font-size:11px;">JavaScript — edit and click "Apply Code" to update the timeline. Drag bottom edge to resize.</span>
       <button class="smbtn" onclick="edApplyCode()" style="font-size:11px;">Apply Code</button>
     </div>
-    <textarea id="ed-code" style="width:100%;height:200px;min-height:80px;max-height:60vh;background:#111;color:#8f8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" spellcheck="false"></textarea>
+    <textarea id="ed-code" style="width:100%;height:180px;min-height:60px;background:#111;color:#8f8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" spellcheck="false"></textarea>
   </div>
   <div id="ed-import-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -231,7 +231,7 @@ canvas{display:block;}
       <span id="ed-import-status" style="color:#888;font-size:11px;"></span>
     </div>
   </div>
-  <canvas id="ed-canvas" style="display:block;width:100%;flex:1;cursor:crosshair;align-self:stretch;"></canvas>
+  <canvas id="ed-canvas" style="display:block;width:100%;flex:1;min-height:200px;cursor:crosshair;align-self:stretch;"></canvas>
 </div>
 
 <script>
@@ -5227,9 +5227,10 @@ function edDraw(){
     statusTxt+=" | Range: "+lo.toFixed(2)+"s–"+hi.toFixed(2)+"s ("+cnt+" notes) | Ctrl+C copy, Ctrl+V paste, Del delete";
   }else if(edSelected>=0){
     var sm=edMelody[edSelected];
-    statusTxt+=" | Selected #"+edSelected+" (t="+sm.t.toFixed(3)+"s, "+ED_NAMES[sm.l];
-    if(sm.d>0){var sdi=edDurInfo(sm.d);statusTxt+=", "+sdi.sym+" "+sdi.name+" ("+sm.d.toFixed(3)+"s)";}
-    statusTxt+=") | 1-5=note value, D=+dur, Shift+D=remove";
+    statusTxt+=" | #"+edSelected+" "+ED_NAMES[sm.l]+" t="+sm.t.toFixed(2)+"s";
+    if(sm.f)statusTxt+=" "+edFreqToNote(sm.f);
+    if(sm.d>0){var sdi=edDurInfo(sm.d);statusTxt+=" "+sdi.sym+sdi.name;}
+    statusTxt+=" | 1-5=dur, Shift+\u2191\u2193=pitch, \u2190\u2192=time, \u2191\u2193=lane";
   }else{
     statusTxt+=" | Click=add, Shift+drag=select range";
   }
@@ -5238,13 +5239,14 @@ function edDraw(){
 
 function edHitTest(x,y){
   var pps=edPxPerUnit();
+  var PAD_X=6,PAD_Y=6; // extra padding around notes for easier clicking
   for(var i=edMelody.length-1;i>=0;i--){
     var m=edMelody[i];
     var dur=m.d||0;
     var noteW=dur>0?Math.max(ED_NOTE_W,dur*pps):ED_NOTE_W;
     var nx=dur>0?edTimeToX(m.t):edTimeToX(m.t)-ED_NOTE_W/2;
     var ny=edLaneToY(m.l)-ED_NOTE_H/2;
-    if(x>=nx&&x<=nx+noteW&&y>=ny&&y<=ny+ED_NOTE_H)return i;
+    if(x>=nx-PAD_X&&x<=nx+noteW+PAD_X&&y>=ny-PAD_Y&&y<=ny+ED_NOTE_H+PAD_Y)return i;
   }
   return-1;
 }
@@ -5287,6 +5289,21 @@ function edMouseDown(e){
   }
 
   var hit=edHitTest(mx,my);
+  // If direct hit missed, check for nearest note in same lane within snap distance
+  if(hit<0){
+    var clickT=edXToTime(mx);
+    var clickL=edYToLane(my);
+    var snapDist=edIsClassical?(60/edBpm/2):0.3; // search radius in time units
+    var bestDist=snapDist,bestIdx=-1;
+    for(var ni=0;ni<edMelody.length;ni++){
+      var nm=edMelody[ni];
+      if(nm.l===clickL){
+        var d=Math.abs(nm.t-clickT);
+        if(d<bestDist){bestDist=d;bestIdx=ni;}
+      }
+    }
+    if(bestIdx>=0)hit=bestIdx;
+  }
   if(hit>=0){
     // Check if clicking right edge for resize
     if(edIsOnRightEdge(mx,hit)){
@@ -5301,18 +5318,23 @@ function edMouseDown(e){
     edSelRange=null; // clear range on note click
     edDraw();
   }else{
-    // Click on empty space clears range and adds note
+    // Double-click on empty space = add note (single click just deselects)
     edSelRange=null;
-    var t=edXToTime(mx);
-    var l=edYToLane(my);
-    if(l>=0&&l<=4&&t>=0){
-      var snap=edIsClassical?(60/edBpm/4):0.25;
-      t=Math.round(t/snap)*snap;
-      t=parseFloat(t.toFixed(4));
-      if(!edIsClassical)t=Math.max(0,Math.min(3.99,t));
-      edMelody.push({t:t,l:l});
-      edMelody.sort(function(a,b){return a.t-b.t;});
-      edSelected=edMelody.findIndex(function(m){return m.t===t&&m.l===l;});
+    if(e.detail>=2){
+      var t=edXToTime(mx);
+      var l=edYToLane(my);
+      if(l>=0&&l<=4&&t>=0){
+        var snap=edIsClassical?(60/edBpm/4):0.25;
+        t=Math.round(t/snap)*snap;
+        t=parseFloat(t.toFixed(4));
+        if(!edIsClassical)t=Math.max(0,Math.min(3.99,t));
+        edMelody.push({t:t,l:l});
+        edMelody.sort(function(a,b){return a.t-b.t;});
+        edSelected=edMelody.findIndex(function(m){return m.t===t&&m.l===l;});
+        edDraw();
+      }
+    }else{
+      edSelected=-1;
       edDraw();
     }
   }
@@ -5474,11 +5496,27 @@ function edKeyDown(e){
     edDraw();e.preventDefault();
   }
   if(e.key==="ArrowUp"&&edSelected>=0){
-    edMelody[edSelected].l=Math.max(0,edMelody[edSelected].l-1);
+    if(e.shiftKey&&e.ctrlKey&&edMelody[edSelected].f){
+      // Ctrl+Shift+Up = pitch up one octave
+      edMelody[edSelected].f=parseFloat((edMelody[edSelected].f*2).toFixed(2));
+    }else if(e.shiftKey&&edMelody[edSelected].f){
+      // Shift+Up = pitch up one semitone
+      edMelody[edSelected].f=parseFloat((edMelody[edSelected].f*Math.pow(2,1/12)).toFixed(2));
+    }else if(!e.shiftKey){
+      edMelody[edSelected].l=Math.max(0,edMelody[edSelected].l-1);
+    }
     edDraw();e.preventDefault();
   }
   if(e.key==="ArrowDown"&&edSelected>=0){
-    edMelody[edSelected].l=Math.min(4,edMelody[edSelected].l+1);
+    if(e.shiftKey&&e.ctrlKey&&edMelody[edSelected].f){
+      // Ctrl+Shift+Down = pitch down one octave
+      edMelody[edSelected].f=parseFloat((edMelody[edSelected].f/2).toFixed(2));
+    }else if(e.shiftKey&&edMelody[edSelected].f){
+      // Shift+Down = pitch down one semitone
+      edMelody[edSelected].f=parseFloat((edMelody[edSelected].f/Math.pow(2,1/12)).toFixed(2));
+    }else if(!e.shiftKey){
+      edMelody[edSelected].l=Math.min(4,edMelody[edSelected].l+1);
+    }
     edDraw();e.preventDefault();
   }
   // Number keys 1-5: set note value on selected note
@@ -5685,9 +5723,9 @@ function edReset(){
   var all=edGetAllSaved();delete all[edPiece.n];
   try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
   if(edIsClassical){
-    edMelody=edPiece.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
+    edMelody=edPiece.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;if(m.f)n.f=m.f;return n;});
   }else{
-    edMelody=edPiece.p.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
+    edMelody=edPiece.p.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;if(m.f)n.f=m.f;return n;});
     edBars=edPiece.bars||8;
   }
   edBpm=edPiece.bpm;
