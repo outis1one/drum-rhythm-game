@@ -4916,6 +4916,7 @@ var edPlayhead=-1,edPlayheadStart=0,edPlayheadRAF=0,edPlayheadOffset=0; // previ
 var edShowLabels=false; // toggle note labels on canvas
 var edShowPitch=false; // toggle pitch names on notes
 var edPlayFromMarker=-1; // click-to-play marker position in seconds
+var edDraggingMarker=false; // true when dragging the play-from marker
 var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=32,ED_NOTE_W=14,ED_NOTE_H=16,ED_MIN_DUR=0.05;
 var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
 var ED_NAMES=["Red","Yellow","Blue","Green","Kick"];
@@ -5413,14 +5414,16 @@ function edMouseDown(e){
   var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
 
-  // Click on header/timeline area = set play-from marker
+  // Click on header/timeline area = set play-from marker and start dragging it
   if(my<ED_HEAD){
     var startT=edXToTime(mx);
     if(startT<0)startT=0;
     edPlayFromMarker=startT;
+    edDraggingMarker=true;
     edDraw();
     // Double-click starts playback immediately from this position
     if(e.detail===2){
+      edDraggingMarker=false;
       edPreview(startT);
     }
     return;
@@ -5491,6 +5494,19 @@ function edMouseMove(e){
   var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
 
+  // Dragging play-from marker in header
+  if(edDraggingMarker){
+    var t=edXToTime(mx);
+    if(t<0)t=0;
+    edPlayFromMarker=t;
+    // Auto-scroll when dragging near edges
+    var cv2=getEdCanvas();
+    if(mx<30&&edScrollX>0){edScrollX=Math.max(0,edScrollX-10);}
+    if(mx>cv2.width-30){edScrollX+=10;}
+    edDraw();
+    return;
+  }
+
   // Range selecting
   if(edSelecting&&edSelRange){
     edSelRange.end=edXToTime(mx);
@@ -5529,6 +5545,11 @@ function edMouseMove(e){
   cv.style.cursor=(hit2>=0&&edIsOnRightEdge(mx,hit2))?"ew-resize":(hit2>=0?"grab":"crosshair");
 }
 function edMouseUp(){
+  if(edDraggingMarker){
+    edDraggingMarker=false;
+    edDraw();
+    return;
+  }
   if(edSelecting){
     edSelecting=false;
     // If range is too small, clear it
