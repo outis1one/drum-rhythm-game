@@ -256,14 +256,47 @@ canvas{display:block;}
     <textarea id="ed-code" style="width:100%;height:180px;min-height:60px;background:#111;color:#8f8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" spellcheck="false"></textarea>
   </div>
   <div id="ed-import-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;">
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <div style="display:flex;gap:4px;margin-bottom:6px;">
+      <button class="smbtn" onclick="edShowImportTab('json')" id="ed-imp-tab-json" style="background:#3182ce;font-size:10px;">JSON</button>
+      <button class="smbtn" onclick="edShowImportTab('text')" id="ed-imp-tab-text" style="font-size:10px;">Text/Shorthand</button>
+      <button class="smbtn" onclick="edShowImportTab('musicxml')" id="ed-imp-tab-musicxml" style="font-size:10px;">MusicXML</button>
+      <button class="smbtn" onclick="edShowImportTab('midi')" id="ed-imp-tab-midi" style="font-size:10px;">MIDI</button>
+    </div>
+    <div id="ed-imp-json" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <span style="color:#888;font-size:11px;">Paste JSON array of {t,l} notes or drag a .json file:</span>
       <textarea id="ed-import-text" style="width:100%;height:60px;background:#111;color:#ff8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;" placeholder='[{"t":0,"l":0},{"t":0.5,"l":1}]'></textarea>
-      <button class="smbtn" onclick="edDoImport()" style="background:#3182ce;">Import</button>
-      <button class="smbtn" onclick="edImportMIDI()">MIDI File</button>
-      <input type="file" id="ed-midi-file" accept=".mid,.midi,.json" style="display:none;" onchange="edHandleFile(event)">
-      <span id="ed-import-status" style="color:#888;font-size:11px;"></span>
+      <button class="smbtn" onclick="edDoImport()" style="background:#3182ce;">Import JSON</button>
+      <button class="smbtn" onclick="document.getElementById('ed-json-file').click()">Load .json File</button>
+      <input type="file" id="ed-json-file" accept=".json" style="display:none;" onchange="edHandleFile(event)">
     </div>
+    <div id="ed-imp-text" style="display:none;">
+      <span style="color:#888;font-size:11px;">Type notes as: <b style="color:#ff8;">C4 quarter, D4 eighth, E4 half</b> — or: <b style="color:#ff8;">C4 q D4 e E4 h</b> — or one per line. Lane auto-assigned by pitch.</span>
+      <textarea id="ed-shorthand-text" style="width:100%;height:80px;background:#111;color:#ff8;font-family:monospace;font-size:11px;border:1px solid #333;padding:4px;resize:vertical;margin-top:4px;" placeholder="C4 quarter, D4 eighth, E4 half, F4 quarter&#10;or: C4 q D4 e E4 h F4 q&#10;or one per line:&#10;C4 quarter&#10;D4 eighth"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+        <button class="smbtn" onclick="edDoShorthandImport()" style="background:#3182ce;">Import Notes</button>
+        <label style="color:#888;font-size:11px;"><input type="checkbox" id="ed-short-append"> Append (don't replace)</label>
+      </div>
+      <div style="color:#555;font-size:10px;margin-top:4px;">
+        Durations: <b>w</b>hole, <b>dh</b> dotted-half, <b>h</b>alf, <b>dq</b> dotted-quarter, <b>q</b>uarter, <b>de</b> dotted-eighth, <b>e</b>ighth, <b>s</b>ixteenth, <b>r</b> rest (skip) — default: quarter
+      </div>
+    </div>
+    <div id="ed-imp-musicxml" style="display:none;">
+      <span style="color:#888;font-size:11px;">Import a MusicXML file (.xml or .musicxml) — exports from MuseScore, Finale, Sibelius, flat.io, etc.</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+        <button class="smbtn" onclick="document.getElementById('ed-musicxml-file').click()" style="background:#3182ce;">Choose MusicXML File</button>
+        <input type="file" id="ed-musicxml-file" accept=".xml,.musicxml,.mxl" style="display:none;" onchange="edHandleMusicXML(event)">
+        <label style="color:#888;font-size:11px;"><input type="checkbox" id="ed-mxml-append"> Append</label>
+      </div>
+    </div>
+    <div id="ed-imp-midi" style="display:none;">
+      <span style="color:#888;font-size:11px;">Import a MIDI file (.mid, .midi) — basic single-track import.</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+        <button class="smbtn" onclick="document.getElementById('ed-midi-file').click()" style="background:#3182ce;">Choose MIDI File</button>
+        <input type="file" id="ed-midi-file" accept=".mid,.midi" style="display:none;" onchange="edHandleMIDI(event)">
+        <label style="color:#888;font-size:11px;"><input type="checkbox" id="ed-midi-append"> Append</label>
+      </div>
+    </div>
+    <div><span id="ed-import-status" style="color:#888;font-size:11px;"></span></div>
   </div>
   <canvas id="ed-canvas" style="display:block;width:100%;flex:1;min-height:200px;cursor:crosshair;align-self:stretch;"></canvas>
 </div>
@@ -6057,20 +6090,355 @@ function edDoImport(){
     document.getElementById("ed-import-status").textContent="JSON parse error: "+e.message;
   }
 }
-function edImportMIDI(){document.getElementById("ed-midi-file").click();}
 function edHandleFile(e){
   var file=e.target.files[0];if(!file)return;
   var reader=new FileReader();
-  if(file.name.endsWith(".json")){
-    reader.onload=function(ev){
-      document.getElementById("ed-import-text").value=ev.target.result;
-      edDoImport();
-    };
-    reader.readAsText(file);
-  }else{
-    document.getElementById("ed-import-status").textContent="MIDI parsing not yet supported — convert to JSON first (use AI or online converter)";
-  }
+  reader.onload=function(ev){
+    document.getElementById("ed-import-text").value=ev.target.result;
+    edDoImport();
+  };
+  reader.readAsText(file);
   e.target.value="";
+}
+
+// Tab switching for import panel
+function edShowImportTab(tab){
+  ["json","text","musicxml","midi"].forEach(function(t){
+    document.getElementById("ed-imp-"+t).style.display=t===tab?"block":"none";
+    var btn=document.getElementById("ed-imp-tab-"+t);
+    btn.style.background=t===tab?"#3182ce":"";
+  });
+  document.getElementById("ed-import-status").textContent="";
+}
+
+// --- TEXT/SHORTHAND IMPORT ---
+// Parses: "C4 quarter, D4 eighth, E4 half" or "C4 q D4 e E4 h" or one-per-line
+function edDoShorthandImport(){
+  var text=document.getElementById("ed-shorthand-text").value.trim();
+  if(!text){document.getElementById("ed-import-status").textContent="Type some notes first";return;}
+  var status=document.getElementById("ed-import-status");
+  var durMap={
+    "w":"whole","whole":"whole",
+    "dh":"dotted-half","dotted-half":"dotted-half","d.h":"dotted-half",
+    "h":"half","half":"half",
+    "dq":"dotted-quarter","dotted-quarter":"dotted-quarter","d.q":"dotted-quarter",
+    "q":"quarter","quarter":"quarter",
+    "de":"dotted-eighth","dotted-eighth":"dotted-eighth","d.e":"dotted-eighth",
+    "e":"eighth","eighth":"eighth",
+    "s":"sixteenth","sixteenth":"sixteenth",
+    "ts":"32nd","32nd":"32nd"
+  };
+  // Normalize: replace commas and newlines with spaces, collapse whitespace
+  var tokens=text.replace(/,/g," ").replace(/\n/g," ").replace(/\s+/g," ").trim().split(" ");
+  var notes=[];
+  var t=0;
+  var q=60/edBpm; // quarter note duration in seconds
+  var i=0;
+  var errors=[];
+  while(i<tokens.length){
+    var tok=tokens[i];
+    // Check if it's a note name (letter + optional accidental + octave)
+    if(/^[A-Ga-g][#b♯♭]?\d$/.test(tok)){
+      var durName="quarter"; // default
+      var durSec=q;
+      // Check if next token is a duration
+      if(i+1<tokens.length){
+        var nextLow=tokens[i+1].toLowerCase();
+        if(durMap[nextLow]){
+          durName=durMap[nextLow];
+          durSec=edDurNameToSec(durName);
+          i++; // consume duration token
+        }
+      }
+      var freq=edNoteToFreq(tok);
+      if(freq>0){
+        // Auto-assign lane based on pitch range
+        var lane=edPitchToLane(freq);
+        notes.push({t:parseFloat(t.toFixed(4)),l:lane,f:freq,d:parseFloat(durSec.toFixed(4))});
+        t+=durSec;
+      }else{
+        errors.push("Bad note: "+tok);
+      }
+      i++;
+    }else if(tok.toLowerCase()==="r"||tok.toLowerCase()==="rest"){
+      // Rest — advance time without adding a note
+      var restDur=q;
+      if(i+1<tokens.length){
+        var nextLow2=tokens[i+1].toLowerCase();
+        if(durMap[nextLow2]){restDur=edDurNameToSec(durMap[nextLow2]);i++;}
+      }
+      t+=restDur;
+      i++;
+    }else if(durMap[tok.toLowerCase()]){
+      // Bare duration without preceding note — skip
+      i++;
+    }else{
+      errors.push("Unknown: "+tok);
+      i++;
+    }
+  }
+  if(notes.length===0){status.textContent="No valid notes found. "+errors.join(", ");return;}
+  var append=document.getElementById("ed-short-append").checked;
+  if(append){
+    var offset=0;
+    edMelody.forEach(function(m){var end=m.t+(m.d||0);if(end>offset)offset=end;if(m.t>offset)offset=m.t;});
+    notes.forEach(function(n){n.t=parseFloat((n.t+offset).toFixed(4));});
+    edMelody=edMelody.concat(notes);
+  }else{
+    edMelody=notes;
+  }
+  edMelody.sort(function(a,b){return a.t-b.t;});
+  edSelected=-1;edDraw();edUpdateCode();
+  var msg="Imported "+notes.length+" notes from shorthand!";
+  if(errors.length>0)msg+=" ("+errors.length+" warnings: "+errors.slice(0,3).join(", ")+")";
+  status.textContent=msg;
+}
+
+// Auto-assign lane based on pitch frequency
+function edPitchToLane(freq){
+  // Map pitch ranges to lanes 0-4
+  // Lane 0=Red (high), 1=Yellow, 2=Blue, 3=Green (low), 4=Kick (very low)
+  if(freq>=500)return 0;       // C5 and above → Red
+  if(freq>=370)return 1;       // F#4 to B4 → Yellow
+  if(freq>=280)return 2;       // C#4 to F4 → Blue
+  if(freq>=180)return 3;       // F#3 to C4 → Green
+  return 4;                     // below F#3 → Kick
+}
+
+// --- MUSICXML IMPORT ---
+function edHandleMusicXML(e){
+  var file=e.target.files[0];if(!file)return;
+  var status=document.getElementById("ed-import-status");
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var parser=new DOMParser();
+      var xml=parser.parseFromString(ev.target.result,"text/xml");
+      var parseErr=xml.querySelector("parsererror");
+      if(parseErr){status.textContent="XML parse error — is this a valid MusicXML file?";return;}
+      var notes=edParseMusicXML(xml);
+      if(notes.length===0){status.textContent="No notes found in MusicXML";return;}
+      var append=document.getElementById("ed-mxml-append").checked;
+      if(append){
+        var offset=0;
+        edMelody.forEach(function(m){var end=m.t+(m.d||0);if(end>offset)offset=end;});
+        notes.forEach(function(n){n.t=parseFloat((n.t+offset).toFixed(4));});
+        edMelody=edMelody.concat(notes);
+      }else{
+        edMelody=notes;
+      }
+      edMelody.sort(function(a,b){return a.t-b.t;});
+      edSelected=-1;edDraw();edUpdateCode();
+      status.textContent="Imported "+notes.length+" notes from MusicXML!";
+    }catch(err){
+      status.textContent="MusicXML error: "+err.message;
+    }
+  };
+  reader.readAsText(file);
+  e.target.value="";
+}
+
+function edParseMusicXML(xml){
+  var notes=[];
+  var q=60/edBpm; // quarter note duration
+  // Find divisions (ticks per quarter note)
+  var divEl=xml.querySelector("attributes divisions");
+  var divisions=divEl?parseInt(divEl.textContent):1;
+  // Get BPM from tempo marking if present
+  var tempoEl=xml.querySelector("sound[tempo]");
+  if(tempoEl){
+    var xmlBpm=parseFloat(tempoEl.getAttribute("tempo"));
+    if(xmlBpm>0){edBpm=Math.round(xmlBpm);document.getElementById("ed-bpm").value=edBpm;q=60/edBpm;}
+  }
+  // Walk through all measures → notes
+  var t=0; // current time in seconds
+  var measures=xml.querySelectorAll("measure");
+  for(var mi=0;mi<measures.length;mi++){
+    var meas=measures[mi];
+    // Check for mid-stream divisions change
+    var divEl2=meas.querySelector("attributes divisions");
+    if(divEl2)divisions=parseInt(divEl2.textContent)||divisions;
+    // Check for tempo change
+    var tempoEl2=meas.querySelector("direction sound[tempo]");
+    if(!tempoEl2)tempoEl2=meas.querySelector("sound[tempo]");
+    if(tempoEl2){
+      var newBpm=parseFloat(tempoEl2.getAttribute("tempo"));
+      if(newBpm>0){q=60/newBpm;}
+    }
+    var children=meas.children;
+    for(var ci=0;ci<children.length;ci++){
+      var el=children[ci];
+      if(el.tagName==="forward"){
+        var fdur=el.querySelector("duration");
+        if(fdur)t+=(parseInt(fdur.textContent)/divisions)*q;
+        continue;
+      }
+      if(el.tagName==="backup"){
+        var bdur=el.querySelector("duration");
+        if(bdur)t-=(parseInt(bdur.textContent)/divisions)*q;
+        if(t<0)t=0;
+        continue;
+      }
+      if(el.tagName!=="note")continue;
+      var durEl=el.querySelector("duration");
+      var durTicks=durEl?parseInt(durEl.textContent):divisions;
+      var durSec=(durTicks/divisions)*q;
+      // Rest — advance time but don't add a note
+      if(el.querySelector("rest")){
+        if(!el.querySelector("chord"))t+=durSec;
+        continue;
+      }
+      // Chord notes don't advance time
+      var isChord=!!el.querySelector("chord");
+      // Get pitch
+      var pitchEl=el.querySelector("pitch");
+      if(!pitchEl){if(!isChord)t+=durSec;continue;}
+      var step=pitchEl.querySelector("step");
+      var octave=pitchEl.querySelector("octave");
+      var alter=pitchEl.querySelector("alter");
+      if(!step||!octave){if(!isChord)t+=durSec;continue;}
+      var noteName=step.textContent;
+      var alterVal=alter?parseInt(alter.textContent):0;
+      if(alterVal===1)noteName+="#";
+      else if(alterVal===-1)noteName+="b";
+      else if(alterVal===2)noteName+="##";
+      else if(alterVal===-2)noteName+="bb";
+      noteName+=octave.textContent;
+      var freq=edNoteToFreq(noteName);
+      if(freq>0){
+        var lane=edPitchToLane(freq);
+        notes.push({t:parseFloat(t.toFixed(4)),l:lane,f:freq,d:parseFloat(durSec.toFixed(4))});
+      }
+      if(!isChord)t+=durSec;
+    }
+  }
+  return notes;
+}
+
+// --- MIDI IMPORT ---
+function edHandleMIDI(e){
+  var file=e.target.files[0];if(!file)return;
+  var status=document.getElementById("ed-import-status");
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var buf=new Uint8Array(ev.target.result);
+      var notes=edParseMIDI(buf);
+      if(notes.length===0){status.textContent="No notes found in MIDI file";return;}
+      var append=document.getElementById("ed-midi-append").checked;
+      if(append){
+        var offset=0;
+        edMelody.forEach(function(m){var end=m.t+(m.d||0);if(end>offset)offset=end;});
+        notes.forEach(function(n){n.t=parseFloat((n.t+offset).toFixed(4));});
+        edMelody=edMelody.concat(notes);
+      }else{
+        edMelody=notes;
+      }
+      edMelody.sort(function(a,b){return a.t-b.t;});
+      edSelected=-1;edDraw();edUpdateCode();
+      status.textContent="Imported "+notes.length+" notes from MIDI!";
+    }catch(err){
+      status.textContent="MIDI error: "+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value="";
+}
+
+function edParseMIDI(buf){
+  // Minimal MIDI parser — handles format 0 and 1 single/multi track
+  var pos=0;
+  function readU16(){return(buf[pos++]<<8)|buf[pos++];}
+  function readU32(){return(buf[pos++]<<24)|(buf[pos++]<<16)|(buf[pos++]<<8)|buf[pos++];}
+  function readVarLen(){
+    var v=0;
+    for(var i=0;i<4;i++){
+      var b=buf[pos++];
+      v=(v<<7)|(b&0x7F);
+      if(!(b&0x80))break;
+    }
+    return v;
+  }
+  // Header: MThd
+  if(buf[0]!==0x4D||buf[1]!==0x54||buf[2]!==0x68||buf[3]!==0x64)throw new Error("Not a MIDI file");
+  pos=4;
+  var hdrLen=readU32(); // should be 6
+  var format=readU16();
+  var nTracks=readU16();
+  var ticksPerBeat=readU16();
+  pos=8+hdrLen; // skip to first track
+
+  var usPerBeat=500000; // default 120 BPM
+  var allEvents=[];
+
+  for(var tr=0;tr<nTracks;tr++){
+    // MTrk
+    if(buf[pos]!==0x4D||buf[pos+1]!==0x54||buf[pos+2]!==0x72||buf[pos+3]!==0x6B){
+      // Skip non-track chunks
+      pos+=4;var cLen=readU32();pos+=cLen;continue;
+    }
+    pos+=4;
+    var trkLen=readU32();
+    var trkEnd=pos+trkLen;
+    var tickTime=0;
+    var running=0;
+    while(pos<trkEnd){
+      var delta=readVarLen();
+      tickTime+=delta;
+      var byte1=buf[pos];
+      if(byte1>=0x80){running=byte1;pos++;}
+      var cmd=running&0xF0;
+      if(cmd===0x90){// Note on
+        var note=buf[pos++];var vel=buf[pos++];
+        allEvents.push({type:vel>0?"on":"off",tick:tickTime,note:note,vel:vel,track:tr});
+      }else if(cmd===0x80){// Note off
+        var note2=buf[pos++];pos++;// skip vel
+        allEvents.push({type:"off",tick:tickTime,note:note2,track:tr});
+      }else if(cmd===0xA0||cmd===0xB0||cmd===0xE0){pos+=2;}
+      else if(cmd===0xC0||cmd===0xD0){pos+=1;}
+      else if(byte1===0xFF){// Meta event
+        var metaType=buf[pos++];
+        var metaLen=readVarLen();
+        if(metaType===0x51&&metaLen===3){// Tempo
+          usPerBeat=(buf[pos]<<16)|(buf[pos+1]<<8)|buf[pos+2];
+        }
+        pos+=metaLen;
+      }else if(byte1===0xF0||byte1===0xF7){// SysEx
+        var sysLen=readVarLen();pos+=sysLen;
+      }else{
+        // Unknown — try to skip gracefully
+        pos++;
+      }
+    }
+    pos=trkEnd;
+  }
+
+  // Set BPM from tempo
+  var bpmFromMidi=Math.round(60000000/usPerBeat);
+  if(bpmFromMidi>0){edBpm=bpmFromMidi;document.getElementById("ed-bpm").value=edBpm;}
+
+  // Convert tick events to notes with time/duration
+  allEvents.sort(function(a,b){return a.tick-b.tick||(a.type==="off"?-1:1);});
+  var secPerTick=usPerBeat/(ticksPerBeat*1000000);
+  var openNotes={}; // key: noteNum → {tick, event}
+  var notes=[];
+  for(var i=0;i<allEvents.length;i++){
+    var ev=allEvents[i];
+    var timeSec=ev.tick*secPerTick;
+    var key=ev.note;
+    if(ev.type==="on"){
+      openNotes[key]={tick:ev.tick,time:timeSec};
+    }else if(ev.type==="off"&&openNotes[key]){
+      var start=openNotes[key];
+      var dur=timeSec-start.time;
+      if(dur<0.01)dur=0.05;
+      var freq=parseFloat((440*Math.pow(2,(key-69)/12)).toFixed(2));
+      var lane=edPitchToLane(freq);
+      notes.push({t:parseFloat(start.time.toFixed(4)),l:lane,f:freq,d:parseFloat(dur.toFixed(4))});
+      delete openNotes[key];
+    }
+  }
+  return notes;
 }
 
 // Download all edits as a JSON file (for transferring between machines)
