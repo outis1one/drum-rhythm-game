@@ -209,7 +209,7 @@ canvas{display:block;}
     <span id="ed-status" style="color:#888;font-size:11px;margin-left:auto;"></span>
   </div>
   <div id="ed-help" style="padding:4px 12px;background:#0d0d18;color:#666;font-size:11px;border-bottom:1px solid #222;">
-    Click = add note | Click note = select | Drag = move | Delete/Backspace = remove selected | Scroll = pan timeline
+    Click=add | Click note=select | Drag=move | Drag right edge=resize duration | D=add duration | Shift+D=remove duration | Shift+drag=select range | Ctrl+C/V=copy/paste | Ctrl+A=select all | Esc=deselect | Del=delete | Scroll=pan
     <span id="ed-mode-label" style="margin-left:12px;color:#805ad5;"></span>
   </div>
   <div id="ed-code-panel" style="display:none;padding:8px 12px;background:#0a0a14;border-bottom:1px solid #333;max-height:200px;overflow:auto;">
@@ -4793,7 +4793,9 @@ refreshMiniLB();
 
 // ── MELODY EDITOR ─────────────────────────────────────
 var edPiece=null,edMelody=[],edBpm=120,edBars=8,edSelected=-1,edScrollX=0,edDragging=false,edDragNote=-1,edDragOffX=0,edDragOffY=0,edPreviewing=false,edIsClassical=false,edGenre="";
-var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=0,ED_NOTE_W=14,ED_NOTE_H=16;
+var edResizing=false,edResizeNote=-1; // right-edge duration drag
+var edSelRange=null,edSelecting=false,edClipboard=[]; // range select + copy/paste
+var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=20,ED_NOTE_W=14,ED_NOTE_H=16,ED_MIN_DUR=0.05;
 var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
 var ED_NAMES=["Red","Yellow","Blue","Green","Kick"];
 
@@ -4830,19 +4832,18 @@ function openEditor(){
   // Load saved edits or use original
   var saved=edLoadSaved(edPiece.n);
   if(saved){
-    edMelody=saved.melody.map(function(m){return{t:m.t,l:m.l};});
+    edMelody=saved.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
     edBpm=saved.bpm||edPiece.bpm;
     if(!edIsClassical)edBars=saved.bars||edPiece.bars||8;
   }else if(edIsClassical){
-    edMelody=edPiece.melody.map(function(m){return{t:m.t,l:m.l};});
+    edMelody=edPiece.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
     edBpm=edPiece.bpm;
   }else{
-    // Regular rhythm: load the repeating pattern
-    edMelody=edPiece.p.map(function(m){return{t:m.t,l:m.l};});
+    edMelody=edPiece.p.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
     edBpm=edPiece.bpm;
     edBars=edPiece.bars||8;
   }
-  edSelected=-1;edScrollX=0;
+  edSelected=-1;edScrollX=0;edSelRange=null;edClipboard=[];
   document.getElementById("ed-title").textContent="Editing: "+edPiece.n+(edPiece.composer?" ("+edPiece.composer+")":"");
   document.getElementById("ed-bpm").value=edBpm;
   document.getElementById("ed-mode-label").textContent=edIsClassical?"Classical (full timeline)":"Pattern (4-beat cycle, repeats "+edBars+"x)";
@@ -4888,26 +4889,33 @@ function edDraw(){
   ctx.fillText("Kick",4,ED_HEAD+4*ED_LANE_H+15);
   ctx.globalAlpha=1;
 
-  // Grid lines
+  // Measure header background
+  ctx.fillStyle="#0a0a12";
+  ctx.fillRect(0,0,W,ED_HEAD);
+
+  // Grid lines + measure numbers
   if(edIsClassical){
-    // Classical: grid by beats (seconds / (60/bpm))
     var beatSec=60/edBpm;
     var startBeat=Math.floor(edXToTime(0)/beatSec);
     var endBeat=Math.ceil(edXToTime(W)/beatSec);
     for(var b=startBeat;b<=endBeat;b++){
       var bx=edTimeToX(b*beatSec);
       if(bx<0||bx>W)continue;
-      ctx.strokeStyle=b%4===0?"#444":"#222";
-      ctx.lineWidth=b%4===0?1.5:0.5;
+      var isMeasure=b%4===0;
+      ctx.strokeStyle=isMeasure?"#444":"#222";
+      ctx.lineWidth=isMeasure?1.5:0.5;
       ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
-      if(b%4===0){
+      if(isMeasure){
+        // Measure number in header
+        var mNum=Math.floor(b/4)+1;
+        ctx.fillStyle="#888";ctx.font="bold 11px sans-serif";
+        ctx.fillText("M"+mNum,bx+3,ED_HEAD-5);
+        // Time at bottom
         ctx.fillStyle="#555";ctx.font="10px sans-serif";
         ctx.fillText((b*beatSec).toFixed(1)+"s",bx+2,H-4);
       }
     }
   }else{
-    // Regular rhythm: grid by beat subdivisions (t=0 to 4)
-    // Draw 16th note grid (every 0.25 beats)
     for(var sub=0;sub<=16;sub++){
       var bt=sub*0.25;
       var bx=edTimeToX(bt);
@@ -4919,9 +4927,20 @@ function edDraw(){
       ctx.beginPath();ctx.moveTo(bx,ED_HEAD);ctx.lineTo(bx,H);ctx.stroke();
       if(isBeat){
         ctx.fillStyle="#888";ctx.font="bold 11px sans-serif";
+        ctx.fillText("Beat "+(sub/4+1),bx+3,ED_HEAD-5);
         ctx.fillText("Beat "+(sub/4+1),bx+3,H-4);
       }
     }
+  }
+
+  // START marker at t=0
+  var sx=edTimeToX(0);
+  if(sx>-2&&sx<W){
+    ctx.strokeStyle="#38a169";ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx,H);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle="#38a169";ctx.font="bold 10px sans-serif";
+    ctx.fillText("START",sx+3,12);
   }
 
   // Lane separator lines
@@ -4931,17 +4950,40 @@ function edDraw(){
     ctx.beginPath();ctx.moveTo(0,ly);ctx.lineTo(W,ly);ctx.stroke();
   }
 
-  // Draw notes
+  // Draw selection range highlight
+  if(edSelRange){
+    var rx1=edTimeToX(Math.min(edSelRange.start,edSelRange.end));
+    var rx2=edTimeToX(Math.max(edSelRange.start,edSelRange.end));
+    ctx.fillStyle="rgba(128,90,213,0.15)";
+    ctx.fillRect(rx1,ED_HEAD,rx2-rx1,H-ED_HEAD);
+    ctx.strokeStyle="#805ad5";ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(rx1,ED_HEAD);ctx.lineTo(rx1,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(rx2,ED_HEAD);ctx.lineTo(rx2,H);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw notes (with duration support)
   edMelody.forEach(function(m,idx){
-    var nx=edTimeToX(m.t)-ED_NOTE_W/2;
+    var dur=m.d||0;
+    var noteW=dur>0?Math.max(ED_NOTE_W, dur*pps):ED_NOTE_W;
+    var nx=dur>0?edTimeToX(m.t):edTimeToX(m.t)-ED_NOTE_W/2;
     var ny=edLaneToY(m.l)-ED_NOTE_H/2;
-    if(nx+ED_NOTE_W<0||nx>W)return;
+    if(nx+noteW<0||nx>W)return;
+    var inRange=edSelRange&&!edSelecting&&m.t>=Math.min(edSelRange.start,edSelRange.end)&&m.t<=Math.max(edSelRange.start,edSelRange.end);
     ctx.fillStyle=ED_COLORS[m.l]||"#888";
-    ctx.globalAlpha=idx===edSelected?1:0.8;
-    ctx.fillRect(nx,ny,ED_NOTE_W,ED_NOTE_H);
+    ctx.globalAlpha=idx===edSelected?1:inRange?0.95:0.8;
+    ctx.fillRect(nx,ny,noteW,ED_NOTE_H);
+    // Duration right-edge handle
+    if(dur>0){
+      ctx.fillStyle="rgba(255,255,255,0.3)";
+      ctx.fillRect(nx+noteW-4,ny,4,ED_NOTE_H);
+    }
     if(idx===edSelected){
       ctx.strokeStyle="#fff";ctx.lineWidth=2;
-      ctx.strokeRect(nx-1,ny-1,ED_NOTE_W+2,ED_NOTE_H+2);
+      ctx.strokeRect(nx-1,ny-1,noteW+2,ED_NOTE_H+2);
+    } else if(inRange){
+      ctx.strokeStyle="#805ad5";ctx.lineWidth=1.5;
+      ctx.strokeRect(nx-1,ny-1,noteW+2,ED_NOTE_H+2);
     }
     ctx.globalAlpha=1;
   });
@@ -4960,41 +5002,82 @@ function edDraw(){
   }
 
   // Status
-  document.getElementById("ed-status").textContent=edMelody.length+" notes | "+
-    (edSelected>=0?"Selected #"+edSelected+" (t="+edMelody[edSelected].t.toFixed(3)+"s, "+ED_NAMES[edMelody[edSelected].l]+")":"Click to add, click note to select");
+  var statusTxt=edMelody.length+" notes";
+  if(edSelRange&&!edSelecting){
+    var lo=Math.min(edSelRange.start,edSelRange.end),hi=Math.max(edSelRange.start,edSelRange.end);
+    var cnt=edMelody.filter(function(m){return m.t>=lo&&m.t<=hi;}).length;
+    statusTxt+=" | Range: "+lo.toFixed(2)+"s–"+hi.toFixed(2)+"s ("+cnt+" notes) | Ctrl+C copy, Ctrl+V paste, Del delete";
+  }else if(edSelected>=0){
+    var sm=edMelody[edSelected];
+    statusTxt+=" | Selected #"+edSelected+" (t="+sm.t.toFixed(3)+"s, "+ED_NAMES[sm.l];
+    if(sm.d>0)statusTxt+=", dur="+sm.d.toFixed(3)+"s";
+    statusTxt+=") | D=add duration, Shift+D=remove";
+  }else{
+    statusTxt+=" | Click=add, Shift+drag=select range";
+  }
+  document.getElementById("ed-status").textContent=statusTxt;
 }
 
 function edHitTest(x,y){
+  var pps=edPxPerUnit();
   for(var i=edMelody.length-1;i>=0;i--){
     var m=edMelody[i];
-    var nx=edTimeToX(m.t)-ED_NOTE_W/2;
+    var dur=m.d||0;
+    var noteW=dur>0?Math.max(ED_NOTE_W,dur*pps):ED_NOTE_W;
+    var nx=dur>0?edTimeToX(m.t):edTimeToX(m.t)-ED_NOTE_W/2;
     var ny=edLaneToY(m.l)-ED_NOTE_H/2;
-    if(x>=nx&&x<=nx+ED_NOTE_W&&y>=ny&&y<=ny+ED_NOTE_H)return i;
+    if(x>=nx&&x<=nx+noteW&&y>=ny&&y<=ny+ED_NOTE_H)return i;
   }
   return-1;
+}
+function edIsOnRightEdge(x,idx){
+  var m=edMelody[idx],pps=edPxPerUnit();
+  var dur=m.d||0;
+  if(dur<=0)return false;
+  var noteW=Math.max(ED_NOTE_W,dur*pps);
+  var nx=edTimeToX(m.t);
+  var rightX=nx+noteW;
+  return Math.abs(x-rightX)<8;
 }
 
 // Mouse handlers
 function edMouseDown(e){
   var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+
+  // Shift+click = range select
+  if(e.shiftKey){
+    var t=edXToTime(mx);
+    edSelRange={start:t,end:t};
+    edSelecting=true;
+    edSelected=-1;
+    edDraw();
+    return;
+  }
+
   var hit=edHitTest(mx,my);
   if(hit>=0){
+    // Check if clicking right edge for resize
+    if(edIsOnRightEdge(mx,hit)){
+      edResizing=true;edResizeNote=hit;edSelected=hit;
+      edDraw();
+      return;
+    }
     edSelected=hit;
     edDragging=true;edDragNote=hit;
     edDragOffX=mx-edTimeToX(edMelody[hit].t);
     edDragOffY=my-edLaneToY(edMelody[hit].l);
+    edSelRange=null; // clear range on note click
     edDraw();
   }else{
-    // Add new note
+    // Click on empty space clears range and adds note
+    edSelRange=null;
     var t=edXToTime(mx);
     var l=edYToLane(my);
     if(l>=0&&l<=4&&t>=0){
-      // Snap to nearest subdivision
-      var snap=edIsClassical?(60/edBpm/4):0.25; // 1/4 beat in seconds or 1/16 note in beat units
+      var snap=edIsClassical?(60/edBpm/4):0.25;
       t=Math.round(t/snap)*snap;
       t=parseFloat(t.toFixed(4));
-      // For regular rhythms, clamp to 0-4 range
       if(!edIsClassical)t=Math.max(0,Math.min(3.99,t));
       edMelody.push({t:t,l:l});
       edMelody.sort(function(a,b){return a.t-b.t;});
@@ -5004,25 +5087,62 @@ function edMouseDown(e){
   }
 }
 function edMouseMove(e){
-  if(!edDragging||edDragNote<0)return;
   var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+
+  // Range selecting
+  if(edSelecting&&edSelRange){
+    edSelRange.end=edXToTime(mx);
+    edDraw();
+    return;
+  }
+
+  // Resizing note duration
+  if(edResizing&&edResizeNote>=0){
+    var m=edMelody[edResizeNote];
+    var snap=edIsClassical?(60/edBpm/4):0.25;
+    var newEnd=edXToTime(mx);
+    var dur=Math.max(ED_MIN_DUR, newEnd-m.t);
+    dur=Math.round(dur/snap)*snap;
+    dur=Math.max(snap, dur);
+    m.d=parseFloat(dur.toFixed(4));
+    edDraw();
+    return;
+  }
+
+  // Dragging note position
+  if(!edDragging||edDragNote<0)return;
   var t=edXToTime(mx-edDragOffX);
   var l=edYToLane(my);
-  var snap=60/edBpm/4;
-  t=Math.max(0,Math.round(t/snap)*snap);
+  var snap2=60/edBpm/4;
+  t=Math.max(0,Math.round(t/snap2)*snap2);
   if(l>=0&&l<=4){
     edMelody[edDragNote].t=t;
     edMelody[edDragNote].l=l;
     edSelected=edDragNote;
     edDraw();
   }
+
+  // Update cursor for right-edge hover
+  var hit2=edHitTest(mx,my);
+  cv.style.cursor=(hit2>=0&&edIsOnRightEdge(mx,hit2))?"ew-resize":(hit2>=0?"grab":"crosshair");
 }
 function edMouseUp(){
+  if(edSelecting){
+    edSelecting=false;
+    // If range is too small, clear it
+    if(edSelRange&&Math.abs(edSelRange.end-edSelRange.start)<0.01)edSelRange=null;
+    edDraw();
+    return;
+  }
+  if(edResizing){
+    edResizing=false;edResizeNote=-1;
+    edDraw();
+    return;
+  }
   if(edDragging){
     edDragging=false;edDragNote=-1;
     edMelody.sort(function(a,b){return a.t-b.t;});
-    // Re-find selected after sort
     edDraw();
   }
 }
@@ -5034,12 +5154,81 @@ function edWheel(e){
 }
 function edKeyDown(e){
   if(!document.getElementById("sed").classList.contains("active"))return;
+
+  // Ctrl+C — copy selected range or selected note
+  if((e.ctrlKey||e.metaKey)&&e.key==="c"){
+    if(edSelRange){
+      var lo=Math.min(edSelRange.start,edSelRange.end);
+      var hi=Math.max(edSelRange.start,edSelRange.end);
+      edClipboard=edMelody.filter(function(m){return m.t>=lo&&m.t<=hi;})
+        .map(function(m){return{t:m.t-lo,l:m.l,d:m.d||0};});
+      document.getElementById("ed-status").textContent="Copied "+edClipboard.length+" notes";
+    }else if(edSelected>=0){
+      var m=edMelody[edSelected];
+      edClipboard=[{t:0,l:m.l,d:m.d||0}];
+      document.getElementById("ed-status").textContent="Copied 1 note";
+    }
+    e.preventDefault();return;
+  }
+
+  // Ctrl+V — paste at end of current notes or at selection start
+  if((e.ctrlKey||e.metaKey)&&e.key==="v"){
+    if(edClipboard.length===0)return;
+    // Paste after the last note, or at end of selection range
+    var pasteAt;
+    if(edSelRange){
+      pasteAt=Math.max(edSelRange.start,edSelRange.end);
+    }else{
+      var maxT=0;
+      edMelody.forEach(function(m){var end=m.t+(m.d||0);if(end>maxT)maxT=end;if(m.t>maxT)maxT=m.t;});
+      var snap=edIsClassical?(60/edBpm/4):0.25;
+      pasteAt=Math.ceil(maxT/snap)*snap; // snap to next grid line
+    }
+    edClipboard.forEach(function(c){
+      var note={t:parseFloat((pasteAt+c.t).toFixed(4)),l:c.l};
+      if(c.d>0)note.d=c.d;
+      edMelody.push(note);
+    });
+    edMelody.sort(function(a,b){return a.t-b.t;});
+    edSelected=-1;edSelRange=null;
+    edDraw();
+    document.getElementById("ed-status").textContent="Pasted "+edClipboard.length+" notes at t="+pasteAt.toFixed(2);
+    e.preventDefault();return;
+  }
+
+  // Ctrl+A — select all (set range over all notes)
+  if((e.ctrlKey||e.metaKey)&&e.key==="a"&&edMelody.length>0){
+    var first=edMelody[0].t;
+    var last=edMelody[edMelody.length-1].t+(edMelody[edMelody.length-1].d||0);
+    edSelRange={start:first,end:last};
+    edSelected=-1;
+    edDraw();
+    e.preventDefault();return;
+  }
+
+  // Escape — clear selection range
+  if(e.key==="Escape"){
+    edSelRange=null;edSelected=-1;edDraw();e.preventDefault();return;
+  }
+
   if((e.key==="Delete"||e.key==="Backspace")&&edSelected>=0){
     edMelody.splice(edSelected,1);
     edSelected=-1;
     edDraw();
     e.preventDefault();
   }
+  // Delete selected range
+  if((e.key==="Delete"||e.key==="Backspace")&&edSelRange&&edSelected<0){
+    var lo2=Math.min(edSelRange.start,edSelRange.end);
+    var hi2=Math.max(edSelRange.start,edSelRange.end);
+    var before=edMelody.length;
+    edMelody=edMelody.filter(function(m){return m.t<lo2||m.t>hi2;});
+    edSelRange=null;
+    edDraw();
+    document.getElementById("ed-status").textContent="Deleted "+(before-edMelody.length)+" notes";
+    e.preventDefault();
+  }
+
   if(e.key==="ArrowLeft"&&edSelected>=0){
     var snap=edIsClassical?(60/edBpm/4):0.25;
     edMelody[edSelected].t=Math.max(0,parseFloat((edMelody[edSelected].t-snap).toFixed(4)));
@@ -5048,8 +5237,8 @@ function edKeyDown(e){
   }
   if(e.key==="ArrowRight"&&edSelected>=0){
     var snap2=edIsClassical?(60/edBpm/4):0.25;
-    var maxT=edIsClassical?9999:3.99;
-    edMelody[edSelected].t=Math.min(maxT,parseFloat((edMelody[edSelected].t+snap2).toFixed(4)));
+    var maxT2=edIsClassical?9999:3.99;
+    edMelody[edSelected].t=Math.min(maxT2,parseFloat((edMelody[edSelected].t+snap2).toFixed(4)));
     edMelody.sort(function(a,b){return a.t-b.t;});
     edDraw();e.preventDefault();
   }
@@ -5059,6 +5248,22 @@ function edKeyDown(e){
   }
   if(e.key==="ArrowDown"&&edSelected>=0){
     edMelody[edSelected].l=Math.min(4,edMelody[edSelected].l+1);
+    edDraw();e.preventDefault();
+  }
+  // D key — toggle/set duration on selected note
+  if(e.key==="d"&&edSelected>=0&&!e.ctrlKey&&!e.metaKey){
+    var n=edMelody[edSelected];
+    var snapD=edIsClassical?(60/edBpm/4):0.25;
+    if(!n.d||n.d<=0){
+      n.d=snapD; // add default duration
+    }else{
+      n.d=parseFloat((n.d+snapD).toFixed(4)); // increase by one grid unit
+    }
+    edDraw();e.preventDefault();
+  }
+  // Shift+D — remove duration (make instant)
+  if(e.key==="D"&&edSelected>=0){
+    delete edMelody[edSelected].d;
     edDraw();e.preventDefault();
   }
 }
@@ -5126,7 +5331,7 @@ function edGetAllSaved(){
 function edLoadSaved(name){var all=edGetAllSaved();return all[name]||null;}
 function edSave(){
   var all=edGetAllSaved();
-  var entry={melody:edMelody.map(function(m){return{t:m.t,l:m.l};}),bpm:edBpm,isClassical:edIsClassical};
+  var entry={melody:edMelody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;}),bpm:edBpm,isClassical:edIsClassical};
   if(!edIsClassical)entry.bars=edBars;
   all[edPiece.n]=entry;
   try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
@@ -5137,9 +5342,9 @@ function edReset(){
   var all=edGetAllSaved();delete all[edPiece.n];
   try{localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));}catch(e){}
   if(edIsClassical){
-    edMelody=edPiece.melody.map(function(m){return{t:m.t,l:m.l};});
+    edMelody=edPiece.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
   }else{
-    edMelody=edPiece.p.map(function(m){return{t:m.t,l:m.l};});
+    edMelody=edPiece.p.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
     edBars=edPiece.bars||8;
   }
   edBpm=edPiece.bpm;
@@ -5147,7 +5352,8 @@ function edReset(){
   edSelected=-1;edDraw();
 }
 function edExport(){
-  var data=JSON.stringify({name:edPiece.n,bpm:edBpm,type:edIsClassical?"classical":"pattern",melody:edMelody},null,2);
+  var exportMelody=edMelody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
+  var data=JSON.stringify({name:edPiece.n,bpm:edBpm,type:edIsClassical?"classical":"pattern",melody:exportMelody},null,2);
   navigator.clipboard.writeText(data).then(function(){
     document.getElementById("ed-status").textContent="Copied to clipboard!";
   }).catch(function(){
@@ -5169,22 +5375,24 @@ function edToggleCode(){
 function edUpdateCode(){
   var ta=document.getElementById("ed-code");
   if(edIsClassical){
-    // Show melody array as JS
     var lines=edMelody.map(function(m){
-      return"  {t:"+m.t.toFixed(3)+", l:"+m.l+"}";
+      var s="  {t:"+m.t.toFixed(3)+", l:"+m.l;
+      if(m.d>0)s+=", d:"+m.d.toFixed(3);
+      return s+"}";
     });
     ta.value="// "+edPiece.n+" — melody ("+edMelody.length+" notes)\n"+
       "// BPM: "+edBpm+", Duration: "+(edPiece.duration||"?")+"s\n"+
-      "// Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick\n"+
+      "// Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick | d=duration(s)\n"+
       "melody: [\n"+lines.join(",\n")+"\n]";
   }else{
-    // Show pattern array as JS
     var lines2=edMelody.map(function(m){
-      return"  {t:"+m.t+", l:"+m.l+"}";
+      var s="  {t:"+m.t+", l:"+m.l;
+      if(m.d>0)s+=", d:"+m.d;
+      return s+"}";
     });
     ta.value="// "+edPiece.n+" — pattern ("+edMelody.length+" notes, repeats "+edBars+"x)\n"+
       "// BPM: "+edBpm+", Bars: "+edBars+"\n"+
-      "// t = beat offset (0-4), Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick\n"+
+      "// t = beat offset (0-4), Lanes: 0=Red 1=Yellow 2=Blue 3=Green 4=Kick | d=duration\n"+
       "p: [\n"+lines2.join(",\n")+"\n]";
   }
 }
@@ -5199,7 +5407,7 @@ function edApplyCode(){
     var arrStr="["+match[1].replace(/(\w+)\s*:/g,'"$1":')+"]";
     var arr=JSON.parse(arrStr);
     edMelody=arr.filter(function(m){return typeof m.t==="number"&&typeof m.l==="number";})
-      .map(function(m){return{t:m.t,l:m.l};});
+      .map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
     edMelody.sort(function(a,b){return a.t-b.t;});
     edSelected=-1;edDraw();
     document.getElementById("ed-status").textContent="Applied! "+edMelody.length+" notes loaded from code.";
@@ -5223,7 +5431,7 @@ function edDoImport(){
     var arr=Array.isArray(data)?data:(data.melody||data.p||[]);
     if(!Array.isArray(arr)||arr.length===0){document.getElementById("ed-import-status").textContent="No notes found";return;}
     edMelody=arr.filter(function(m){return typeof m.t==="number"&&typeof m.l==="number";})
-      .map(function(m){return{t:m.t,l:m.l};});
+      .map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});
     edMelody.sort(function(a,b){return a.t-b.t;});
     if(data.bpm)edBpm=data.bpm;
     document.getElementById("ed-bpm").value=edBpm;
@@ -5276,7 +5484,7 @@ function edLoadEditsFile(e){
       localStorage.setItem(ED_STORAGE_KEY,JSON.stringify(all));
       document.getElementById("ed-status").textContent="Loaded "+count+" edit(s) from file";
       // Refresh current editor view if open
-      if(edPiece){var saved=edLoadSaved(edPiece.n);if(saved){edMelody=saved.melody.map(function(m){return{t:m.t,l:m.l};});edBpm=saved.bpm||edBpm;document.getElementById("ed-bpm").value=edBpm;edDraw();}}
+      if(edPiece){var saved=edLoadSaved(edPiece.n);if(saved){edMelody=saved.melody.map(function(m){var n={t:m.t,l:m.l};if(m.d>0)n.d=m.d;return n;});edBpm=saved.bpm||edBpm;document.getElementById("ed-bpm").value=edBpm;edDraw();}}
     }catch(err){document.getElementById("ed-status").textContent="Error: "+err.message;}
   };
   reader.readAsText(file);
