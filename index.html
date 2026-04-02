@@ -4587,6 +4587,7 @@ var hiddenGenres=JSON.parse(localStorage.getItem("drgameHidden")||"[]");
 var hiddenSongs=JSON.parse(localStorage.getItem("drgameHiddenSongs")||"{}");
 function isSongHidden(genre,name){return hiddenSongs[genre]&&hiddenSongs[genre].indexOf(name)>=0;}
 function hideSong(genre,name){
+  if(!mathGate("hide this song"))return;
   if(!hiddenSongs[genre])hiddenSongs[genre]=[];
   if(hiddenSongs[genre].indexOf(name)<0)hiddenSongs[genre].push(name);
   localStorage.setItem("drgameHiddenSongs",JSON.stringify(hiddenSongs));
@@ -4639,19 +4640,16 @@ function setVolume(v){masterVolume=v/100;syncSliders();saveSettings();}
 function resetSettings(){gameSpeed=1.0;masterVolume=1.0;syncSliders();saveSettings();}
 function loadSettings(){syncSliders();}
 function confirmReset(){
-  var a=Math.floor(Math.random()*20)+5,b=Math.floor(Math.random()*20)+5;
-  var ans=prompt("To reset ALL saved data (scores, settings, gamepad mapping, hidden genres), solve this:\n\nWhat is "+a+" + "+b+"?");
-  if(ans===null)return;
-  if(parseInt(ans)===a+b){
-    localStorage.removeItem("drgame5");localStorage.removeItem("drgameSettings");
-    localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameKeyMap");localStorage.removeItem("drgameHidden");localStorage.removeItem("drgameHiddenSongs");
-    savedScores=[];hiddenGenres=[];hiddenSongs={};gpMap={0:2,1:3,2:0,3:1,4:4,5:5,6:6,7:7,8:4};customKeyMap=null;
-    LANES[0].key="f";LANES[1].key="g";LANES[2].key="h";LANES[3].key="j";LANES[4].key=" ";LANES[5].key="d";LANES[6].key="k";LANES[7].key="l";
-    refreshMiniLB();resetSettings();buildMenu();
-    alert("All data cleared!");
-  } else {alert("Incorrect — data NOT cleared.");}
+  if(!mathGate("reset ALL saved data")){alert("Incorrect — data NOT cleared.");return;}
+  localStorage.removeItem("drgame5");localStorage.removeItem("drgameSettings");
+  localStorage.removeItem("drgameGpMap");localStorage.removeItem("drgameKeyMap");localStorage.removeItem("drgameHidden");localStorage.removeItem("drgameHiddenSongs");
+  savedScores=[];hiddenGenres=[];hiddenSongs={};gpMap={0:2,1:3,2:0,3:1,4:4,5:5,6:6,7:7,8:4};customKeyMap=null;
+  LANES[0].key="f";LANES[1].key="g";LANES[2].key="h";LANES[3].key="j";LANES[4].key=" ";LANES[5].key="d";LANES[6].key="k";LANES[7].key="l";
+  refreshMiniLB();resetSettings();buildMenu();
+  alert("All data cleared!");
 }
 function hideGenre(g){
+  if(!mathGate("hide this genre"))return;
   if(hiddenGenres.indexOf(g)<0)hiddenGenres.push(g);
   localStorage.setItem("drgameHidden",JSON.stringify(hiddenGenres));
   if(curGenre===g){var allG=Object.keys(SYNTH_GENRES).concat(Object.keys(GENRES));curGenre=allG.find(function(x){return hiddenGenres.indexOf(x)<0;})||allG[0];curIdx=0;}
@@ -4816,7 +4814,14 @@ function edLaneToY(l){
   return ED_HEAD+4*ED_LANE_H+ED_KICK_H/2;
 }
 
+function mathGate(actionLabel){
+  var a=Math.floor(Math.random()*20)+5,b=Math.floor(Math.random()*20)+5;
+  var ans=prompt("To "+actionLabel+", solve this:\n\nWhat is "+a+" + "+b+"?");
+  if(ans===null)return false;
+  return parseInt(ans)===a+b;
+}
 function openEditor(){
+  if(!mathGate("edit this melody"))return;
   var pieces=SYNTH_GENRES[curGenre]||GENRES[curGenre];
   if(!pieces||!pieces[curIdx])return;
   edPiece=pieces[curIdx];
@@ -4863,7 +4868,7 @@ window.addEventListener("resize",function(){if(document.getElementById("sed").cl
 function edDraw(){
   var cv=getEdCanvas(),ctx=getEdCtx(),W=cv.width,H=cv.height;
   ctx.clearRect(0,0,W,H);
-  var pps=edPxPerSec();
+  var pps=edPxPerUnit();
 
   // Draw lane backgrounds
   for(var i=0;i<4;i++){
