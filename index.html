@@ -4998,14 +4998,21 @@ function edUpdateNotePanel(){
   }
   panel.style.display="block";
   var m=edMelody[edSelected];
-  // Pitch input
+  // Pitch input — skip overwrite when user is actively typing in it
   var pitchInput=document.getElementById("ed-note-pitch");
-  pitchInput.value=m.f?edFreqToNote(m.f):"";
-  // Duration dropdown
+  if(document.activeElement!==pitchInput){
+    pitchInput.value=m.f?edFreqToNote(m.f):"";
+  }
+  // Duration dropdown — skip if focused
   var durSel=document.getElementById("ed-note-dur");
-  durSel.value=edDurSecToName(m.d||0);
-  // Lane dropdown
-  document.getElementById("ed-note-lane").value=m.l;
+  if(document.activeElement!==durSel){
+    durSel.value=edDurSecToName(m.d||0);
+  }
+  // Lane dropdown — skip if focused
+  var laneEl=document.getElementById("ed-note-lane");
+  if(document.activeElement!==laneEl){
+    laneEl.value=m.l;
+  }
   // Info line
   var info="t="+m.t.toFixed(3)+"s";
   if(m.f)info+=" | freq="+m.f.toFixed(1)+"Hz";
