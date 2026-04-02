@@ -197,6 +197,7 @@ canvas{display:block;}
     <label style="color:#aaa;font-size:12px;">BPM: <input type="number" id="ed-bpm" value="120" min="30" max="300" style="width:55px;background:#1a1a2e;color:#fff;border:1px solid #444;padding:2px 4px;border-radius:3px;" onchange="edUpdateBpm()"></label>
     <label style="color:#aaa;font-size:12px;">Time: <select id="ed-timesig" style="background:#1a1a2e;color:#fff;border:1px solid #444;padding:2px;border-radius:3px;font-size:12px;" onchange="edUpdateTimeSig()"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option><option>9/8</option><option>5/4</option><option>7/8</option><option>12/8</option></select></label>
     <label style="color:#aaa;font-size:12px;">Zoom: <input type="range" id="ed-zoom" min="20" max="200" value="80" style="width:80px;" oninput="edDraw()"></label>
+    <button class="smbtn" onclick="edGoToStart()" title="Scroll to start and reset play-from marker (Home key)">⏮ Start</button>
     <button class="smbtn" onclick="edPreview()" id="ed-pv-btn">▶ Preview</button>
     <button class="smbtn" onclick="edSave()" style="background:#38a169;">💾 Save</button>
     <button class="smbtn" onclick="edExport()">📋 Copy JSON</button>
@@ -4915,6 +4916,7 @@ var edPlayhead=-1,edPlayheadStart=0,edPlayheadRAF=0,edPlayheadOffset=0; // previ
 var edShowLabels=false; // toggle note labels on canvas
 var edShowPitch=false; // toggle pitch names on notes
 var edPlayFromMarker=-1; // click-to-play marker position in seconds
+var edDraggingMarker=false; // true when dragging the play-from marker
 var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=32,ED_NOTE_W=14,ED_NOTE_H=16,ED_MIN_DUR=0.05;
 var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
 var ED_NAMES=["Red","Yellow","Blue","Green","Kick"];
@@ -5412,14 +5414,16 @@ function edMouseDown(e){
   var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
 
-  // Click on header/timeline area = set play-from marker
+  // Click on header/timeline area = set play-from marker and start dragging it
   if(my<ED_HEAD){
     var startT=edXToTime(mx);
     if(startT<0)startT=0;
     edPlayFromMarker=startT;
+    edDraggingMarker=true;
     edDraw();
     // Double-click starts playback immediately from this position
     if(e.detail===2){
+      edDraggingMarker=false;
       edPreview(startT);
     }
     return;
@@ -5490,6 +5494,19 @@ function edMouseMove(e){
   var cv=getEdCanvas(),rect=cv.getBoundingClientRect();
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
 
+  // Dragging play-from marker in header
+  if(edDraggingMarker){
+    var t=edXToTime(mx);
+    if(t<0)t=0;
+    edPlayFromMarker=t;
+    // Auto-scroll when dragging near edges
+    var cv2=getEdCanvas();
+    if(mx<30&&edScrollX>0){edScrollX=Math.max(0,edScrollX-10);}
+    if(mx>cv2.width-30){edScrollX+=10;}
+    edDraw();
+    return;
+  }
+
   // Range selecting
   if(edSelecting&&edSelRange){
     edSelRange.end=edXToTime(mx);
@@ -5528,6 +5545,11 @@ function edMouseMove(e){
   cv.style.cursor=(hit2>=0&&edIsOnRightEdge(mx,hit2))?"ew-resize":(hit2>=0?"grab":"crosshair");
 }
 function edMouseUp(){
+  if(edDraggingMarker){
+    edDraggingMarker=false;
+    edDraw();
+    return;
+  }
   if(edSelecting){
     edSelecting=false;
     // If range is too small, clear it
@@ -5612,6 +5634,17 @@ function edKeyDown(e){
   // Escape — clear selection range and play-from marker
   if(e.key==="Escape"){
     edSelRange=null;edSelected=-1;edPlayFromMarker=-1;edDraw();e.preventDefault();return;
+  }
+
+  // Home key — scroll to start and reset play-from marker
+  if(e.key==="Home"){edGoToStart();e.preventDefault();return;}
+
+  // End key — scroll to end of piece
+  if(e.key==="End"){
+    var cv=getEdCanvas();
+    var endT=edIsClassical?(edPiece&&edPiece.duration||90):4;
+    edScrollX=Math.max(0,endT*edPxPerUnit()-cv.width+50);
+    edDraw();e.preventDefault();return;
   }
 
   if((e.key==="Delete"||e.key==="Backspace")&&edSelected>=0){
@@ -5751,6 +5784,12 @@ function edDurInfo(durSec){
   if(ratio>=0.4) return {sym:"\u266A",name:"eighth",val:0.5};
   if(ratio>=0.2) return {sym:"\u266C",name:"sixteenth",val:0.25};
   return {sym:"\u266C\u266C",name:"32nd",val:0.125};
+}
+
+function edGoToStart(){
+  edScrollX=0;
+  edPlayFromMarker=-1;
+  edDraw();
 }
 
 function edStopPlayhead(){
