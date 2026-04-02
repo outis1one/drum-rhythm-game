@@ -190,7 +190,7 @@ canvas{display:block;}
 </div>
 
 <!-- EDITOR -->
-<div class="screen" id="sed" style="padding:0;">
+<div class="screen" id="sed" style="padding:0;overflow:hidden;">
   <div id="ed-toolbar" style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:#13131f;border-bottom:1px solid #333;flex-wrap:wrap;">
     <button class="smbtn" onclick="closeEditor()">← Back</button>
     <span id="ed-title" style="font-weight:bold;color:#ccc;margin-right:8px;">Editing: —</span>
@@ -4795,6 +4795,7 @@ refreshMiniLB();
 var edPiece=null,edMelody=[],edBpm=120,edBars=8,edSelected=-1,edScrollX=0,edDragging=false,edDragNote=-1,edDragOffX=0,edDragOffY=0,edPreviewing=false,edIsClassical=false,edGenre="";
 var edResizing=false,edResizeNote=-1; // right-edge duration drag
 var edSelRange=null,edSelecting=false,edClipboard=[]; // range select + copy/paste
+var edPlayhead=-1,edPlayheadStart=0,edPlayheadRAF=0; // preview playhead
 var ED_LANE_H=50,ED_KICK_H=40,ED_HEAD=20,ED_NOTE_W=14,ED_NOTE_H=16,ED_MIN_DUR=0.05;
 var ED_COLORS=["#e53e3e","#d69e2e","#3182ce","#38a169","#805ad5"];
 var ED_NAMES=["Red","Yellow","Blue","Green","Kick"];
@@ -4843,7 +4844,7 @@ function openEditor(){
     edBpm=edPiece.bpm;
     edBars=edPiece.bars||8;
   }
-  edSelected=-1;edScrollX=0;edSelRange=null;edClipboard=[];
+  edSelected=-1;edScrollX=0;edSelRange=null;edClipboard=[];edPlayhead=-1;
   document.getElementById("ed-title").textContent="Editing: "+edPiece.n+(edPiece.composer?" ("+edPiece.composer+")":"");
   document.getElementById("ed-bpm").value=edBpm;
   document.getElementById("ed-mode-label").textContent=edIsClassical?"Classical (full timeline)":"Pattern (4-beat cycle, repeats "+edBars+"x)";
@@ -4853,7 +4854,7 @@ function openEditor(){
   // Need multiple frames for flex layout to settle after display:none→flex
   requestAnimationFrame(function(){requestAnimationFrame(function(){edResize();});});
 }
-function closeEditor(){stopPreview();edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";show("sm");}
+function closeEditor(){stopPreview();edPreviewing=false;edStopPlayhead();document.getElementById("ed-pv-btn").textContent="▶ Preview";show("sm");}
 
 function edResize(){
   var cv=getEdCanvas();
@@ -4861,7 +4862,7 @@ function edResize(){
   cv.width=cvRect.width||cv.parentElement.clientWidth||window.innerWidth;
   // Height = remaining space from canvas top to window bottom
   cv.height=Math.max(200, window.innerHeight-cvRect.top);
-  ED_LANE_H=Math.floor((cv.height-ED_KICK_H)/4);
+  ED_LANE_H=Math.floor((cv.height-ED_HEAD-ED_KICK_H)/4);
   edDraw();
 }
 window.addEventListener("resize",function(){if(document.getElementById("sed").classList.contains("active"))edResize();});
@@ -4962,7 +4963,7 @@ function edDraw(){
     ctx.setLineDash([]);
   }
 
-  // Draw notes (with duration support)
+  // Draw notes (with duration support + playhead highlight)
   edMelody.forEach(function(m,idx){
     var dur=m.d||0;
     var noteW=dur>0?Math.max(ED_NOTE_W, dur*pps):ED_NOTE_W;
@@ -4970,15 +4971,26 @@ function edDraw(){
     var ny=edLaneToY(m.l)-ED_NOTE_H/2;
     if(nx+noteW<0||nx>W)return;
     var inRange=edSelRange&&!edSelecting&&m.t>=Math.min(edSelRange.start,edSelRange.end)&&m.t<=Math.max(edSelRange.start,edSelRange.end);
-    ctx.fillStyle=ED_COLORS[m.l]||"#888";
-    ctx.globalAlpha=idx===edSelected?1:inRange?0.95:0.8;
+    // Check if this note is "playing" (near the playhead)
+    var isPlaying=edPlayhead>=0&&m.t<=edPlayhead&&m.t+Math.max(dur,0.15)>edPlayhead;
+    ctx.fillStyle=isPlaying?"#fff":ED_COLORS[m.l]||"#888";
+    ctx.globalAlpha=idx===edSelected?1:isPlaying?1:inRange?0.95:0.8;
+    // Glow effect for playing notes
+    if(isPlaying){
+      ctx.shadowColor=ED_COLORS[m.l]||"#fff";
+      ctx.shadowBlur=12;
+    }
     ctx.fillRect(nx,ny,noteW,ED_NOTE_H);
+    ctx.shadowBlur=0;
     // Duration right-edge handle
     if(dur>0){
       ctx.fillStyle="rgba(255,255,255,0.3)";
       ctx.fillRect(nx+noteW-4,ny,4,ED_NOTE_H);
     }
-    if(idx===edSelected){
+    if(isPlaying){
+      ctx.strokeStyle=ED_COLORS[m.l]||"#fff";ctx.lineWidth=2.5;
+      ctx.strokeRect(nx-2,ny-2,noteW+4,ED_NOTE_H+4);
+    } else if(idx===edSelected){
       ctx.strokeStyle="#fff";ctx.lineWidth=2;
       ctx.strokeRect(nx-1,ny-1,noteW+2,ED_NOTE_H+2);
     } else if(inRange){
@@ -4998,6 +5010,18 @@ function edDraw(){
       ctx.setLineDash([]);
       ctx.fillStyle="#e53e3e";ctx.font="10px sans-serif";
       ctx.fillText(edIsClassical?"END":"LOOP (4 beats)",dx+3,12);
+    }
+  }
+
+  // Playhead line during preview
+  if(edPlayhead>=0){
+    var phx=edTimeToX(edPlayhead);
+    if(phx>=0&&phx<=W){
+      ctx.strokeStyle="#ff0";ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(phx,0);ctx.lineTo(phx,H);ctx.stroke();
+      // Triangle marker at top
+      ctx.fillStyle="#ff0";
+      ctx.beginPath();ctx.moveTo(phx,0);ctx.lineTo(phx-5,0);ctx.lineTo(phx,10);ctx.lineTo(phx+5,0);ctx.closePath();ctx.fill();
     }
   }
 
@@ -5281,10 +5305,41 @@ function edKeyDown(e){
 
 function edUpdateBpm(){edBpm=parseInt(document.getElementById("ed-bpm").value)||120;edDraw();}
 
+function edStopPlayhead(){
+  edPlayhead=-1;
+  if(edPlayheadRAF)cancelAnimationFrame(edPlayheadRAF);
+  edPlayheadRAF=0;
+  edDraw();
+}
+function edStartPlayhead(totalDur){
+  edPlayheadStart=performance.now();
+  var dur=totalDur;
+  function tick(){
+    if(!edPreviewing){edStopPlayhead();return;}
+    var elapsed=(performance.now()-edPlayheadStart)/1000;
+    if(elapsed>dur){
+      edPreviewing=false;
+      document.getElementById("ed-pv-btn").textContent="▶ Preview";
+      edStopPlayhead();
+      return;
+    }
+    edPlayhead=elapsed;
+    // Auto-scroll to keep playhead visible
+    var cv=getEdCanvas();
+    var phx=edTimeToX(edPlayhead);
+    if(phx>cv.width*0.75){
+      edScrollX+=(phx-cv.width*0.5);
+    }
+    edDraw();
+    edPlayheadRAF=requestAnimationFrame(tick);
+  }
+  edPlayheadRAF=requestAnimationFrame(tick);
+}
 function edPreview(){
-  if(edPreviewing){stopPreview();edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";return;}
+  if(edPreviewing){stopPreview();edPreviewing=false;edStopPlayhead();document.getElementById("ed-pv-btn").textContent="▶ Preview";return;}
   var ac=getAc(true);ac.resume();
   var piece=edPiece;
+  edScrollX=0; // reset scroll to start
   if(edIsClassical){
     // Play background orchestration
     if(piece.bg)for(var i=0;i<piece.bg.length;i++){
@@ -5297,13 +5352,16 @@ function edPreview(){
       playSynth(ac,freq,ac.currentTime+0.1+m.t,0.1,'woodwind',0.5,previewNodes);
     });
     var dur=piece.duration||90;
-    setTimeout(function(){if(edPreviewing){edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";}},dur*1000+500);
+    edPreviewing=true;
+    document.getElementById("ed-pv-btn").textContent="⏹ Stop";
+    edStartPlayhead(dur);
   }else{
     // Regular rhythm: play drum sounds for each note in pattern, looped over bars
     var bs=60/edBpm;
     var bars=edBars||8;
     var drumFreqs=[329,392,440,349,220]; // red,yellow,blue,green,kick
     var drumInst=['strings','woodwind','woodwind','strings','bass'];
+    // For playhead: we need to convert pattern time to absolute seconds
     for(var bar=0;bar<bars;bar++){
       edMelody.forEach(function(m){
         var t=ac.currentTime+0.1+(bar*4+m.t)*bs;
@@ -5312,10 +5370,29 @@ function edPreview(){
       });
     }
     var totalDur=bars*4*bs;
-    setTimeout(function(){if(edPreviewing){edPreviewing=false;document.getElementById("ed-pv-btn").textContent="▶ Preview";}},totalDur*1000+500);
+    // For pattern mode, playhead is in beat units (0-4 repeating)
+    edPreviewing=true;
+    document.getElementById("ed-pv-btn").textContent="⏹ Stop";
+    // Playhead in pattern mode: cycles through 0-4 beats over bars
+    edPlayheadStart=performance.now();
+    var beatDur=bs; // seconds per beat
+    function patternTick(){
+      if(!edPreviewing){edStopPlayhead();return;}
+      var elapsed=(performance.now()-edPlayheadStart)/1000;
+      if(elapsed>totalDur){
+        edPreviewing=false;
+        document.getElementById("ed-pv-btn").textContent="▶ Preview";
+        edStopPlayhead();
+        return;
+      }
+      // Convert elapsed seconds to beat offset within 4-beat pattern
+      var beatPos=(elapsed/beatDur)%4;
+      edPlayhead=beatPos;
+      edDraw();
+      edPlayheadRAF=requestAnimationFrame(patternTick);
+    }
+    edPlayheadRAF=requestAnimationFrame(patternTick);
   }
-  edPreviewing=true;
-  document.getElementById("ed-pv-btn").textContent="⏹ Stop";
 }
 
 // Save/load edits to localStorage
