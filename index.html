@@ -686,12 +686,13 @@ const NT={C3:130.81,D3:146.83,Eb3:155.56,E3:164.81,F3:174.61,G3:196.00,Ab3:207.6
 
 function playSynth(ac,freq,t,dur,inst,vol,arr){
   if(t<ac.currentTime-0.1)return;
-  var v=(vol||0.25)*3*masterVolume;
+  var v=(vol||0.25)*masterVolume;
+  var out=getMasterBus(ac);
   if(inst==='strings'){
     var o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();
     o.type='sawtooth';o.frequency.value=freq;
     f.type='lowpass';f.frequency.value=Math.min(freq*3,4000);
-    o.connect(f);f.connect(g);g.connect(ac.destination);
+    o.connect(f);f.connect(g);g.connect(out);
     var att=Math.min(0.08,dur*0.15);
     g.gain.setValueAtTime(0.001,t);g.gain.linearRampToValueAtTime(v,t+att);
     if(dur>att+0.05)g.gain.setValueAtTime(v*0.8,t+dur*0.7);
@@ -701,7 +702,7 @@ function playSynth(ac,freq,t,dur,inst,vol,arr){
     var o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();
     o.type='square';o.frequency.value=freq;
     f.type='lowpass';f.frequency.value=Math.min(freq*2,3000);
-    o.connect(f);f.connect(g);g.connect(ac.destination);
+    o.connect(f);f.connect(g);g.connect(out);
     g.gain.setValueAtTime(0.001,t);g.gain.linearRampToValueAtTime(v*0.5,t+0.03);
     if(dur>0.08)g.gain.setValueAtTime(v*0.5,t+dur*0.8);
     g.gain.linearRampToValueAtTime(0.001,t+dur);
@@ -709,7 +710,7 @@ function playSynth(ac,freq,t,dur,inst,vol,arr){
   }else if(inst==='woodwind'){
     var o=ac.createOscillator(),g=ac.createGain();
     o.type='triangle';o.frequency.value=freq;
-    o.connect(g);g.connect(ac.destination);
+    o.connect(g);g.connect(out);
     g.gain.setValueAtTime(0.001,t);g.gain.linearRampToValueAtTime(v*0.45,t+0.05);
     if(dur>0.1)g.gain.setValueAtTime(v*0.45,t+dur*0.8);
     g.gain.linearRampToValueAtTime(0.001,t+dur);
@@ -717,14 +718,14 @@ function playSynth(ac,freq,t,dur,inst,vol,arr){
   }else if(inst==='bass'){
     var o=ac.createOscillator(),g=ac.createGain();
     o.type='sine';o.frequency.value=freq;
-    o.connect(g);g.connect(ac.destination);
+    o.connect(g);g.connect(out);
     g.gain.setValueAtTime(v*0.6,t);
     if(dur>0.08)g.gain.setValueAtTime(v*0.6,t+dur*0.8);
     g.gain.linearRampToValueAtTime(0.001,t+dur);
     o.start(t);o.stop(t+dur+0.02);if(arr)arr.push(o);
   }else if(inst==='timpani'){
     var o=ac.createOscillator(),g=ac.createGain();
-    o.type='sine';o.connect(g);g.connect(ac.destination);
+    o.type='sine';o.connect(g);g.connect(out);
     o.frequency.setValueAtTime(freq*1.5,t);
     o.frequency.exponentialRampToValueAtTime(Math.max(freq*0.5,20),t+dur);
     g.gain.setValueAtTime(v*0.8,t);
@@ -734,7 +735,7 @@ function playSynth(ac,freq,t,dur,inst,vol,arr){
     [-6,0,6].forEach(function(d){
       var o=ac.createOscillator(),g=ac.createGain();
       o.type='sine';o.frequency.value=freq+d;
-      o.connect(g);g.connect(ac.destination);
+      o.connect(g);g.connect(out);
       var at2=Math.min(0.1,dur*0.2);
       g.gain.setValueAtTime(0.001,t);g.gain.linearRampToValueAtTime(v*0.3,t+at2);
       if(dur>at2+0.05)g.gain.setValueAtTime(v*0.3,t+dur*0.8);
@@ -4851,22 +4852,47 @@ document.getElementById("fi").addEventListener("change",async e=>{
 // Linux/Chrome requires a user gesture before AudioContext will run.
 // We create one shared context and resume it on every user interaction.
 let _ac=null;
+// Master compressor nodes per context — prevent clipping when many drums hit simultaneously
+let gameCompressor=null,previewCompressor=null;
+
+function makeMasterBus(ac){
+  var comp=ac.createDynamicsCompressor();
+  comp.threshold.value=-12; // start compressing at -12dBFS
+  comp.knee.value=6;
+  comp.ratio.value=4;
+  comp.attack.value=0.003;
+  comp.release.value=0.15;
+  comp.connect(ac.destination);
+  return comp;
+}
+
 function getAc(prev=false){
   if(prev){
-    if(!previewAc||previewAc.state==="closed")previewAc=new(window.AudioContext||window.webkitAudioContext)();
+    if(!previewAc||previewAc.state==="closed"){
+      previewAc=new(window.AudioContext||window.webkitAudioContext)();
+      previewCompressor=makeMasterBus(previewAc);
+    }
     previewAc.resume();
     return previewAc;
   }
-  if(!gameAc||gameAc.state==="closed")gameAc=new(window.AudioContext||window.webkitAudioContext)();
+  if(!gameAc||gameAc.state==="closed"){
+    gameAc=new(window.AudioContext||window.webkitAudioContext)();
+    gameCompressor=makeMasterBus(gameAc);
+  }
   gameAc.resume();
   return gameAc;
+}
+// Return the master bus (compressor) for a given context so sounds route through it
+function getMasterBus(ac){
+  if(ac===previewAc)return previewCompressor||ac.destination;
+  return gameCompressor||ac.destination;
 }
 // Unlock audio on ANY user interaction — click, touch, keydown
 function unlockAudio(){
   [previewAc,gameAc].forEach(ac=>{if(ac&&ac.state==="suspended")ac.resume();});
   // create them early so they're ready
-  if(!previewAc){previewAc=new(window.AudioContext||window.webkitAudioContext)();previewAc.resume();}
-  if(!gameAc){gameAc=new(window.AudioContext||window.webkitAudioContext)();gameAc.resume();}
+  if(!previewAc){previewAc=new(window.AudioContext||window.webkitAudioContext)();previewCompressor=makeMasterBus(previewAc);previewAc.resume();}
+  if(!gameAc){gameAc=new(window.AudioContext||window.webkitAudioContext)();gameCompressor=makeMasterBus(gameAc);gameAc.resume();}
 }
 ["click","touchstart","keydown","mousedown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:false}));
 
@@ -6400,13 +6426,16 @@ function draw(){
 draw();
 
 // ── DRUM SOUNDS ────────────────────────────────────────
+// Volumes are normalized to 0-1 range; master bus compressor handles peaks.
 function playDrumAt(ac,lane,t,vol,arr){
-  vol=vol*masterVolume;
+  // Scale raw vol (0-8) down to 0-1 range, then apply masterVolume
+  vol=(vol/8)*masterVolume;
   const type=LANES[lane].type;
+  const out=getMasterBus(ac);
   function mk(n){if(arr)arr.push(n);}
   if(type==="kick"||type==="bass"){
     const o=ac.createOscillator(),g=ac.createGain();
-    o.connect(g);g.connect(ac.destination);
+    o.connect(g);g.connect(out);
     o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(40,t+0.15);
     g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
     o.start(t);o.stop(t+0.35);mk(o);
@@ -6414,18 +6443,18 @@ function playDrumAt(ac,lane,t,vol,arr){
     const sz=ac.sampleRate*0.12,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
     for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
     const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
-    f.type="highpass";f.frequency.value=1500;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    f.type="highpass";f.frequency.value=1500;s.buffer=buf;s.connect(f);f.connect(g);g.connect(out);
     g.gain.setValueAtTime(vol*.75,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
     s.start(t);s.stop(t+0.15);mk(s);
     const o=ac.createOscillator(),g2=ac.createGain();
-    o.connect(g2);g2.connect(ac.destination);o.frequency.value=180;
+    o.connect(g2);g2.connect(out);o.frequency.value=180;
     g2.gain.setValueAtTime(vol*.35,t);g2.gain.exponentialRampToValueAtTime(0.001,t+0.07);
     o.start(t);o.stop(t+0.08);mk(o);
   } else if(type==="hihat"){
     const sz=ac.sampleRate*0.05,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
     for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
     const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
-    f.type="highpass";f.frequency.value=7000;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    f.type="highpass";f.frequency.value=7000;s.buffer=buf;s.connect(f);f.connect(g);g.connect(out);
     g.gain.setValueAtTime(vol*.5,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
     s.start(t);s.stop(t+0.06);mk(s);
   } else if(type==="crash"){
@@ -6433,7 +6462,7 @@ function playDrumAt(ac,lane,t,vol,arr){
     const sz=ac.sampleRate*0.4,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
     for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
     const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
-    f.type="bandpass";f.frequency.value=4000;f.Q.value=0.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    f.type="bandpass";f.frequency.value=4000;f.Q.value=0.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(out);
     g.gain.setValueAtTime(vol*.6,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
     s.start(t);s.stop(t+0.45);mk(s);
   } else if(type==="ride"){
@@ -6441,18 +6470,18 @@ function playDrumAt(ac,lane,t,vol,arr){
     const sz=ac.sampleRate*0.15,buf=ac.createBuffer(1,sz,ac.sampleRate),d=buf.getChannelData(0);
     for(let i=0;i<sz;i++)d[i]=Math.random()*2-1;
     const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
-    f.type="bandpass";f.frequency.value=6000;f.Q.value=1.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(ac.destination);
+    f.type="bandpass";f.frequency.value=6000;f.Q.value=1.5;s.buffer=buf;s.connect(f);f.connect(g);g.connect(out);
     g.gain.setValueAtTime(vol*.45,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
     s.start(t);s.stop(t+0.15);mk(s);
     // Add a subtle pitched ping
     const o=ac.createOscillator(),g2=ac.createGain();
-    o.type="triangle";o.connect(g2);g2.connect(ac.destination);o.frequency.value=800;
+    o.type="triangle";o.connect(g2);g2.connect(out);o.frequency.value=800;
     g2.gain.setValueAtTime(vol*.15,t);g2.gain.exponentialRampToValueAtTime(0.001,t+0.08);
     o.start(t);o.stop(t+0.1);mk(o);
   } else { // tom / tom2 / tom3
     const freq=type==="tom"?160:type==="tom2"?120:90;
     const o=ac.createOscillator(),g=ac.createGain();
-    o.connect(g);g.connect(ac.destination);
+    o.connect(g);g.connect(out);
     o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*0.4,t+0.2);
     g.gain.setValueAtTime(vol*.85,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
     o.start(t);o.stop(t+0.28);mk(o);
@@ -6476,16 +6505,44 @@ function togglePause(){
 
 // ── REMAP ─────────────────────────────────────────────
 var remapLanes=LANES.map(function(ln,i){return{l:i,name:ln.label.toUpperCase(),color:ln.color};});
+var remapTimeoutId=null,remapCountdownId=null,remapSecsLeft=5;
+
+function remapStartTimer(){
+  clearTimeout(remapTimeoutId);clearInterval(remapCountdownId);
+  remapSecsLeft=5;
+  remapCountdownId=setInterval(function(){
+    remapSecsLeft--;
+    var el=document.getElementById("remap-status");
+    if(el){
+      var rl=remapLanes[remapStep];
+      var hint=remapStep===4?" (or press foot pedal)":"";
+      el.textContent="Step "+(remapStep+1)+" of "+remapLanes.length+hint+" — skipping in "+remapSecsLeft+"s";
+    }
+    if(remapSecsLeft<=0){clearInterval(remapCountdownId);remapSkipStep();}
+  },1000);
+  remapTimeoutId=setTimeout(function(){clearInterval(remapCountdownId);remapSkipStep();},5000);
+}
+function remapStopTimer(){
+  clearTimeout(remapTimeoutId);clearInterval(remapCountdownId);
+}
+function remapSkipStep(){
+  // No pad pressed in time — skip this lane (leave it unmapped)
+  remapStep++;
+  showRemapStep();
+}
+
 function startRemap(){
   remapping=true;remapStep=0;remapResult={};
   document.getElementById("remap-overlay").classList.add("show");
   showRemapStep();
 }
 function cancelRemap(){
+  remapStopTimer();
   remapping=false;document.getElementById("remap-overlay").classList.remove("show");
 }
 function showRemapStep(){
   if(remapStep>=remapLanes.length){
+    remapStopTimer();
     // Done — save mapping
     gpMap={};
     for(var k in remapResult)gpMap[k]=remapResult[k];
@@ -6496,12 +6553,15 @@ function showRemapStep(){
     return;
   }
   var rl=remapLanes[remapStep];
+  var hint=remapStep===4?" (or press foot pedal)":"";
   document.getElementById("remap-prompt").innerHTML="Hit your <span style='color:"+rl.color+";font-size:24px'>"+rl.name+"</span> pad";
-  document.getElementById("remap-status").textContent="Step "+(remapStep+1)+" of "+remapLanes.length+(remapStep===4?" (or press foot pedal)":"");
+  document.getElementById("remap-status").textContent="Step "+(remapStep+1)+" of "+remapLanes.length+hint+" — skipping in 5s";
+  remapStartTimer();
 }
 var remapCooldown=false;
 function handleRemapButton(bi){
   if(!remapping||remapCooldown)return false;
+  remapStopTimer();
   remapResult[bi]=remapLanes[remapStep].l;
   remapStep++;
   remapCooldown=true;
@@ -6517,16 +6577,40 @@ var customKeyMap=JSON.parse(localStorage.getItem("drgameKeyMap")||"null");
 if(customKeyMap){
   LANES.forEach(function(ln,i){if(customKeyMap[i]!==undefined)ln.key=customKeyMap[i];});
 }
+var keyRemapTimeoutId=null,keyRemapCountdownId=null,keyRemapSecsLeft=5;
+
+function keyRemapStartTimer(){
+  clearTimeout(keyRemapTimeoutId);clearInterval(keyRemapCountdownId);
+  keyRemapSecsLeft=5;
+  keyRemapCountdownId=setInterval(function(){
+    keyRemapSecsLeft--;
+    var el=document.getElementById("keyremap-status");
+    if(el)el.textContent="Step "+(keyRemapStep+1)+" of "+LANES.length+" — skipping in "+keyRemapSecsLeft+"s";
+    if(keyRemapSecsLeft<=0){clearInterval(keyRemapCountdownId);keyRemapSkipStep();}
+  },1000);
+  keyRemapTimeoutId=setTimeout(function(){clearInterval(keyRemapCountdownId);keyRemapSkipStep();},5000);
+}
+function keyRemapStopTimer(){
+  clearTimeout(keyRemapTimeoutId);clearInterval(keyRemapCountdownId);
+}
+function keyRemapSkipStep(){
+  // No key pressed in time — skip this lane (keep existing key)
+  keyRemapStep++;
+  showKeyRemapStep();
+}
+
 function startKeyRemap(){
   keyRemapping=true;keyRemapStep=0;keyRemapResult={};
   document.getElementById("keyremap-overlay").classList.add("show");
   showKeyRemapStep();
 }
 function cancelKeyRemap(){
+  keyRemapStopTimer();
   keyRemapping=false;document.getElementById("keyremap-overlay").classList.remove("show");
 }
 function showKeyRemapStep(){
   if(keyRemapStep>=LANES.length){
+    keyRemapStopTimer();
     // Done — apply and save
     LANES.forEach(function(ln,i){if(keyRemapResult[i]!==undefined)ln.key=keyRemapResult[i];});
     var map={};LANES.forEach(function(ln,i){map[i]=ln.key;});
@@ -6539,7 +6623,8 @@ function showKeyRemapStep(){
   }
   var ln=LANES[keyRemapStep];
   document.getElementById("keyremap-prompt").innerHTML="Press key for <span style='color:"+ln.color+";font-size:24px'>"+ln.label.toUpperCase()+"</span>";
-  document.getElementById("keyremap-status").textContent="Step "+(keyRemapStep+1)+" of "+LANES.length+" (press any key)";
+  document.getElementById("keyremap-status").textContent="Step "+(keyRemapStep+1)+" of "+LANES.length+" — skipping in 5s";
+  keyRemapStartTimer();
 }
 var keyRemapCooldown=false;
 window.addEventListener("keydown",function(e){
@@ -6549,6 +6634,7 @@ window.addEventListener("keydown",function(e){
     if(e.key==="Escape"){cancelKeyRemap();e.preventDefault();return;}
     if(keyRemapCooldown)return;
     e.preventDefault();
+    keyRemapStopTimer();
     keyRemapResult[keyRemapStep]=e.key===" "?" ":e.key.toLowerCase();
     keyRemapStep++;
     keyRemapCooldown=true;
@@ -6584,9 +6670,21 @@ function autoDetectGamepad(gp){
     for(var j=5;j<lanesToEnable;j++)activePads[j]=true;
   }
   buildPadToggles();
+  // Initialize prevBtns from actual current button state to avoid spurious triggers on Linux
+  // (on Linux/Chrome, gamepad may connect with buttons already in a non-zero state)
+  gp.buttons.forEach((btn,bi)=>{prevBtns[bi]=btn.pressed||(btn.value>0.5);});
+  // Initialize axis tracking for Linux (some drums report pads as axis changes, not buttons)
+  if(!prevAxes[gp.index])prevAxes[gp.index]=Array.from(gp.axes||[]);
   var gpd=document.getElementById("gpd");
-  if(gpd)gpd.textContent="🎮 "+gp.id.slice(0,25)+" ("+nButtons+" buttons)";
+  if(gpd)gpd.textContent="🎮 "+gp.id.slice(0,25)+" ("+nButtons+" btns, "+gp.axes.length+" axes)";
 }
+
+// Linux: some USB drum kits report pads as axis changes rather than buttons.
+// Track previous axis values per gamepad index.
+var prevAxes={};
+
+// Map axis index to a virtual button index (offset past real buttons)
+var AXIS_BTN_OFFSET=32;
 
 function pollGP(){
   const gps=navigator.getGamepads?navigator.getGamepads():[];
@@ -6595,20 +6693,47 @@ function pollGP(){
     if(!gp)continue;found=true;
     if(!gpAutoDetected)autoDetectGamepad(gp);
     else document.getElementById("gpd").textContent="🎮 "+gp.id.slice(0,20);
+
     var remapHandled=false;
+
+    // ── Button handling ──────────────────────────────
     gp.buttons.forEach((btn,bi)=>{
-      if(btn.pressed&&!prevBtns[bi]){
+      // Use btn.value > 0.5 as fallback for analog buttons (common on Linux)
+      var isPressed=btn.pressed||(btn.value>0.5);
+      if(isPressed&&!prevBtns[bi]){
         if(remapping){
           if(!remapHandled){remapHandled=true;handleRemapButton(bi);}
         }
         else if(!paused&&gpMap[bi]!==undefined)triggerPad(gpMap[bi]);
       }
-      prevBtns[bi]=btn.pressed;
+      prevBtns[bi]=isPressed;
+    });
+
+    // ── Axis handling (Linux: Wii drums may report hits as axis transitions) ──
+    var pa=prevAxes[gp.index];
+    if(!pa)pa=prevAxes[gp.index]=Array.from(gp.axes||[]);
+    gp.axes.forEach((val,ai)=>{
+      var wasActive=(pa[ai]>0.5)||(pa[ai]<-0.5);
+      var isActive=(val>0.5)||(val<-0.5);
+      if(isActive&&!wasActive){
+        var vbi=AXIS_BTN_OFFSET+ai; // virtual button index for this axis
+        if(remapping){
+          if(!remapHandled){remapHandled=true;handleRemapButton(vbi);}
+        }
+        else if(!paused&&gpMap[vbi]!==undefined)triggerPad(gpMap[vbi]);
+      }
+      pa[ai]=val;
     });
   }
   if(!found)document.getElementById("gpd").textContent="No gamepad";
   requestAnimationFrame(pollGP);
 }
+
+// Also listen for gamepadconnected to catch late-connecting gamepads on Linux
+window.addEventListener("gamepadconnected",function(e){
+  unlockAudio();
+  if(!gpAutoDetected)autoDetectGamepad(e.gamepad);
+});
 pollGP();
 </script>
 </body>
